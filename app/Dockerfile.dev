@@ -19,5 +19,5 @@ COPY . .
 # Expose the Next.js port
 EXPOSE 3000
 
-# Start Next.js in development mode
-CMD ["pnpm", "dev"]
+# Start Next.js in development mode with Docker-friendly settings
+CMD ["pnpm", "dev:docker"]

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/utils/ui";
 import { siteConfig, META_THEME_COLORS } from "@/config/site";
+import { Analytics } from "@vercel/analytics/next"
+import { Suspense } from "react"
 
 import "@/app/globals.css";
 
@@ -58,7 +60,8 @@ export default async function RootLayout({
           )}
           suppressHydrationWarning
         >
-          {children}
+          <Suspense fallback={null}>{children}</Suspense>
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>

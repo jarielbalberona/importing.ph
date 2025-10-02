@@ -27,11 +27,14 @@ services:
     volumes:
       - ./app:/usr/src/app # Sync local files to container
       - /usr/src/app/node_modules # Prevent overwriting node_modules
+      - /usr/src/app/.next # Prevent overwriting Next.js build cache
     depends_on:
       - api
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://lbtaappuser:lbtaapppw@database:5432/lbtaapp
+      - WATCHPACK_POLLING=true # Enable file watching in Docker
+      - CHOKIDAR_USEPOLLING=true # Enable file watching in Docker
 
   database:
     container_name: database
