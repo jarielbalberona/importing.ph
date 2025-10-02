@@ -1,0 +1,50 @@
+services:
+  api:
+    container_name: api
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./api/.env
+    depends_on:
+      - database
+    volumes:
+      - ./api:/usr/src/app # Sync project files (hot reload)
+      - /usr/src/app/node_modules # Prevent overwriting node_modules (IMPORTANT)
+    restart: unless-stopped
+
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    # env_file:
+    #   - ./app/.env
+    volumes:
+      - ./app:/usr/src/app # Sync local files to container
+      - /usr/src/app/node_modules # Prevent overwriting node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://lbtaappuser:lbtaapppw@database:5432/lbtaapp
+
+  database:
+    container_name: database
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: lbtaappuser
+      POSTGRES_PASSWORD: lbtaapppw
+      POSTGRES_DB: lbtaapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

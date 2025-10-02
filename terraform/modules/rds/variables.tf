@@ -1,0 +1,10 @@
+variable "environment" {}
+variable "project" {}
+variable "aws_project_name" {}
+variable "db_user" {}
+variable "db_password" {}
+variable "module_ecs_sg_id" {}
+variable "module_networking_main_id" {}
+variable "module_networking_subnet1_id" {}
+variable "module_networking_subnet2_id" {}
+variable "module_networking_ecs_api_sg_id" {}

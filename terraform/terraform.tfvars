@@ -1,0 +1,5 @@
+aws_region                 = "ap-southeast-1"
+aws_access_key             = "AKIAXCSMC4SDJIG7P55L"
+aws_secret_key             = "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"
+aws_s3_bucket_tfstate_name = "lbta-app-tofu-state"
+project                    = "lbta-app"

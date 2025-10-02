@@ -1,0 +1,208 @@
+{
+  "id": "0000_importing_ph_initial",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.users": {
+      "name": "users",
+      "schema": "public",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "role_type",
+          "notNull": true
+        },
+        "company_name": {
+          "name": "company_name",
+          "type": "text"
+        },
+        "location": {
+          "name": "location",
+          "type": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "notNull": true
+        }
+      }
+    },
+    "public.shipments": {
+      "name": "shipments",
+      "schema": "public",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "default": "gen_random_uuid()",
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "notNull": true
+        },
+        "origin_city": {
+          "name": "origin_city",
+          "type": "text",
+          "notNull": true
+        },
+        "destination": {
+          "name": "destination",
+          "type": "text",
+          "notNull": true
+        },
+        "delivery_type": {
+          "name": "delivery_type",
+          "type": "delivery_type",
+          "notNull": true
+        },
+        "cargo_volume": {
+          "name": "cargo_volume",
+          "type": "text",
+          "notNull": true
+        },
+        "item_type": {
+          "name": "item_type",
+          "type": "text"
+        },
+        "target_delivery_date": {
+          "name": "target_delivery_date",
+          "type": "date"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text"
+        },
+        "status": {
+          "name": "status",
+          "type": "shipment_status",
+          "default": "open",
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "default": "now()",
+          "notNull": true
+        }
+      }
+    },
+    "public.quotes": {
+      "name": "quotes",
+      "schema": "public",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "default": "gen_random_uuid()",
+          "notNull": true
+        },
+        "shipment_id": {
+          "name": "shipment_id",
+          "type": "uuid",
+          "notNull": true
+        },
+        "forwarder_id": {
+          "name": "forwarder_id",
+          "type": "uuid",
+          "notNull": true
+        },
+        "all_in_cost": {
+          "name": "all_in_cost",
+          "type": "numeric(10,2)",
+          "notNull": true
+        },
+        "eta_to_ph": {
+          "name": "eta_to_ph",
+          "type": "numeric(5,0)",
+          "notNull": true
+        },
+        "eta_to_door": {
+          "name": "eta_to_door",
+          "type": "numeric(5,0)"
+        },
+        "service_type": {
+          "name": "service_type",
+          "type": "service_type",
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text"
+        },
+        "status": {
+          "name": "status",
+          "type": "quote_status",
+          "default": "submitted",
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "default": "now()",
+          "notNull": true
+        }
+      }
+    }
+  },
+  "enums": {
+    "public.role_type": {
+      "name": "role_type",
+      "schema": "public",
+      "values": ["importer", "forwarder"]
+    },
+    "public.delivery_type": {
+      "name": "delivery_type",
+      "schema": "public",
+      "values": ["door_to_door", "to_manila_warehouse"]
+    },
+    "public.shipment_status": {
+      "name": "shipment_status",
+      "schema": "public",
+      "values": ["open", "quoted", "accepted", "closed"]
+    },
+    "public.service_type": {
+      "name": "service_type",
+      "schema": "public",
+      "values": ["door_to_door", "to_manila_warehouse"]
+    },
+    "public.quote_status": {
+      "name": "quote_status",
+      "schema": "public",
+      "values": ["submitted", "accepted", "rejected"]
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
