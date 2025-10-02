@@ -234,6 +234,8 @@ temp/
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+*.tfvars
+*.tfvars.json
 
 # Docker
 .dockerignore
