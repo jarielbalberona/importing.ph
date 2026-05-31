@@ -14,7 +14,9 @@
     "db:check": "drizzle-kit check",
     "db:smoke": "tsx scripts/db-smoke.ts",
     "db:prove-onboarding": "tsx scripts/prove-onboarding.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "ai:run": "node tools/ai-runner/index.mjs",
+    "test:ai-runner": "node --test tools/ai-runner/index.test.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.2",
