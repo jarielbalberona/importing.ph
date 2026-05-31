@@ -43,6 +43,41 @@ async function main() {
     "importer_profile",
   );
 
+  const importerRetryResult = await createOnboardingProfile(
+    importerClerkUserId,
+    {
+      role: "forwarder",
+      fullName: "Dev Importer Retry",
+      companyName: "Dev Importer Retry Co",
+    },
+  );
+
+  if (importerRetryResult.created) {
+    throw new Error("importer retry unexpectedly created a profile");
+  }
+
+  if (importerRetryResult.profile.role !== "importer") {
+    throw new Error("importer retry unexpectedly switched role");
+  }
+
+  const importerProfileRows = await db.query.importerProfiles.findMany({
+    where: eq(importerProfiles.userProfileId, importerResult.profile.id),
+  });
+
+  if (importerProfileRows.length !== 1) {
+    throw new Error(
+      `importer retry created ${importerProfileRows.length} importer profiles`,
+    );
+  }
+
+  const importerForwarderMember = await db.query.forwarderMembers.findFirst({
+    where: eq(forwarderMembers.userProfileId, importerResult.profile.id),
+  });
+
+  if (importerForwarderMember) {
+    throw new Error("importer retry unexpectedly created forwarder membership");
+  }
+
   const forwarderResult = await createOnboardingProfile(forwarderClerkUserId, {
     role: "forwarder",
     fullName: "Dev Forwarder",
@@ -63,6 +98,41 @@ async function main() {
     "forwarder_company",
   );
 
+  const forwarderRetryResult = await createOnboardingProfile(
+    forwarderClerkUserId,
+    {
+      role: "importer",
+      fullName: "Dev Forwarder Retry",
+      companyName: "Dev Forwarder Retry Co",
+    },
+  );
+
+  if (forwarderRetryResult.created) {
+    throw new Error("forwarder retry unexpectedly created a profile");
+  }
+
+  if (forwarderRetryResult.profile.role !== "forwarder") {
+    throw new Error("forwarder retry unexpectedly switched role");
+  }
+
+  const forwarderMemberRows = await db.query.forwarderMembers.findMany({
+    where: eq(forwarderMembers.userProfileId, forwarderResult.profile.id),
+  });
+
+  if (forwarderMemberRows.length !== 1) {
+    throw new Error(
+      `forwarder retry created ${forwarderMemberRows.length} memberships`,
+    );
+  }
+
+  const forwarderImporterProfile = await db.query.importerProfiles.findFirst({
+    where: eq(importerProfiles.userProfileId, forwarderResult.profile.id),
+  });
+
+  if (forwarderImporterProfile) {
+    throw new Error("forwarder retry unexpectedly created importer profile");
+  }
+
   console.log("Onboarding proof PASS");
   console.log(
     JSON.stringify(
@@ -70,11 +140,18 @@ async function main() {
         importer: {
           userProfileId: importerResult.profile.id,
           importerProfileId: importerProfile.id,
+          retryCreated: importerRetryResult.created,
+          retryRole: importerRetryResult.profile.role,
+          importerProfileCount: importerProfileRows.length,
         },
         forwarder: {
           userProfileId: forwarderResult.profile.id,
           forwarderCompanyId: forwarderMember.forwarderCompanyId,
           forwarderMemberId: forwarderMember.id,
+          retryCreated: forwarderRetryResult.created,
+          retryRole: forwarderRetryResult.profile.role,
+          forwarderMemberCount: forwarderMemberRows.length,
+          memberRole: forwarderMember.memberRole,
         },
       },
       null,

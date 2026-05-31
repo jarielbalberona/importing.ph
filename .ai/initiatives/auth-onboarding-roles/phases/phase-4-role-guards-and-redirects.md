@@ -1,6 +1,6 @@
 # Phase 4: Role Guards And Redirects
 
-Status: pending
+Status: passed
 
 ## Goal
 

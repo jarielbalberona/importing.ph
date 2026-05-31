@@ -10,10 +10,10 @@ depends_on: []
 
 ## Initiative Status
 
-- Status: draft
-- Ready for execution: no
-- Execution started: no
-- Latest execution status: not started.
+- Status: locked
+- Ready for execution: yes
+- Execution started: yes
+- Latest execution status: completed with issues; see `reports/final-report.md`.
 
 Lifecycle rule: this initiative is authored for review first. Lock it only after a human confirms the plan and the executor is allowed to run local DB commands.
 

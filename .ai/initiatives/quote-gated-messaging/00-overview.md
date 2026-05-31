@@ -6,18 +6,18 @@
 
 ## Dependencies
 
-depends_on: local-db-migration-proof, auth-onboarding-roles, shipment-request-wizard, forwarder-open-requests, quote-submission-privacy
+depends_on: local-db-migration-proof, auth-onboarding-roles, shipment-request-wizard, forwarder-open-requests, quote-submission-privacy, importer-quote-comparison
 
-Dependency rule: do not begin execution until all dependencies have final reports, are not blocked or failed, and `quote-submission-privacy` proves private quote submission and competitor privacy. If completed memory or product review requires messaging only after importer quote comparison/selection, add `importer-quote-comparison` as a hard dependency before locking.
+Dependency rule: do not begin execution until all dependencies have final reports, are not blocked or failed, and `quote-submission-privacy` proves private quote submission and competitor privacy. `importer-quote-comparison` is a hard dependency for this execution order so messaging is implemented only after quote comparison privacy and status behavior are proven.
 
 ## Initiative Status
 
-- Status: draft
-- Ready for execution: no
+- Status: locked
+- Ready for execution: yes
 - Execution started: no
 - Latest execution status: not started.
 
-Lifecycle rule: this initiative is authored for review. Lock it only after dependency readiness and the quote-comparison dependency question are resolved.
+Lifecycle rule: this initiative is locked for dependency-gated execution. Do not begin execution until all dependency final reports are present and accepted.
 
 ## Objective
 

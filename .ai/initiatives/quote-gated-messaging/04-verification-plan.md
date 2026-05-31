@@ -9,7 +9,7 @@ Before execution:
 - Confirm `shipment-request-wizard` has a final passing or explicitly accepted report.
 - Confirm `forwarder-open-requests` has a final passing or explicitly accepted report.
 - Confirm `quote-submission-privacy` has a final passing or explicitly accepted report.
-- Confirm whether `importer-quote-comparison` is required before messaging. If required and incomplete, stop before Phase 1 execution.
+- Confirm `importer-quote-comparison` has a final passing or explicitly accepted report.
 
 If any hard dependency is incomplete and not accepted, stop before Phase 1 execution.
 

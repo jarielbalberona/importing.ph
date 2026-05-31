@@ -1,6 +1,6 @@
 # Phase 5: Verification And Browser Smoke
 
-Status: pending
+Status: in_progress
 
 ## Goal
 

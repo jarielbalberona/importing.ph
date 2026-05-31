@@ -12,8 +12,8 @@ Dependency rule: do not begin execution until the core role model, request creat
 
 ## Initiative Status
 
-- Status: draft
-- Ready for execution: no
+- Status: locked
+- Ready for execution: yes
 - Execution started: no
 - Latest execution status: not started.
 

@@ -12,8 +12,8 @@ Dependency rule: do not begin execution until `local-db-migration-proof` and `au
 
 ## Initiative Status
 
-- Status: draft
-- Ready for execution: no
+- Status: locked
+- Ready for execution: yes
 - Execution started: no
 - Latest execution status: not started.
 
