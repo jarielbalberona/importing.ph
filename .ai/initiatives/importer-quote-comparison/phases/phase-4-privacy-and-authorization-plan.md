@@ -1,6 +1,6 @@
 # Phase 4: Privacy And Authorization Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 

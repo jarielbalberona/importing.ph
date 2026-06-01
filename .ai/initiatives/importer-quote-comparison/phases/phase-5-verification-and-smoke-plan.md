@@ -1,6 +1,6 @@
 # Phase 5: Verification And Smoke Plan
 
-Status: pending
+Status: passed_with_issues
 
 ## Goal
 

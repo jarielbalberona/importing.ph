@@ -1,6 +1,6 @@
 # Phase 2: Visibility And Privacy Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # Phase 2: Conversation Message Domain Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -94,4 +94,11 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added `conversations` table with request, importer profile, forwarder company, and opening quote references.
+- Added unique `(shipment_request_id, forwarder_company_id)` conversation constraint.
+- Added `messages` table with conversation and sender user profile references.
+- Added participant lookup and message chronology indexes.
+- Generated and applied additive migration `drizzle/0005_bright_turbo.sql`.
+- `npm run db:migrate`, `npm run db:check`, and `npm run type-check` passed against the confirmed local development database target.

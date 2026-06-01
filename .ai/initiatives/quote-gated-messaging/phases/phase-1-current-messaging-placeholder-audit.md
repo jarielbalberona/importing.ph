@@ -1,6 +1,6 @@
 # Phase 1: Current Messaging Placeholder Audit
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -92,4 +92,14 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Dependency final reports are present for `local-db-migration-proof`, `auth-onboarding-roles`, `shipment-request-wizard`, `forwarder-open-requests`, `quote-submission-privacy`, and `importer-quote-comparison`.
+- `importer-quote-comparison` is complete enough for messaging execution. Messaging should open after quote submission, and current quote rows remain available after accept/reject.
+- Current request ownership truth is `shipment_requests.importer_profile_id`.
+- Current quote gate truth is `quotes.shipment_request_id` plus `quotes.forwarder_company_id`.
+- Current quote statuses are `submitted`, `accepted`, `rejected`, and `withdrawn`.
+- Current request statuses are `draft`, `posted`, `quote_selected`, and `cancelled`.
+- Current auth helpers provide database-backed `requireRole`, importer profile lookup, and forwarder member lookup.
+- No `conversations` table, `messages` table, messaging routes, messaging actions, or participant-check helper exists yet.
+- Phase 2 should add explicit conversation/message schema and indexes without changing quote privacy boundaries.

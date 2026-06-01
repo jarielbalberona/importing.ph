@@ -25,15 +25,107 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Phase 2 `phase-2-importer-onboarding-hardening`: `passed`.
   - Phase 3 `phase-3-forwarder-onboarding-hardening`: `passed`.
   - Phase 4 `phase-4-role-guards-and-redirects`: `passed`.
-  - Phase 5 `phase-5-verification-and-browser-smoke`: `blocked`.
+  - Phase 5 `phase-5-verification-and-browser-smoke`: `passed`.
   - Dependency `local-db-migration-proof` is complete with final report and accepted `PASS WITH ISSUES` verdict.
   - Phase 1 audited Clerk routes, middleware, onboarding form/action, PostgreSQL profile writes, route destinations, role guards, proof routes, and admin route truth.
   - Phase 2 added importer retry/idempotency proof to `scripts/prove-onboarding.ts` and verified importer retries do not create duplicate rows or switch role.
   - Phase 3 added forwarder retry/idempotency proof to `scripts/prove-onboarding.ts` and verified forwarder retries do not create duplicate memberships or switch role.
   - Phase 4 verified Clerk middleware, database-backed page role guards, role destinations, wrong-role redirect behavior, and admin route truth.
-  - Phase 5 final automated commands passed sequentially, but browser smoke is blocked because the in-app browser has an existing Clerk session with no PostgreSQL profile and no confirmed disposable Clerk test account or isolated auth smoke database is available.
-  - In-app browser evidence confirmed that the current signed-in profile-less session redirects from `/after-auth`, `/app/requests`, `/app/forwarder/requests`, and `/admin` to `/onboarding`; onboarding form submission was not performed against the development database.
+  - Phase 5 rerun used the in-app browser with disposable Clerk smoke accounts, completed importer and forwarder onboarding through the UI, verified PostgreSQL profile/company/member rows, verified redirects, and verified wrong-role/admin route protection.
+  - Phase 5 final automated commands passed sequentially: `db:migrate`, `db:check`, `db:prove-onboarding`, `type-check`, `lint`, `build`, `test:ai-runner`, and `node tools/ai-runner/index.mjs auth-onboarding-roles --check-only`.
   - Current wrong-role behavior redirects users to their own role destination instead of `/unauthorized`.
   - Admin role/route exists, but admin provisioning is not implemented.
-  - Final initiative report has not been written.
-  - Next required action: provide disposable local Clerk test accounts and an isolated auth smoke database setup, then rerun Phase 5 browser smoke.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Next recommended initiative: `shipment-request-wizard`.
+- `shipment-request-wizard`: active initiative.
+  - Phase 1 `phase-1-current-importer-request-surface-audit`: `passed`.
+  - Phase 2 `phase-2-request-domain-and-schema-plan`: `passed`.
+  - Phase 3 `phase-3-wizard-ui-and-action-plan`: `passed`.
+  - Phase 4 `phase-4-importer-request-list-and-detail-plan`: `passed`.
+  - Phase 5 `phase-5-verification-and-smoke-plan`: `passed`.
+  - Dependencies `local-db-migration-proof` and `auth-onboarding-roles` are complete with final reports.
+  - Phase 1 confirmed the importer workspace is still a proof route at `/app/requests`.
+  - Phase 1 confirmed there is no current shipment request schema, migration, server action, creation route, list, or detail implementation.
+  - Phase 2 added explicit Drizzle enums and an importer-owned `shipment_requests` table, generated `drizzle/0001_parallel_blonde_phantom.sql`, and applied it locally.
+  - Phase 3 added `/app/requests/new`, a server action, posted-only request creation, importer profile/action guard, and quoting-basis validation.
+  - Phase 4 replaced the importer proof route with an owner-scoped request list and added importer-owned request detail at `/app/requests/[requestId]`.
+  - Phase 5 proved request creation, invalid quoting-basis rejection, signed-out redirect, forwarder blocked access, owner list/detail display, exact smoke request cleanup, and final automated verification.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS`.
+  - Next recommended initiative: `forwarder-open-requests`.
+- `forwarder-open-requests`: active initiative.
+  - Phase 1 `phase-1-current-forwarder-request-audit`: `passed`.
+  - Phase 2 `phase-2-visibility-and-privacy-plan`: `passed`.
+  - Phase 3 `phase-3-filter-list-detail-plan`: `passed`.
+  - Phase 4 `phase-4-authorization-and-suspended-forwarder-handling`: `passed`.
+  - Phase 5 `phase-5-verification-and-privacy-smoke-plan`: `passed_with_issues`.
+  - Dependencies `local-db-migration-proof`, `auth-onboarding-roles`, and `shipment-request-wizard` have final reports and are accepted.
+  - Phase 1 confirmed current forwarder request route is still a proof page guarded by `requireRole(["forwarder"])`.
+  - Phase 1 confirmed shipment request schema exists with statuses `draft`, `posted`, and `cancelled`.
+  - Phase 1 confirmed no quote tables or suspended-forwarder state exist yet.
+  - Phase 2 added `lib/forwarder-open-requests.ts` with a forwarder membership guard and explicit forwarder-safe shipment request DTO.
+  - Phase 2 keeps importer profile data, quote details, messages, and quote versions out of forwarder browsing queries.
+  - Phase 3 replaced the forwarder proof page with posted request list/filter behavior and added `/app/forwarder/requests/[requestId]`.
+  - Phase 3 generated and applied additive filter indexes in `drizzle/0002_fuzzy_madame_masque.sql`.
+  - Phase 4 verified forwarder-only route/query guards and documented suspended-forwarder behavior as not applicable until suspension schema exists.
+  - Phase 5 proved forwarder list/detail visibility, MSDS filtering, signed-out protection, importer redirect protection, final automated commands, and exact smoke cleanup.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Next recommended initiative: `quote-submission-privacy`.
+- `quote-submission-privacy`: active initiative.
+  - Phase 1 `phase-1-current-quote-request-auth-audit`: `passed`.
+  - Phase 2 `phase-2-quote-domain-schema-privacy-plan`: `passed`.
+  - Phase 3 `phase-3-quote-submission-flow-plan`: `passed`.
+  - Phase 4 `phase-4-quote-visibility-verification-plan`: `passed`.
+  - Phase 5 `phase-5-automated-and-browser-verification`: `passed_with_issues`.
+  - Dependencies `local-db-migration-proof`, `auth-onboarding-roles`, `shipment-request-wizard`, and `forwarder-open-requests` have final reports and are accepted.
+  - Phase 1 confirmed there is no current quote table, quote enum, quote migration, quote action, quote form, or quote visibility helper.
+  - Phase 1 confirmed request and forwarder browsing foundations exist and no suspended-forwarder state exists.
+  - Phase 2 added `quote_status`, `quotes`, additive migration `drizzle/0003_abnormal_lionheart.sql`, and privacy helpers in `lib/quotes.ts`.
+  - Phase 2 chose V1 one quote per forwarder company per request and no quote versions.
+  - Phase 3 added forwarder quote form/action, validation, posted-request eligibility, membership guard, and duplicate quote prevention.
+  - Phase 4 wired importer owner quote visibility, own-forwarder quote visibility, and competitor aggregate-only quote count.
+  - Phase 5 automated verification passed: `db:migrate`, `db:check`, `type-check`, `lint`, `build`, runner check-only, and scoped `git diff --check`.
+  - Phase 5 browser smoke proved Forwarder A quote submission, importer owner quote detail visibility, Forwarder A own quote visibility, Forwarder B aggregate-only visibility, and Forwarder B direct importer-route abuse blocking.
+  - Smoke request, quote, and temporary Forwarder B fixtures were cleaned up by exact IDs; disposable Forwarder B Clerk users were deleted.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Accepted limitations: no suspended-forwarder blocking until suspension schema exists; no quote versions; no standalone quote detail route; importer quote display is proof-level only.
+  - Next recommended initiative: `importer-quote-comparison`.
+- `importer-quote-comparison`: active initiative.
+  - Phase 1 `phase-1-current-importer-quote-surface-audit`: `passed`.
+  - Phase 2 `phase-2-quote-comparison-domain-status-plan`: `passed`.
+  - Phase 3 `phase-3-importer-ui-action-plan`: `passed`.
+  - Phase 4 `phase-4-privacy-and-authorization-plan`: `passed`.
+  - Phase 5 `phase-5-verification-and-smoke-plan`: `passed_with_issues`.
+  - Dependencies `local-db-migration-proof`, `auth-onboarding-roles`, `shipment-request-wizard`, `forwarder-open-requests`, and `quote-submission-privacy` have final reports and are accepted.
+  - Phase 1 confirmed importer request detail and quote visibility surfaces exist.
+  - Phase 1 confirmed quote statuses are currently `submitted` and `withdrawn`; request statuses are currently `draft`, `posted`, and `cancelled`.
+  - Phase 1 confirmed there is no current importer accept/reject action, no `accepted`/`rejected` quote status, and no `quote_selected` request status.
+  - Phase 1 confirmed current privacy boundaries from `quote-submission-privacy` are the baseline for all later phases.
+  - Phase 2 added quote statuses `accepted` and `rejected`, request status `quote_selected`, migration `drizzle/0004_closed_lucky_pierre.sql`, and importer decision helpers.
+  - Phase 2 defines accepted behavior: non-selected quotes remain `submitted`, expired quotes cannot be accepted, and there is no unaccept/reopen behavior.
+  - Phase 2 uses a transaction-level advisory lock plus status re-check to prevent multiple accepted quotes per request.
+  - Phase 3 added importer accept/reject server actions and compact decision controls on importer-owned request detail.
+  - Phase 3 moved quote expiry display into the database query as `isExpired` after lint rejected `Date.now()` in render.
+  - Phase 4 hardened forwarder detail visibility so non-posted request detail is available only to a forwarder company that owns a quote on that request.
+  - Phase 4 preserved posted-only forwarder open-request listing and competitor quote privacy.
+  - Phase 5 proved importer owner comparison, accept/reject actions, non-owner importer denial, forwarder own-status visibility, competitor quote privacy, final automated verification, exact smoke cleanup, runner preflight, and scoped diff check.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Accepted limitations: proof-level comparison UI, no unaccept/reopen, no auto-reject, expired quotes cannot be accepted, and non-posted request detail is hidden from non-quoting competitor forwarders after selection.
+  - Next recommended initiative: `quote-gated-messaging`.
+- `quote-gated-messaging`: active initiative.
+  - Phase 1 `phase-1-current-messaging-placeholder-audit`: `passed`.
+  - Phase 2 `phase-2-conversation-message-domain-plan`: `passed`.
+  - Phase 3 `phase-3-messaging-access-control-plan`: `passed`.
+  - Dependencies `local-db-migration-proof`, `auth-onboarding-roles`, `shipment-request-wizard`, `forwarder-open-requests`, `quote-submission-privacy`, and `importer-quote-comparison` have final reports and are accepted.
+  - Phase 1 confirmed current request ownership is `shipment_requests.importer_profile_id`.
+  - Phase 1 confirmed current quote gate truth is a `quotes` row for `shipment_request_id` plus `forwarder_company_id`.
+  - Phase 1 confirmed no current `conversations` table, `messages` table, messaging route, messaging action, or participant-check helper exists.
+  - Phase 2 added `conversations` and `messages` tables, unique request/forwarder conversation constraint, participant lookup indexes, and message chronology indexes.
+  - Phase 2 generated and applied additive migration `drizzle/0005_bright_turbo.sql` against `localhost:55432/importing_ph_dev`.
+  - Phase 3 added server-side quote-gated messaging helpers in `lib/messages.ts`.
+  - Phase 3 enforces request-owner importer access, quoting-company forwarder access, participant-scoped conversation reads, and repeated checks for message writes.
+  - Next phase: `phase-4-ui-action-plan`.

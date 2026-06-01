@@ -23,5 +23,50 @@ Risk lifecycle labels:
 - accepted: Local Docker/Postgres may need to be started before DB proof commands; this is safe when Compose config confirms the local `importing-ph-postgres` service on port `55432`.
 - accepted: `auth-onboarding-roles` Phase 1 confirmed wrong-role access currently redirects to the user's own role destination instead of rendering `/unauthorized`; do not change without a product/UX decision.
 - accepted: `auth-onboarding-roles` Phase 1 confirmed admin provisioning is not implemented; do not invent it in onboarding work.
-- active: `auth-onboarding-roles` Phase 5 is blocked on complete browser smoke. The in-app browser has an existing Clerk session with no PostgreSQL profile, but there is no confirmed disposable Clerk test account or isolated auth smoke database target for mutating onboarding submissions.
-- active: Do not submit onboarding in the development database for browser smoke unless the active Clerk account is confirmed disposable and cleanup expectations are explicit.
+- resolved: `auth-onboarding-roles` Phase 5 browser smoke blocker was resolved by provided disposable Clerk test accounts and explicit permission to mutate `localhost:55432/importing_ph_dev`.
+- accepted: `auth-onboarding-roles` Phase 5 leaves clearly tagged local smoke rows for the provided disposable Clerk users in `user_profiles`, `importer_profiles`, `forwarder_companies`, and `forwarder_members`; do not treat them as production data.
+- resolved: `shipment-request-wizard` Phase 2 introduced explicit request schema and importer ownership without expanding to quotes, forwarder browsing, messaging, or file storage.
+- resolved: `shipment-request-wizard` Phase 5 proved final automated verification and browser smoke for importer request creation.
+- active: `forwarder-open-requests` Phase 1 confirmed the forwarder request route is still a proof page; open request browsing remains unimplemented until later phases.
+- active: `forwarder-open-requests` Phase 1 confirmed no quote tables exist; quote count must not be shown until a safe aggregate exists.
+- accepted: `forwarder-open-requests` Phase 1 confirmed no suspended-forwarder state exists; suspended-forwarder browsing behavior is not applicable until admin/safety or a dedicated schema phase introduces it.
+- resolved: `forwarder-open-requests` Phase 2 introduced an explicit forwarder-safe request query boundary that excludes importer profile fields and all quote/message fields.
+- accepted: `forwarder-open-requests` Phase 2 leaves missing forwarder membership as an application error because completed onboarding should always create `forwarder_members`.
+- resolved: `forwarder-open-requests` Phase 3 implemented posted request list/detail browsing and server-rendered filters.
+- accepted: `forwarder-open-requests` Phase 3 uses simple `ILIKE` origin/destination filtering without pg_trgm or normalized location tables for V1.
+- resolved: `forwarder-open-requests` Phase 4 verified route/query guards use PostgreSQL-backed forwarder role and membership.
+- resolved: `forwarder-open-requests` Phase 5 proved posted request browsing and final automated verification.
+- accepted: `forwarder-open-requests` Phase 5 did not complete direct authenticated-forwarder non-posted detail browser proof after session churn; server detail query still requires `status = "posted"`.
+- accepted: Browser sign-in token persistence was inconsistent across tabs during `forwarder-open-requests` Phase 5; protected content did not leak.
+- active: `quote-submission-privacy` Phase 1 confirmed quote persistence and quote privacy DTOs do not exist yet.
+- active: `quote-submission-privacy` Phase 1 confirmed no suspended-forwarder state exists; suspended quote blocking cannot be enforced until admin/safety introduces a field.
+- resolved: `quote-submission-privacy` Phase 2 added quote persistence with one quote per request/company and explicit privacy helper boundaries.
+- accepted: `quote-submission-privacy` Phase 2 intentionally skipped quote versions and quote acceptance/rejection statuses for V1.
+- resolved: `quote-submission-privacy` Phase 3 implemented forwarder quote submission for posted requests with validation and duplicate prevention.
+- accepted: `quote-submission-privacy` Phase 3 cannot block suspended forwarders because no suspension state exists yet.
+- resolved: `quote-submission-privacy` Phase 4 wired importer owner, own-forwarder, and competitor aggregate-only quote visibility surfaces.
+- accepted: `quote-submission-privacy` Phase 4 importer quote surface is proof-level, not full comparison UI.
+- resolved: `quote-submission-privacy` Phase 5 stale in-app browser session was self-healed by signing out through Clerk's user menu and using explicit browser form sign-in flows.
+- resolved: `quote-submission-privacy` Phase 5 proved the Forwarder A/Forwarder B quote privacy matrix; competitor forwarders saw request data and quote count only.
+- accepted: `quote-submission-privacy` cannot enforce suspended-forwarder quote blocking until `basic-admin-safety` or another schema phase introduces suspension state.
+- accepted: `quote-submission-privacy` has no quote versions and no standalone quote detail route in V1; direct competitor proof is limited to existing request surfaces and query-string abuse attempts.
+- resolved: `importer-quote-comparison` Phase 1 confirmed the prior status model could not represent accepted/rejected quotes or quote-selected requests; Phase 2 added the missing statuses.
+- resolved: `importer-quote-comparison` Phase 2 preserved quote privacy while adding accept/reject status transitions.
+- accepted: `importer-quote-comparison` should leave non-selected quotes as `submitted` after accepting one quote unless a later product decision explicitly changes that rule.
+- resolved: `importer-quote-comparison` Phase 2 added accepted/rejected quote statuses and `quote_selected` request status.
+- resolved: `importer-quote-comparison` Phase 2 added owner-guarded quote accept/reject helpers with transaction-level advisory locking for accept.
+- accepted: `importer-quote-comparison` Phase 2 intentionally has no unaccept/reopen flow and blocks expired quote acceptance.
+- resolved: `importer-quote-comparison` Phase 3 added importer accept/reject actions and decision controls without expanding into messaging or notifications.
+- accepted: `importer-quote-comparison` Phase 3 keeps the comparison UI proof-level; richer comparison UX can wait until after marketplace loop proof.
+- resolved: `importer-quote-comparison` Phase 4 preserved forwarder own-quote status visibility after request selection without exposing non-posted details to competitor forwarders.
+- accepted: `importer-quote-comparison` Phase 4 hides non-posted request details from non-quoting competitor forwarders; this is stricter than aggregate visibility and acceptable for V1.
+- resolved: `importer-quote-comparison` Phase 5 proved browser accept/reject smoke, DB status transitions, non-owner denial, and forwarder own-status visibility.
+- accepted: `importer-quote-comparison` Phase 5 required keypress-based Clerk form entry because browser clipboard-backed fill was intermittently unavailable.
+- active: `quote-gated-messaging` Phase 1 confirmed no conversation/message schema or participant-check helper exists yet.
+- accepted: `quote-gated-messaging` should open messaging after quote submission. Current quote rows survive accept/reject, so later phases can gate conversations from the quote row instead of requiring quote acceptance.
+- resolved: `quote-gated-messaging` Phase 2 added explicit conversation/message schema and indexes.
+- active: `quote-gated-messaging` Phase 2 has schema only; participant-check helpers, routes, and message actions are not implemented yet.
+- accepted: `quote-gated-messaging` Phase 2 does not reference quote versions because quote versions do not exist in current V1 scope.
+- resolved: `quote-gated-messaging` Phase 3 added participant-scoped quote-gated messaging helpers.
+- active: `quote-gated-messaging` Phase 3 helpers are not wired into UI/routes yet.
+- accepted: `quote-gated-messaging` allows messaging for submitted, accepted, and rejected quotes; withdrawn quotes are excluded.

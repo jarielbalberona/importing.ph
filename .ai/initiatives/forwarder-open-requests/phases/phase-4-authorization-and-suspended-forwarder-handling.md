@@ -1,6 +1,6 @@
 # Phase 4: Authorization And Suspended Forwarder Handling
 
-Status: pending
+Status: passed
 
 ## Goal
 

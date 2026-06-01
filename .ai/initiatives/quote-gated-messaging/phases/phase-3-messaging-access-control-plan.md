@@ -1,6 +1,6 @@
 # Phase 3: Messaging Access Control Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -91,4 +91,11 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added `lib/messages.ts` with quote-gated conversation creation helpers.
+- Importer conversation creation requires ownership of the request and an eligible quote from the target forwarder company.
+- Forwarder conversation creation requires forwarder membership and an eligible quote from the current forwarder company.
+- Conversation reads are scoped by importer profile or forwarder company.
+- Message writes re-enter participant-scoped conversation helpers before inserting.
+- No UI, route, realtime, attachment, notification, or admin behavior was added in this phase.
