@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db";
 import { type UserRole, userProfiles } from "@/db/schema";
-import { destinationForRole } from "@/lib/routes";
 
 export async function getProfileForCurrentUser() {
   const { userId, redirectToSignIn } = await auth();
@@ -34,7 +33,7 @@ export async function requireRole(allowedRoles: UserRole[]) {
   const profile = await requireProfile();
 
   if (!allowedRoles.includes(profile.role)) {
-    redirect(destinationForRole(profile.role));
+    redirect("/unauthorized");
   }
 
   return profile;

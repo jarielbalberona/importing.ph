@@ -8,10 +8,13 @@ import {
   shipmentRequests,
 } from "@/db/schema";
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
+import { notifyQuoteDecision, notifyQuoteSubmitted } from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
 
 export class QuoteSubmissionError extends Error {
-  constructor(readonly code: "duplicate" | "request_unavailable") {
+  constructor(
+    readonly code: "duplicate" | "request_unavailable" | "forwarder_suspended",
+  ) {
     super(code);
   }
 }
@@ -168,9 +171,9 @@ export async function getQuoteCountForRequest(requestId: string) {
 }
 
 export async function acceptQuoteForCurrentImporter(quoteId: string) {
-  const { importerProfile } = await requireImporterProfile();
+  const { profile, importerProfile } = await requireImporterProfile();
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [target] = await tx
       .select({
         id: quotes.id,
@@ -235,12 +238,21 @@ export async function acceptQuoteForCurrentImporter(quoteId: string) {
 
     return { requestId: target.requestId };
   });
+
+  await notifyQuoteDecision({
+    quoteId,
+    requestId: result.requestId,
+    actorUserProfileId: profile.id,
+    decision: "accepted",
+  });
+
+  return result;
 }
 
 export async function rejectQuoteForCurrentImporter(quoteId: string) {
-  const { importerProfile } = await requireImporterProfile();
+  const { profile, importerProfile } = await requireImporterProfile();
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [target] = await tx
       .select({
         id: quotes.id,
@@ -275,14 +287,27 @@ export async function rejectQuoteForCurrentImporter(quoteId: string) {
 
     return { requestId: target.requestId };
   });
+
+  await notifyQuoteDecision({
+    quoteId,
+    requestId: result.requestId,
+    actorUserProfileId: profile.id,
+    decision: "rejected",
+  });
+
+  return result;
 }
 
 export async function createQuoteForCurrentForwarder(
   requestId: string,
   input: unknown,
 ) {
-  const { member } = await requireForwarderMember();
+  const { profile, member } = await requireForwarderMember();
   const parsed = quoteSubmissionSchema.parse(input);
+
+  if (member.companyIsSuspended) {
+    throw new QuoteSubmissionError("forwarder_suspended");
+  }
 
   const [request] = await db
     .select({ id: shipmentRequests.id })
@@ -326,6 +351,12 @@ export async function createQuoteForCurrentForwarder(
       validUntil: parsed.validUntil,
     })
     .returning({ id: quotes.id });
+
+  await notifyQuoteSubmitted({
+    quoteId: quote.id,
+    requestId,
+    actorUserProfileId: profile.id,
+  });
 
   return quote;
 }

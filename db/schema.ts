@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   numeric,
@@ -71,6 +72,15 @@ export const quoteStatusEnum = pgEnum("quote_status", [
 
 export type QuoteStatus = (typeof quoteStatusEnum.enumValues)[number];
 
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "new_quote_received",
+  "quote_accepted",
+  "quote_rejected",
+  "message_received",
+]);
+
+export type NotificationType = (typeof notificationTypeEnum.enumValues)[number];
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -112,6 +122,13 @@ export const importerProfiles = pgTable(
 export const forwarderCompanies = pgTable("forwarder_companies", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  isSuspended: boolean("is_suspended").notNull().default(false),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  suspendedReason: text("suspended_reason"),
+  suspendedByUserProfileId: uuid("suspended_by_user_profile_id").references(
+    () => userProfiles.id,
+    { onDelete: "set null" },
+  ),
   ...timestamps,
 });
 
@@ -267,6 +284,60 @@ export const messages = pgTable(
     ),
     index("messages_sender_user_profile_id_idx").on(
       table.senderUserProfileId,
+    ),
+  ],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recipientUserProfileId: uuid("recipient_user_profile_id")
+      .notNull()
+      .references(() => userProfiles.id, { onDelete: "cascade" }),
+    actorUserProfileId: uuid("actor_user_profile_id").references(
+      () => userProfiles.id,
+      { onDelete: "set null" },
+    ),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    linkHref: text("link_href").notNull(),
+    sourceShipmentRequestId: uuid("source_shipment_request_id").references(
+      () => shipmentRequests.id,
+      { onDelete: "cascade" },
+    ),
+    sourceQuoteId: uuid("source_quote_id").references(() => quotes.id, {
+      onDelete: "cascade",
+    }),
+    sourceConversationId: uuid("source_conversation_id").references(
+      () => conversations.id,
+      { onDelete: "cascade" },
+    ),
+    sourceMessageId: uuid("source_message_id").references(() => messages.id, {
+      onDelete: "cascade",
+    }),
+    dedupeKey: text("dedupe_key").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("notifications_dedupe_key_idx").on(table.dedupeKey),
+    index("notifications_recipient_created_at_idx").on(
+      table.recipientUserProfileId,
+      table.createdAt,
+    ),
+    index("notifications_recipient_read_at_idx").on(
+      table.recipientUserProfileId,
+      table.readAt,
+    ),
+    index("notifications_type_idx").on(table.type),
+    index("notifications_source_shipment_request_id_idx").on(
+      table.sourceShipmentRequestId,
+    ),
+    index("notifications_source_quote_id_idx").on(table.sourceQuoteId),
+    index("notifications_source_conversation_id_idx").on(
+      table.sourceConversationId,
     ),
   ],
 );

@@ -1,6 +1,6 @@
 # Phase 4: Reports Plan
 
-Status: pending
+Status: passed_with_issues
 
 ## Goal
 
@@ -98,4 +98,6 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Reports were explicitly deferred for V1. No report schema, report routes, or moderation workflow were added because current product memory does not require reporting to prove the marketplace loop or admin suspension safety, and adding report subjects would expand the scope into a moderation workflow.
+
+Verification passed with no schema changes generated.

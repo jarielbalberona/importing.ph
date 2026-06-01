@@ -711,3 +711,602 @@ Implementation verification:
 - No quote details are returned by messaging helpers.
 
 Impact: access-control helper layer is in place. Phase 4 can wire minimal conversation list/detail routes and message actions.
+
+## quote-gated-messaging / Phase 4
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: failed initially due to nullable conversation return type in message detail props.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass after `NonNullable<>` repair.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+
+Implementation verification:
+
+- Importer messaging routes compile under `/app/requests/messages`.
+- Forwarder messaging routes compile under `/app/forwarder/messages`.
+- Message actions validate UUIDs and body content.
+- Message actions call participant-scoped helpers before inserts.
+- Empty states and query-string error states exist.
+- No realtime, queue, Redis, WebSocket, notification, attachment, or admin dependency was added.
+
+Impact: UI/action layer is ready for final automated and browser smoke verification.
+
+## quote-gated-messaging / Phase 5
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `node tools/ai-runner/index.mjs quote-gated-messaging --check-only`: pass.
+- `git diff --check -- .ai/initiatives/quote-gated-messaging .ai/state app/app/requests app/app/forwarder lib/messages.ts db/schema.ts drizzle`: pass.
+
+Browser smoke:
+
+- Forwarder B no-quote access: pass; request rendered but no `Message importer` action existed.
+- Importer A opened conversation from Forwarder A quote: pass.
+- Importer A sent message: pass.
+- Forwarder A read importer message and replied: pass.
+- Importer A read forwarder reply: pass.
+- Forwarder B direct conversation URL: pass; no message content exposed.
+- Importer B direct conversation URL: pass; no message content exposed.
+
+Database smoke:
+
+- Conversation `ce880999-d19b-49ae-a225-551d45c7f378` existed for request `8da013c7-e470-4072-ae67-fac585c4ca3d` and Forwarder A company.
+- Smoke message rows were present before cleanup.
+- Smoke request, quote, conversation, messages, disposable profiles/company, and disposable Clerk users were cleaned up by exact ids/prefix.
+- Post-cleanup smoke counts were zero.
+
+Impact: `quote-gated-messaging` is complete with accepted V1 limitations. It is safe to continue to `notification-records`.
+
+## notification-records / Phase 1
+
+Status: `passed`
+
+Commands:
+
+- `git status --short`: pass; dirty worktree recorded and preserved.
+- `test -f db/schema.ts && test -d drizzle && test -f lib/authz.ts && test -f lib/routes.ts`: pass.
+- `rg -n "notification|notify|event|resend|email|mail" app db lib components scripts package.json`: pass; no notification/email implementation found.
+- `rg -n "quote|message|conversation|shipment|request" app db lib components scripts`: pass; request, quote, quote decision, and message event sources found.
+
+Implementation verification:
+
+- Notification schema and helper layer do not exist yet.
+- Real event sources exist for quote submission, quote accept/reject, and message creation.
+- Request creation exists, but matching rules for forwarder notifications do not.
+- Quote expiration data exists, but no scheduler or approved opportunistic behavior exists.
+
+Impact: audit is complete. Phase 2 can add recipient-owned notification schema.
+
+## notification-records / Phase 2
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:generate`: pass; generated `drizzle/0006_legal_azazel.sql`.
+- `sed -n '1,260p' drizzle/0006_legal_azazel.sql`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass with one PostgreSQL identifier-truncation notice for a generated FK name.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+
+Implementation verification:
+
+- Added `notification_type` enum for current V1 events.
+- Added recipient-owned `notifications` table.
+- Added deterministic `dedupe_key` unique constraint.
+- Added recipient/read/source indexes.
+- Added optional source references for request, quote, conversation, and message.
+
+Impact: notification schema is in place. Phase 3 can add idempotent event integration.
+
+## notification-records / Phase 3
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+
+Implementation verification:
+
+- Added idempotent notification creation helper.
+- Quote submission creates importer owner notification.
+- Quote accept/reject creates submitting-forwarder notification.
+- Message creation creates opposite-participant notification.
+- New matching request notifications are skipped due missing matching rules.
+- Quote-expiring-soon notifications are skipped due missing scheduler/opportunistic behavior.
+
+Impact: notification event writes are integrated. Phase 4 can add recipient-scoped list/read UI.
+
+## notification-records / Phase 4
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+
+Implementation verification:
+
+- Added `/app/notifications`.
+- Notification list is scoped to the current `user_profiles.id`.
+- Mark-read action repeats recipient check in the update query.
+- Read/unread display exists.
+- Links route to protected marketplace pages.
+- No email, push, realtime, preference, admin, queue, worker, Redis, or analytics scope was added.
+
+Impact: notification UI/read behavior is ready for final automated and browser smoke verification.
+
+## notification-records / Phase 5
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `node tools/ai-runner/index.mjs notification-records --check-only`: pass.
+- `git diff --check -- .ai/initiatives/notification-records .ai/state app/app/notifications app/app/requests app/app/forwarder lib/notifications.ts lib/quotes.ts lib/messages.ts db/schema.ts drizzle`: pass.
+
+Browser smoke:
+
+- Forwarder A submitted quote through the browser: pass.
+- Importer A saw `New quote received`: pass.
+- Importer A marked notification read: pass.
+- Importer A accepted quote: pass.
+- Importer A sent message: pass.
+- Forwarder A saw `Quote accepted`: pass.
+- Forwarder A saw `New message`: pass.
+- Forwarder A did not see importer-only `New quote received`: pass.
+
+Database smoke:
+
+- Smoke request had 1 quote, 1 conversation, and 3 notifications before cleanup.
+- Notification types were `new_quote_received`, `quote_accepted`, and `message_received`.
+- New quote notification had read state set after mark-read.
+- Smoke request deletion cascaded quote, conversation, message, and notification rows.
+- Post-cleanup counts were zero.
+
+Impact: `notification-records` is complete with accepted V1 limitations. It is safe to continue to `basic-admin-safety`.
+
+## basic-admin-safety / Phase 1
+
+Status: `passed`
+
+Commands:
+
+- `git status --short`: pass; dirty worktree recorded and preserved.
+- `test -f app/admin/page.tsx && test -f lib/authz.ts && test -f lib/routes.ts && test -f db/schema.ts && test -d drizzle`: pass.
+- `rg -n "admin|suspend|suspended|trust|report|moderation|safety" app db lib components scripts`: pass.
+- `rg -n "quote|message|conversation|shipment|request" app db lib components scripts`: pass.
+- `sed -n '1,180p' app/admin/page.tsx`: pass.
+
+Implementation verification:
+
+- `/admin` is admin guarded.
+- Admin onboarding/provisioning is absent.
+- Request and quote schemas exist.
+- Suspension/report/trust schema does not exist.
+
+Impact: admin/safety baseline is documented. Phase 2 can add admin-only read views.
+
+## basic-admin-safety / Phase 2
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+
+Implementation verification:
+
+- `/admin` remains guarded by `requireRole(["admin"])`.
+- Admin can view users/profiles.
+- Admin can view shipment requests.
+- Admin can view quotes.
+- No mutation behavior was added.
+
+Impact: read-only admin overview is implemented. Phase 3 can add forwarder suspension.
+
+## basic-admin-safety / Phase 3
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:generate`: pass; generated `drizzle/0007_dry_firebird.sql`.
+- `sed -n '1,220p' drizzle/0007_dry_firebird.sql`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass with one generated FK identifier truncation notice.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+
+Implementation verification:
+
+- Forwarder-company suspension fields exist.
+- Admin suspend/unsuspend actions are admin guarded.
+- Quote submission checks forwarder company suspension before insert.
+- Suspended forwarder error is safe and does not expose admin details.
+
+Impact: suspension enforcement is implemented. Phase 4 can decide report scope.
+
+## basic-admin-safety / Phase 4
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run db:generate`: pass; no schema changes, nothing to migrate.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+
+Implementation verification:
+
+- No report schema was added.
+- No report routes or actions were added.
+- Reports were deferred because report subject authorization and moderation workflow are not required for V1 marketplace validation.
+- Admin suspension remains the implemented V1 safety action.
+
+Process note:
+
+- A parallel verification launch happened by mistake after `db:generate`; the relevant commands were rerun sequentially and passed.
+
+Impact: report scope is explicitly deferred. Phase 5 can run final automated verification and browser smoke.
+
+## basic-admin-safety / Phase 5
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `node tools/ai-runner/index.mjs basic-admin-safety --check-only`: pass.
+- `git diff --check -- .ai/initiatives/basic-admin-safety .ai/state app/admin app/app/forwarder/requests lib/admin.ts lib/forwarder-open-requests.ts lib/quotes.ts db/schema.ts drizzle`: pass.
+
+Browser smoke:
+
+- Admin disposable account accessed `/admin`: pass.
+- Admin saw users, shipment requests, and quotes sections: pass.
+- Admin suspended Forwarder A through the scoped admin UI: pass.
+- Suspended Forwarder A quote submission was blocked with `error=forwarder_suspended`: pass.
+- Normal Forwarder B submitted a quote successfully: pass.
+- Importer non-admin visited `/admin` and was redirected to `/app/requests`: pass.
+- Admin revisited `/admin` and saw suspended Forwarder A plus the normal Forwarder B quote: pass.
+
+Database smoke:
+
+- Before cleanup, Forwarder A company was suspended with reason and admin actor; Forwarder B company was active.
+- Before cleanup, suspended request had no quote and normal request had one quote for `43200.00`.
+- Smoke requests, quote, profiles, companies, notifications, and disposable Clerk users were cleaned up by exact IDs/prefix.
+- Post-cleanup counts were zero for smoke requests, quotes, profiles, companies, and matching notifications.
+
+Impact: `basic-admin-safety` is complete with accepted V1 limitations.
+
+## v1-hardening-launch-readiness / Phase 1
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `node tools/ai-runner/index.mjs v1-hardening-launch-readiness --check-only`: pass.
+- `git status --short`: pass; dirty worktree recorded and preserved.
+- `test -f package.json`: pass.
+- `test -f db/schema.ts`: pass.
+- `test -f lib/authz.ts`: pass.
+- `test -f lib/quotes.ts`: pass.
+- `test -f lib/messages.ts`: pass.
+- `test -f lib/notifications.ts`: pass.
+- `test -f lib/admin.ts`: pass.
+- `test -f render.yaml`: pass.
+
+Skipped by phase scope:
+
+- `npm run db:migrate`
+- `npm run db:check`
+- `npm run type-check`
+- `npm run lint`
+- `npm run build`
+- browser smoke
+
+Implementation verification:
+
+- Dependency final reports exist and are accepted.
+- Current code confirms the V1 marketplace loop exists.
+- Launch-critical hardening gaps are wrong-role UX, admin provisioning, report/user-suspension decisions, notification/email readiness, and operational smoke.
+
+Impact: Phase 2 can start auth/session/error UX hardening.
+
+## v1-hardening-launch-readiness / Phase 2
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+
+Browser smoke:
+
+- Signed-out `/app/requests`, `/app/forwarder/requests`, and `/admin`: pass; redirected to Clerk sign-in and exposed no protected data.
+- Importer `a1+clerk_test@clerk.com` `/after-auth`: pass; redirected to `/app/requests`.
+- Importer `/onboarding`: pass; redirected to `/app/requests`.
+- Importer `/app/forwarder/requests`: pass; redirected to `/unauthorized`.
+- Importer `/admin`: pass; redirected to `/unauthorized`.
+- Forwarder `a2+clerk_test@clerk.com` `/after-auth`: pass; redirected to `/app/forwarder/requests`.
+- Forwarder `/onboarding`: pass; redirected to `/app/forwarder/requests`.
+- Forwarder `/app/requests`: pass; redirected to `/unauthorized`.
+- Forwarder `/admin`: pass; redirected to `/unauthorized`.
+
+Database check:
+
+- Importer smoke account has importer role, one importer profile, and no forwarder membership.
+- Forwarder smoke account has forwarder role, one forwarder membership, and no importer profile.
+
+Impact: wrong-role UX is hardened. Phase 3 can start admin and safety hardening.
+
+## v1-hardening-launch-readiness / Phase 3
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+
+Browser smoke:
+
+- Admin disposable account accessed `/admin`: pass.
+- Admin saw admin control, users, shipment requests, and quotes sections: pass.
+- Admin suspended Forwarder A: pass.
+- Suspended Forwarder A quote submission was blocked with `error=forwarder_suspended`: pass.
+- Normal Forwarder B submitted a quote successfully: pass.
+- Non-admin importer visited `/admin` and reached `/unauthorized`: pass.
+
+Database smoke:
+
+- Before cleanup, Forwarder A company was suspended with reason and admin actor.
+- Before cleanup, Forwarder B company was active.
+- Before cleanup, suspended request had zero quotes.
+- Before cleanup, normal request had one Forwarder B quote for `51000.00`.
+- Smoke requests, quote, profiles, companies, notifications, and disposable Clerk users were cleaned up by exact IDs/prefix.
+- Post-cleanup counts were zero for matching smoke requests, quotes, profiles, companies, and notifications.
+
+Impact: admin/safety behavior is launch-hardened enough for V1 validation. Phase 4 can start notification/email readiness review.
+
+## v1-hardening-launch-readiness / Phase 4
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: initial parallel run failed due `.next/types/validator.ts` missing `./routes.js`; sequential rerun passed.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev node --input-type=module <phase-4-fixture-create>`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev node --input-type=module <phase-4-db-proof>`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev node --input-type=module <phase-4-cleanup>`: pass.
+
+Skipped:
+
+- `npm run db:migrate`: skipped because no schema changes occurred.
+- `npm run db:check`: skipped because no schema changes occurred.
+
+Browser smoke:
+
+- Forwarder submitted quote for the smoke request: pass.
+- Importer saw `New quote received` notification: pass.
+- Importer marked the quote notification read: pass.
+- Importer accepted the quote: pass.
+- Importer sent a message to the quoting forwarder: pass.
+- Forwarder saw `Quote accepted` and `New message` notifications: pass.
+- Forwarder did not see importer-only `New quote received` notification: pass.
+
+Database smoke:
+
+- One accepted quote existed for the smoke request at `37500.00` PHP.
+- One conversation existed for the smoke request and forwarder company.
+- One importer-sent message existed.
+- Importer `new_quote_received` notification existed and was read.
+- Forwarder `quote_accepted` notification existed.
+- Forwarder `message_received` notification existed.
+- Forwarder had no `new_quote_received` notification.
+- Smoke request, quote, conversation, message, profiles, company, notifications, and disposable Clerk users were cleaned up by exact IDs/prefix.
+
+Impact: DB-backed notifications are launch-ready for V1 validation. Email delivery remains deferred. Phase 5 can start final operational readiness and regression.
+
+## v1-hardening-launch-readiness / Phase 5
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:migrate`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `node tools/ai-runner/index.mjs v1-hardening-launch-readiness --check-only`: pass.
+
+Browser smoke:
+
+- Signed-out `/app/requests`, `/app/forwarder/requests`, and `/admin`: pass; redirected to sign-in and exposed no protected data.
+- Importer A `/after-auth` and `/onboarding`: pass; routed to `/app/requests`.
+- Importer A wrong-role forwarder/admin routes: pass; `/unauthorized`.
+- Forwarder A `/after-auth` and `/onboarding`: pass; routed to `/app/forwarder/requests`.
+- Forwarder A wrong-role importer/admin routes: pass; `/unauthorized`.
+- Forwarder A submitted private quote on Request A: pass.
+- Importer A saw all Forwarder A quote details on owned request: pass.
+- Forwarder B saw Request A quote count only and no Forwarder A private quote details: pass.
+- Forwarder B direct importer request URL: pass; `/unauthorized`, no quote leakage.
+- Importer B non-owner request URL: pass; no quote leakage.
+- Importer A accepted Forwarder A quote: pass.
+- Importer A sent message to Forwarder A: pass.
+- Forwarder B direct conversation URL: pass; no message or conversation detail leakage.
+- Importer A received quote notification: pass.
+- Forwarder A received quote accepted and message notifications: pass.
+- Forwarder A did not see Importer A quote notification: pass.
+- Admin accessed `/admin` users/requests/quotes: pass.
+- Admin suspended Forwarder B: pass.
+- Suspended Forwarder B quote attempt on Request B: pass; blocked with `error=forwarder_suspended`.
+- Active Forwarder A quote on Request B: pass.
+
+Database smoke:
+
+- Request A had one accepted Forwarder A quote for `41000.00`.
+- Request B had one submitted Forwarder A quote for `39000.00`.
+- Forwarder B had no quote rows.
+- Request A had one conversation with Forwarder A only.
+- Conversation had one importer-sent message.
+- Importer A had `new_quote_received` notification.
+- Forwarder A had `quote_accepted` and `message_received` notifications.
+- Forwarder B had no competitor notifications.
+- Forwarder B company was suspended by the admin profile.
+- Smoke requests, quotes, conversation, message, notifications, profiles, companies, and disposable Clerk users were cleaned up by exact IDs/prefix.
+
+Impact: `v1-hardening-launch-readiness` is complete with final verdict `PASS WITH ISSUES`.
+
+## core-memory-v1-realignment
+
+Status: `passed`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `git diff --check -- .ai/core .ai/state`: pass.
+
+Skipped by scope:
+
+- DB migration/check/smoke commands were not run because this was a memory/state alignment task only.
+- Browser smoke was not run because this task did not change application behavior.
+
+Impact: `.ai/core/*` and relevant state files now reflect the implemented V1 marketplace loop instead of stale planning-only assumptions.
+
+## production-readiness-admin-runbook / Phase 1
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `test -f render.yaml && test -f package.json && test -f drizzle.config.ts && test -f .env.example && test -f .env.local.example`: pass.
+- `rg -n "DATABASE_URL|CLERK|NEXT_PUBLIC_CLERK|buildCommand|startCommand|fromDatabase" render.yaml .env.example .env.local.example drizzle.config.ts package.json`: pass.
+- `sed -n '1,220p' render.yaml; sed -n '1,180p' package.json; sed -n '1,160p' drizzle.config.ts; sed -n '1,160p' docker-compose.yml; sed -n '1,160p' proxy.ts; sed -n '1,120p' db/index.ts`: pass.
+- `git diff --check -- .ai/initiatives/production-readiness-admin-runbook .ai/state`: pass.
+
+Skipped by scope:
+
+- DB migration/check commands were not run because Phase 1 is audit-only.
+- Browser/deployed smoke was not run because target deployment details are not confirmed.
+
+Impact: repo-side Render/env/DB/auth baseline is documented. Actual deployed URL, target DB, and Clerk target configuration remain active launch-readiness gaps.
+
+## production-readiness-admin-runbook / Phase 2
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `rg -n "admin|requireRole|user_profiles|userRoleEnum|suspend" db/schema.ts lib/authz.ts lib/admin.ts app/admin lib/routes.ts`: pass.
+- `sed -n '1,220p' lib/authz.ts; sed -n '1,180p' lib/routes.ts; sed -n '1,220p' lib/admin.ts; sed -n '1,180p' app/admin/actions.ts; sed -n '1,220p' app/admin/page.tsx`: pass.
+- `git diff --check -- .ai/initiatives/production-readiness-admin-runbook .ai/state`: pass.
+
+Skipped by scope:
+
+- No admin user was created.
+- No DB write was run.
+- Browser `/admin` smoke was not run because target admin user and target deployment are not confirmed.
+
+Impact: manual admin provisioning and rollback are documented. Admin writes remain blocked until exact Clerk user id and exact target DB are operator-confirmed.
+
+## production-readiness-admin-runbook / Phase 3
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `find drizzle -maxdepth 2 -type f | sort`: pass.
+- `sed -n '1,260p' drizzle/meta/_journal.json; for f in drizzle/*.sql; do printf '\n--- %s ---\n' "$f"; sed -n '1,80p' "$f"; done`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH DATABASE_URL=postgresql://importing_ph:importing_ph_password@localhost:55432/importing_ph_dev npm run db:check`: pass.
+- `git diff --check -- .ai/initiatives/production-readiness-admin-runbook .ai/state`: pass.
+
+Skipped by scope:
+
+- Target `npm run db:migrate` was not run because target staging/production `DATABASE_URL` is not confirmed.
+- Target `npm run db:check` was not run because target staging/production `DATABASE_URL` is not confirmed.
+- `npm run db:push` was not run and is forbidden for target deployment unless explicitly approved after drift review.
+
+Impact: target migration safety runbook is documented. Target migration remains blocked pending operator-confirmed DB target and backup/snapshot posture.
+
+## production-readiness-admin-runbook / Phase 4
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `git diff --check -- .ai/initiatives/production-readiness-admin-runbook .ai/state`: pass.
+
+Skipped by scope/blocked target:
+
+- Browser/deployed smoke was not run because actual target deployment URL is not confirmed.
+- Target DB inspection was not run because staging/production `DATABASE_URL` is not confirmed.
+- Clerk smoke users were not created because target Clerk configuration is not confirmed.
+- Admin smoke was not run because no target admin account has been provisioned.
+
+Impact: deployed smoke plan is ready, but target smoke remains unproven. Do not claim controlled beta readiness.
+
+## production-readiness-admin-runbook / Phase 5
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+
+Skipped by target gap:
+
+- Deployed smoke was not run because target URL, target DB, Clerk target configuration, and admin account are not confirmed.
+- Target DB commands were not run because staging/production `DATABASE_URL` is not confirmed.
+
+Impact: rollback/debug/monitoring handoff is documented. Current launch category is `local validation only`.
+
+## production-readiness-admin-runbook / Final
+
+Status: `PASS WITH ISSUES`
+
+Final verification:
+
+- `node tools/ai-runner/index.mjs production-readiness-admin-runbook --check-only`: pass.
+- `git diff --check -- .ai/initiatives/production-readiness-admin-runbook .ai/state`: pass.
+
+Impact: initiative is complete as a runbook. It is ready for Render/staging smoke only after target environment details are provided.

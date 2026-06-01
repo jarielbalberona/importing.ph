@@ -1,6 +1,6 @@
 # Phase 5: Verification And Smoke Plan
 
-Status: pending
+Status: passed_with_issues
 
 ## Goal
 
@@ -111,4 +111,10 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Final automated verification passed: `db:migrate`, `db:check`, `type-check`, `lint`, and `build`.
+- Runner check-only passed.
+- Browser smoke proved no-quote messaging is blocked, messaging opens after quote, importer can message quoting forwarder, quoting forwarder can reply, competitor forwarder cannot read messages, and unrelated importer cannot read messages.
+- Smoke fixture used local development database only and was cleaned up by exact request/user/company identifiers.
+- Accepted issue: in-app browser navigation timing caused one premature URL assertion and one route navigation timeout even though the page rendered correctly after settling.

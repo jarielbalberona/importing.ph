@@ -12,10 +12,12 @@ Dependency rule: do not begin execution until all dependencies have final report
 
 ## Initiative Status
 
-- Status: locked
+- Status: complete
 - Ready for execution: yes
-- Execution started: no
-- Latest execution status: not started.
+- Execution started: yes
+- Latest execution status: `PASS WITH ISSUES`
+- Final report: `reports/final-report.md`
+- Next recommended initiative: `basic-admin-safety`
 
 Lifecycle rule: this initiative is authored for review. Lock it only after dependency readiness and event-source truth are reviewed.
 

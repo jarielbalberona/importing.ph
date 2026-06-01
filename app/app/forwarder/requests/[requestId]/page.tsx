@@ -14,13 +14,13 @@ import {
   getForwarderOwnQuoteForRequest,
   getQuoteCountForRequest,
 } from "@/lib/quotes";
-import { submitQuote } from "./actions";
+import { startForwarderConversation, submitQuote } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 type ForwarderRequestDetailPageProps = {
   params: Promise<{ requestId: string }>;
-  searchParams: Promise<{ error?: string; quote?: string }>;
+  searchParams: Promise<{ error?: string; quote?: string; messageError?: string }>;
 };
 
 const requestIdSchema = z.string().uuid();
@@ -133,6 +133,12 @@ export default async function ForwarderRequestDetailPage({
             <DetailValue label="Inclusions" value={ownQuote.inclusions} />
             <DetailValue label="Exclusions" value={ownQuote.exclusions} />
             <DetailValue label="Notes" value={ownQuote.notes} />
+            <form action={startForwarderConversation}>
+              <input type="hidden" name="requestId" value={request.id} />
+              <Button type="submit" variant="outline">
+                Message importer
+              </Button>
+            </form>
           </section>
         ) : null}
 
@@ -145,6 +151,12 @@ export default async function ForwarderRequestDetailPage({
         {query.error ? (
           <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             {errorMessage(query.error)}
+          </div>
+        ) : null}
+
+        {query.messageError ? (
+          <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {messageErrorMessage(query.messageError)}
           </div>
         ) : null}
 
@@ -256,10 +268,23 @@ function errorMessage(error: string) {
       return "Your company already submitted a quote for this request.";
     case "request_unavailable":
       return "This request is no longer available for quoting.";
+    case "forwarder_suspended":
+      return "Your company is suspended and cannot submit quotes.";
     case "validation":
       return "Complete the quote fields with a valid amount, transit range, and future validity date.";
     default:
       return "The quote could not be submitted.";
+  }
+}
+
+function messageErrorMessage(error: string) {
+  switch (error) {
+    case "no_quote":
+      return "Messaging opens only after your company has submitted a quote.";
+    case "not_found":
+      return "That conversation is not available.";
+    default:
+      return "Messaging could not be opened.";
   }
 }
 

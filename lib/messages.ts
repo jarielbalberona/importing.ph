@@ -11,6 +11,7 @@ import {
   userProfiles,
 } from "@/db/schema";
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
+import { notifyMessageCreated } from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
 
 const messagingQuoteStatuses = ["submitted", "accepted", "rejected"] as const;
@@ -381,6 +382,12 @@ async function createMessageInConversation(input: {
     .update(conversations)
     .set({ updatedAt: now })
     .where(eq(conversations.id, input.conversationId));
+
+  await notifyMessageCreated({
+    conversationId: input.conversationId,
+    messageId: message.id,
+    senderUserProfileId: input.senderUserProfileId,
+  });
 
   return message;
 }

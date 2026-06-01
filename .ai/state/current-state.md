@@ -4,6 +4,14 @@ Initialized local AI memory for `importing.ph` on `2026-05-31`.
 
 Before executing an initiative phase, read relevant `.ai/core` files, this state file, `known-risks.md`, `verification-status.md`, the initiative overview, and the current phase file.
 
+## Current Operating Summary
+
+- As of `2026-06-01`, non-deferred V1 marketplace execution is complete through `v1-hardening-launch-readiness`, with final verdict `PASS WITH ISSUES`.
+- `.ai/core/*` was realigned on `2026-06-01` to reflect current implemented repository truth: request creation, forwarder open-request browsing, private quote submission, importer quote comparison/accept/reject, quote-gated messaging, DB-backed in-app notifications, admin read views, and forwarder-company suspension are implemented locally.
+- Current wrong-role route behavior is `/unauthorized`; older notes saying wrong-role users redirect to their own role destination are superseded by `v1-hardening-launch-readiness` Phase 2.
+- `public-forwarder-profile-seo` remains deferred and must not be treated as V1-required unless product memory explicitly changes.
+- Production deployment/runbook, admin seed/provisioning, production smoke, email delivery, report workflows, user-level suspension, drafts UI, file attachments, quote versions, realtime messaging, and public SEO remain outside the proven V1 loop.
+
 ## Initiatives
 
 - `local-db-migration-proof`: active initiative.
@@ -33,7 +41,7 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Phase 4 verified Clerk middleware, database-backed page role guards, role destinations, wrong-role redirect behavior, and admin route truth.
   - Phase 5 rerun used the in-app browser with disposable Clerk smoke accounts, completed importer and forwarder onboarding through the UI, verified PostgreSQL profile/company/member rows, verified redirects, and verified wrong-role/admin route protection.
   - Phase 5 final automated commands passed sequentially: `db:migrate`, `db:check`, `db:prove-onboarding`, `type-check`, `lint`, `build`, `test:ai-runner`, and `node tools/ai-runner/index.mjs auth-onboarding-roles --check-only`.
-  - Current wrong-role behavior redirects users to their own role destination instead of `/unauthorized`.
+  - Superseded by `v1-hardening-launch-readiness` Phase 2: current wrong-role behavior redirects to `/unauthorized`.
   - Admin role/route exists, but admin provisioning is not implemented.
   - Final report: `reports/final-report.md`.
   - Final verdict: `PASS WITH ISSUES`.
@@ -120,6 +128,8 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Phase 1 `phase-1-current-messaging-placeholder-audit`: `passed`.
   - Phase 2 `phase-2-conversation-message-domain-plan`: `passed`.
   - Phase 3 `phase-3-messaging-access-control-plan`: `passed`.
+  - Phase 4 `phase-4-ui-action-plan`: `passed`.
+  - Phase 5 `phase-5-verification-and-smoke-plan`: `passed_with_issues`.
   - Dependencies `local-db-migration-proof`, `auth-onboarding-roles`, `shipment-request-wizard`, `forwarder-open-requests`, `quote-submission-privacy`, and `importer-quote-comparison` have final reports and are accepted.
   - Phase 1 confirmed current request ownership is `shipment_requests.importer_profile_id`.
   - Phase 1 confirmed current quote gate truth is a `quotes` row for `shipment_request_id` plus `forwarder_company_id`.
@@ -128,4 +138,97 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Phase 2 generated and applied additive migration `drizzle/0005_bright_turbo.sql` against `localhost:55432/importing_ph_dev`.
   - Phase 3 added server-side quote-gated messaging helpers in `lib/messages.ts`.
   - Phase 3 enforces request-owner importer access, quoting-company forwarder access, participant-scoped conversation reads, and repeated checks for message writes.
-  - Next phase: `phase-4-ui-action-plan`.
+  - Phase 4 added importer messaging routes under `/app/requests/messages` and forwarder messaging routes under `/app/forwarder/messages`.
+  - Phase 4 added message forms/actions and request-detail entry points without realtime, queues, attachments, notifications, or admin inspection.
+  - Phase 5 proved no-quote blocking, post-quote conversation opening, importer send/read, forwarder send/read, competitor forwarder denial, unrelated importer denial, final automated verification, runner check-only, diff check, and exact smoke cleanup.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Next recommended initiative: `notification-records`.
+- `notification-records`: active initiative.
+  - Phase 1 `phase-1-current-notification-event-audit`: `passed`.
+  - Phase 2 `phase-2-notification-domain-schema-plan`: `passed`.
+  - Phase 3 `phase-3-event-integration-plan`: `passed`.
+  - Phase 4 `phase-4-notification-ui-list-plan`: `passed`.
+  - Phase 5 `phase-5-verification-and-smoke-plan`: `passed_with_issues`.
+  - Dependencies `auth-onboarding-roles`, `shipment-request-wizard`, `forwarder-open-requests`, `quote-submission-privacy`, `importer-quote-comparison`, and `quote-gated-messaging` have final reports and are accepted.
+  - Phase 1 confirmed no notification schema, helper, route, email integration, Resend dependency, queue, worker, cron, event bus, Redis, or push notification infrastructure exists.
+  - Phase 1 confirmed real event sources now exist for request creation, quote submission, quote accept/reject, and message send.
+  - Phase 1 confirmed `quotes.valid_until` exists but quote-expiring-soon notification needs scheduler/opportunistic behavior not defined for V1.
+  - Phase 1 confirmed safe matching rules for new request notifications do not exist.
+  - Phase 2 added `notification_type` enum and `notifications` table with recipient ownership, optional actor, source references, read state, dedupe key, and indexes.
+  - Phase 2 generated and applied additive migration `drizzle/0006_legal_azazel.sql` against `localhost:55432/importing_ph_dev`.
+  - Phase 3 added idempotent best-effort notification helpers and integrated quote submitted, quote accepted/rejected, and message received events.
+  - Phase 3 skipped matching request and quote-expiring-soon notifications because the required matching/scheduling behavior is not defined for V1.
+  - Phase 4 added `/app/notifications`, recipient-scoped list/read helpers, mark-read action, read/unread display, and workspace links.
+  - Phase 5 proved quote submission notification, mark-read behavior, quote accepted notification, message notification, recipient scoping, final automated verification, runner check-only, diff check, and exact smoke cleanup.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Next recommended initiative: `basic-admin-safety`.
+- `basic-admin-safety`: active initiative.
+  - Phase 1 `phase-1-current-admin-safety-audit`: `passed`.
+  - Phase 2 `phase-2-admin-access-and-read-only-views-plan`: `passed`.
+  - Phase 3 `phase-3-suspension-safety-action-plan`: `passed`.
+  - Phase 4 `phase-4-reports-plan`: `passed_with_issues`.
+  - Phase 5 `phase-5-verification-and-smoke-plan`: `passed_with_issues`.
+  - Dependencies `auth-onboarding-roles`, `shipment-request-wizard`, and `quote-submission-privacy` have final reports and are accepted.
+  - Phase 1 confirmed `/admin` is a proof route guarded by database-backed `requireRole(["admin"])`.
+  - Phase 1 confirmed `user_role` includes `admin`, but onboarding does not provision admins.
+  - Phase 1 confirmed request, quote, conversation, message, and notification schemas exist.
+  - Phase 1 confirmed no suspension, trust status, report, moderation, or admin action-log schema exists.
+  - Phase 2 replaced `/admin` proof content with guarded read-only users/profiles, shipment requests, and quotes overview.
+  - Phase 3 added forwarder-company suspension fields, admin suspend/unsuspend actions, admin UI controls, and server-side suspended-company quote blocking.
+  - Phase 3 generated and applied additive migration `drizzle/0007_dry_firebird.sql` against `localhost:55432/importing_ph_dev`.
+  - Phase 4 explicitly deferred reports to avoid expanding V1 into a moderation workflow; no schema or application code changed.
+  - Phase 5 proved admin read access, non-admin admin-route denial, admin suspension, suspended forwarder quote blocking, normal forwarder quote submission, exact smoke cleanup, final automated verification, runner preflight, and scoped diff check.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Next recommended initiative: none; non-deferred V1 initiatives are complete.
+- `v1-hardening-launch-readiness`: active initiative.
+  - Phase 1 `phase-1-final-v1-implementation-audit`: `passed_with_issues`.
+  - Phase 2 `phase-2-auth-session-error-ux-hardening-plan`: `passed`.
+  - Phase 3 `phase-3-admin-and-safety-hardening-plan`: `passed_with_issues`.
+  - Phase 4 `phase-4-notification-and-email-readiness-plan`: `passed_with_issues`.
+  - Phase 5 `phase-5-operational-readiness-and-smoke-plan`: `passed_with_issues`.
+  - Dependencies `local-db-migration-proof`, `auth-onboarding-roles`, `shipment-request-wizard`, `forwarder-open-requests`, `quote-submission-privacy`, `importer-quote-comparison`, `quote-gated-messaging`, `notification-records`, and `basic-admin-safety` have final reports and are accepted.
+  - Phase 1 audited final reports and current code for the completed V1 loop.
+  - Phase 1 confirmed repo truth now includes request, quote, conversation, message, notification, and admin suspension code even though `.ai/core/*` is stale in places.
+  - Launch-critical gaps identified for later phases: wrong-role UX, admin provisioning, report/user-suspension decisions, notification/email readiness, and Render/local production-smoke discipline.
+  - No application code or schema changed in Phase 1.
+  - Phase 2 changed central wrong-role behavior in `lib/authz.ts` to redirect to `/unauthorized` instead of silently redirecting to the user's own role destination.
+  - Phase 2 browser smoke proved signed-out redirects, importer/forwarder existing-session routing, already-onboarded `/onboarding` redirects, and wrong-role `/unauthorized` behavior.
+  - Phase 3 confirmed existing admin-only access, admin read views, forwarder-company suspension, suspended-forwarder quote blocking, and normal-forwarder quote submission.
+  - Phase 3 made no application code or schema changes.
+  - Phase 3 accepted manual/seeded admin provisioning for V1 and deferred reports plus user-level suspension to avoid expanding into a moderation platform before marketplace validation.
+  - Phase 3 browser and DB smoke fixture rows were cleaned up by exact IDs, and the disposable Clerk users were deleted.
+  - Phase 4 re-proved DB-backed notification creation/read behavior for quote submission, quote acceptance, message send, recipient scoping, and mark-read.
+  - Phase 4 made no application code, schema, migration, package, or environment changes.
+  - Phase 4 accepted in-app DB notifications only for V1 and deferred Resend/email delivery because the repo has no dependency, env wiring, or verified sending-domain setup.
+  - Phase 4 smoke fixture rows were cleaned up by exact IDs, and the disposable Clerk users were deleted.
+  - Phase 5 final automated verification passed: `db:migrate`, `db:check`, `type-check`, `lint`, `build`, and runner check-only.
+  - Phase 5 final browser smoke proved signed-out redirects, importer/forwarder session routing, wrong-role `/unauthorized`, quote privacy matrix, messaging gate, notification scoping, admin access, and suspended-forwarder quote blocking.
+  - Phase 5 final DB proof confirmed accepted/private quote state, participant-scoped messaging, scoped notifications, Forwarder B suspension, no suspended-forwarder quote row, and exact fixture cleanup.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Next recommended work: review final report, realign `.ai/core/*` to current V1 implementation truth, then prepare a production deployment runbook/admin seed/prod smoke.
+- `production-readiness-admin-runbook`: active initiative.
+  - Phase 1 `phase-1-deployment-and-environment-audit`: `passed_with_issues`.
+  - Phase 2 `phase-2-admin-provisioning-runbook`: `passed_with_issues`.
+  - Phase 3 `phase-3-target-database-migration-and-safety-plan`: `passed_with_issues`.
+  - Phase 4 `phase-4-deployed-smoke-test-plan`: `passed_with_issues`.
+  - Phase 5 `phase-5-rollback-monitoring-and-launch-readiness-handoff`: `passed_with_issues`.
+  - Dependencies are complete with final reports and accepted verdicts.
+  - Phase 1 confirmed Render repo config, package scripts, env examples, Drizzle env loading, local Docker/Postgres target, and protected route middleware.
+  - Phase 1 did not run migrations, target DB commands, or deployed smoke.
+  - Active gaps: actual deployed URL, actual staging/production `DATABASE_URL`, and actual Clerk production/test configuration are not visible in repo and must be operator-confirmed.
+  - Phase 2 confirmed admin role is PostgreSQL-backed via `user_profiles.role = "admin"` and `/admin` is guarded by `requireRole(["admin"])`.
+  - Phase 2 documented manual/operator admin provisioning and rollback; no admin user was created.
+  - Active gap: no admin seed script exists in repo, and target Clerk user id plus target DB must be operator-confirmed before any admin write.
+  - Phase 3 inspected Drizzle migration history through `0007_dry_firebird`; current repo SQL is additive and local explicit-target `db:check` passed.
+  - Active gap: staging/production migration remains blocked until actual target DB and backup/snapshot posture are confirmed.
+  - Phase 4 defined deployed smoke coverage for auth, onboarding, wrong-role denial, request creation, forwarder browsing, quote privacy, quote decisions, messaging, notifications, admin, suspension, and cleanup.
+  - Phase 4 local static verification passed, but no deployed smoke was run because target URL, target DB, Clerk target config, and admin account are not confirmed.
+  - Phase 5 documented rollback/debug, minimum monitoring, go/no-go categories, and final launch status.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Current launch category: `local validation only`.
+  - Next recommended work: provide real Render/staging URL, target DB confirmation, Clerk target config, and admin owner so target migration and deployed smoke can run.

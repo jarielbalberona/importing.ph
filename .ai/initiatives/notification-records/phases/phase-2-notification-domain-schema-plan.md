@@ -1,6 +1,6 @@
 # Phase 2: Notification Domain Schema Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -98,4 +98,10 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added `notification_type` enum with currently implementable V1 events.
+- Added `notifications` table with recipient, optional actor, typed source references, read state, dedupe key, and indexes.
+- Generated and applied additive migration `drizzle/0006_legal_azazel.sql`.
+- `npm run db:migrate`, `npm run db:check`, and `npm run type-check` passed against the confirmed local development database target.
+- PostgreSQL emitted one identifier truncation notice for a generated FK name; Drizzle check passed and no repair was required.

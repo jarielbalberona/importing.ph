@@ -1,6 +1,6 @@
 # Phase 3: Suspension Safety Action Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -100,4 +100,11 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added forwarder-company suspension fields.
+- Added admin-only suspend and unsuspend actions.
+- Added suspension controls to `/admin`.
+- Added server-side quote-submission block for suspended forwarder companies.
+- Chose not to disable Clerk accounts; suspended users can sign in but suspended forwarder companies cannot quote.
+- Generated and applied additive migration `drizzle/0007_dry_firebird.sql`.

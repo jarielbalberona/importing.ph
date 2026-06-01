@@ -34,7 +34,12 @@ export default async function ForwarderRequestsPage({
             <p className="text-sm font-medium text-cyan-700">Forwarder</p>
             <h1 className="text-3xl font-semibold">Open requests</h1>
           </div>
-          <UserButton />
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline">
+              <Link href="/app/notifications">Notifications</Link>
+            </Button>
+            <UserButton />
+          </div>
         </header>
 
         <form className="mt-8 grid gap-4 rounded-lg border bg-card p-5 shadow-sm">

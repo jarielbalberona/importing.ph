@@ -21,7 +21,7 @@ Risk lifecycle labels:
 - resolved: `auth-onboarding-roles` Phase 2 added importer retry/idempotency proof to `scripts/prove-onboarding.ts`.
 - resolved: `auth-onboarding-roles` Phase 3 added forwarder retry/idempotency proof to `scripts/prove-onboarding.ts`.
 - accepted: Local Docker/Postgres may need to be started before DB proof commands; this is safe when Compose config confirms the local `importing-ph-postgres` service on port `55432`.
-- accepted: `auth-onboarding-roles` Phase 1 confirmed wrong-role access currently redirects to the user's own role destination instead of rendering `/unauthorized`; do not change without a product/UX decision.
+- resolved: `auth-onboarding-roles` Phase 1 confirmed wrong-role access redirected to the user's own role destination; `v1-hardening-launch-readiness` Phase 2 changed wrong-role behavior to `/unauthorized`.
 - accepted: `auth-onboarding-roles` Phase 1 confirmed admin provisioning is not implemented; do not invent it in onboarding work.
 - resolved: `auth-onboarding-roles` Phase 5 browser smoke blocker was resolved by provided disposable Clerk test accounts and explicit permission to mutate `localhost:55432/importing_ph_dev`.
 - accepted: `auth-onboarding-roles` Phase 5 leaves clearly tagged local smoke rows for the provided disposable Clerk users in `user_profiles`, `importer_profiles`, `forwarder_companies`, and `forwarder_members`; do not treat them as production data.
@@ -70,3 +70,59 @@ Risk lifecycle labels:
 - resolved: `quote-gated-messaging` Phase 3 added participant-scoped quote-gated messaging helpers.
 - active: `quote-gated-messaging` Phase 3 helpers are not wired into UI/routes yet.
 - accepted: `quote-gated-messaging` allows messaging for submitted, accepted, and rejected quotes; withdrawn quotes are excluded.
+- resolved: `quote-gated-messaging` Phase 4 wired participant-scoped messaging helpers into importer and forwarder routes.
+- active: `quote-gated-messaging` browser smoke has not yet proven no-quote blocking, participant privacy, or send/read behavior.
+- accepted: `quote-gated-messaging` V1 is plain request/response messaging without realtime delivery or read receipts.
+- resolved: `quote-gated-messaging` Phase 5 proved no-quote blocking, participant send/read behavior, competitor forwarder denial, and unrelated importer denial.
+- accepted: `quote-gated-messaging` Phase 5 browser automation had navigation timing noise; rendered-page inspection and assertions still passed.
+- active: Message sending does not create notification records yet; this belongs to `notification-records`.
+- active: `notification-records` Phase 1 confirmed notification schema, helpers, routes, and event integration do not exist yet.
+- accepted: `notification-records` should skip new matching request notifications until matching rules are defined; broad all-forwarder fanout is product-noisy even if posted requests are visible.
+- accepted: `notification-records` should skip quote-expiring-soon notifications until a scheduler or explicit opportunistic behavior is approved.
+- resolved: `notification-records` Phase 2 added recipient-owned notification schema and indexes.
+- active: `notification-records` Phase 2 has schema only; creation helpers, event integration, and UI/read behavior are not implemented yet.
+- accepted: `notification-records` Phase 2 excludes notification enum values for unapproved matching-request and quote-expiring-soon events.
+- resolved: `notification-records` Phase 3 integrated quote submitted, quote decision, and message notifications.
+- active: `notification-records` notification list/read UI is not implemented yet.
+- accepted: `notification-records` notification writes are best-effort and do not roll back core marketplace writes.
+- resolved: `notification-records` Phase 4 added recipient-scoped notification list and mark-read UI.
+- active: `notification-records` Phase 5 still needs browser/manual smoke for notification creation, recipient scoping, and mark-read behavior.
+- accepted: `notification-records` V1 has no notification preferences, realtime updates, email delivery, push notifications, queues, workers, or analytics.
+- resolved: `notification-records` Phase 5 proved quote, quote decision, message, recipient scoping, and mark-read notification behavior.
+- accepted: `notification-records` Phase 5 required dev-server restart after a stale server-action overlay and keypress fallback for browser text input.
+- active: `basic-admin-safety` Phase 1 confirmed admin provisioning is not implemented; smoke needs a disposable admin fixture or existing admin profile.
+- active: `basic-admin-safety` Phase 1 confirmed no suspension schema or quote-submission suspension enforcement exists yet.
+- active: `basic-admin-safety` Phase 1 confirmed no report model exists.
+- resolved: `basic-admin-safety` Phase 2 added admin-only read views for users, requests, and quotes.
+- accepted: `basic-admin-safety` admin read UI is intentionally compact and does not attempt CRM/support tooling.
+- resolved: `basic-admin-safety` Phase 3 added forwarder-company suspension and quote-submission enforcement.
+- accepted: `basic-admin-safety` Phase 4 deferred reports because report subject authorization and moderation workflow are not required for V1 marketplace validation.
+- resolved: `basic-admin-safety` Phase 5 proved browser/manual smoke for admin access, suspension, suspended quote blocking, normal quote submission, non-admin denial, and exact cleanup.
+- accepted: `basic-admin-safety` Phase 5 first suspension attempt targeted the wrong smoke company due multiple admin forms; fixture state was reset by exact local IDs and the scoped rerun passed.
+- accepted: `basic-admin-safety` V1 uses company-level suspension only; user-level suspension and Clerk account disabling are deferred.
+- resolved: `v1-hardening-launch-readiness` Phase 1 confirmed `.ai/core/*` was stale for marketplace implementation status; `.ai/core/*` was realigned on `2026-06-01` to current implemented V1 truth.
+- active: Admin provisioning, production deployment/runbook, and production smoke remain launch-hardening gaps.
+- accepted: Reports, user-level suspension, notification email delivery, drafts UI, file attachments, quote versions, realtime messaging, and public SEO remain deferred outside the proven V1 marketplace loop.
+- resolved: `v1-hardening-launch-readiness` Phase 2 hardened wrong-role route access to redirect to `/unauthorized` while preserving PostgreSQL-backed role guards.
+- accepted: `v1-hardening-launch-readiness` Phase 3 keeps admin provisioning manual/seeded for V1; ordinary onboarding must not create admins.
+- accepted: `v1-hardening-launch-readiness` Phase 3 defers reports and user-level suspension; forwarder-company suspension remains the implemented V1 safety control.
+- resolved: `v1-hardening-launch-readiness` Phase 3 re-proved admin access, non-admin denial, forwarder-company suspension, suspended-forwarder quote blocking, normal-forwarder quote submission, and exact smoke cleanup.
+- resolved: `v1-hardening-launch-readiness` Phase 4 re-proved quote, decision, and message notification creation plus mark-read and recipient scoping.
+- accepted: `v1-hardening-launch-readiness` Phase 4 keeps V1 notifications in-app only; email/Resend delivery is deferred because the repo has no dependency, env wiring, or sending-domain setup.
+- accepted: `v1-hardening-launch-readiness` Phase 4 browser smoke required OTP `424242`, keypress-based text entry, and one dev-server restart after build/dev server-action churn.
+- resolved: `v1-hardening-launch-readiness` Phase 5 final automated verification and full browser smoke passed.
+- resolved: `v1-hardening-launch-readiness` Phase 5 re-proved quote privacy matrix, messaging gate, notification scoping, admin access, and suspended-forwarder quote blocking.
+- accepted: `v1-hardening-launch-readiness` final verdict is `PASS WITH ISSUES` because admin provisioning, reports, user-level suspension, email delivery, drafts, attachments, quote versions, realtime messaging, and public SEO remain deferred.
+- active: `production-readiness-admin-runbook` Phase 1 confirmed actual deployed URL is not available from repo evidence.
+- active: `production-readiness-admin-runbook` Phase 1 confirmed actual staging/production `DATABASE_URL` is not available from repo evidence; target DB commands must hard-stop until operator-confirmed.
+- active: `production-readiness-admin-runbook` Phase 1 confirmed actual Clerk production/test configuration is not available from repo evidence; deployed smoke must hard-stop until confirmed.
+- active: `production-readiness-admin-runbook` Phase 2 confirmed no admin seed script exists in repo; admin provisioning remains manual/operator-controlled.
+- active: `production-readiness-admin-runbook` Phase 2 requires exact Clerk user id and exact target DB confirmation before any admin role write.
+- accepted: `production-readiness-admin-runbook` Phase 2 keeps public admin self-registration out of V1 because it would create unnecessary privileged-account attack surface.
+- active: `production-readiness-admin-runbook` Phase 3 confirmed target staging/production migration cannot run until the real target `DATABASE_URL` and backup/snapshot posture are operator-confirmed.
+- accepted: `production-readiness-admin-runbook` Phase 3 local explicit-target `db:check` passed, but this is not target deployment proof.
+- active: `production-readiness-admin-runbook` Phase 4 did not run deployed smoke because target URL, target DB, Clerk target configuration, and admin account are not confirmed.
+- active: Quote privacy, messaging privacy, notification scoping, and admin suspension remain unproven on staging/production.
+- accepted: `production-readiness-admin-runbook` Phase 4 local `type-check`, `lint`, and `build` passed, but local static verification is not launch proof.
+- active: `production-readiness-admin-runbook` final status is `local validation only`; controlled beta is blocked until target migration, admin provisioning, deployed smoke, and exact cleanup pass.
+- accepted: `production-readiness-admin-runbook` final verdict is `PASS WITH ISSUES` because it produced the runbook without inventing deployment secrets or mutating unknown target data.

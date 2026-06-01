@@ -2,57 +2,69 @@
 
 ## Observed From Repo
 
-`importing.ph` is currently a small Next.js App Router application with a local AI memory scaffold.
+`importing.ph` is a Philippines-first importer-forwarder shipment quotation marketplace built as a single Next.js App Router application.
 
-The repository proves these current capabilities:
+The implemented V1 marketplace loop is locally smoke-proven:
 
-- Public landing page at `/`.
-- Clerk-backed sign-in and sign-up routes.
-- Protected onboarding route that writes application role/profile data to PostgreSQL.
-- Role-gated proof routes for importers, forwarders, and admins.
-- PostgreSQL schema for user profiles, importer profiles, forwarder companies, and forwarder membership.
-- Local PostgreSQL via Docker Compose.
-- Render deployment configuration for a Node web service and managed PostgreSQL database.
-- Local AI initiative runner and markdown memory scaffold under `.ai/` and `tools/ai-runner/`.
+```text
+Importer creates a posted shipment request
+-> Forwarder browses posted/open requests
+-> Forwarder submits one private quote per company per request
+-> Importer compares quotes and accepts/rejects
+-> Quote-gated messaging opens between importer and quoting forwarder
+-> DB-backed in-app notifications are created
+-> Admin can inspect marketplace activity and suspend forwarder companies
+```
 
-The repository does not currently prove a working shipment request, quote, comparison, messaging, or quote selection flow.
+Repository evidence:
 
-## Planned Product Context
+- `app/app/requests/**`: importer request list, detail, and creation.
+- `app/app/forwarder/requests/**`: forwarder open request list, detail, and quote submission.
+- `app/app/requests/messages/**` and `app/app/forwarder/messages/**`: quote-gated messaging surfaces.
+- `app/app/notifications/**`: in-app notification list and mark-read behavior.
+- `app/admin/**`: admin read overview and forwarder-company suspension actions.
+- `db/schema.ts`: V1 marketplace tables and enums.
+- `lib/*`: authz, request, quote, messaging, notification, and admin helpers.
+- `drizzle/0000_*` through `drizzle/0007_*`: additive schema history for onboarding, requests, quote privacy, quote comparison, messaging, notifications, and admin suspension.
+- `render.yaml`: Render-oriented web service plus PostgreSQL config.
+- `.ai/initiatives/*/reports/final-report.md`: local execution and smoke evidence.
 
-Importing.ph is intended to streamline importing from China to the Philippines by helping importers and cargo forwarders coordinate shipment requests and quotes in one place.
+## Product Context
 
-The core user problem is fragmented coordination. Importers often compare forwarders through chat apps, social platforms, referrals, and private contacts. That makes pricing, response tracking, and communication hard to compare and easy to lose.
+Importing.ph helps importers and cargo forwarders coordinate China-to-Philippines importing requests and quotes in one place.
+
+The core problem remains fragmented coordination. Importers often compare forwarders through chat apps, social platforms, referrals, and private contacts. That makes pricing, response tracking, and communication opaque.
 
 Primary users:
 
 - Importers.
 - Cargo forwarders.
+- Admins for minimal marketplace safety/control.
 
-Intended marketplace loop:
+## Current Product Status
 
-```text
-Importer creates shipment/import request
--> Forwarders review relevant requests
--> Forwarders submit private quotes or responses
--> Importer compares options
--> Messaging occurs where allowed
--> Importer chooses how to proceed
-```
+Status: local V1 validation-ready, not production-hard.
 
-Treat this as product direction, not implemented fact.
+Implemented locally:
 
-## Likely Current Scope
+- Clerk sign-in/sign-up.
+- PostgreSQL-backed onboarding for importer and forwarder profiles.
+- PostgreSQL-backed business role guards.
+- Wrong-role route access redirects to `/unauthorized`.
+- Importer-owned posted shipment request creation/list/detail.
+- Forwarder posted request browse/list/detail with filters.
+- Private forwarder quote submission.
+- Importer quote comparison and accept/reject.
+- Quote-gated participant messaging.
+- In-app DB notification records.
+- Admin read overview and forwarder-company suspension.
+- Suspended forwarder companies cannot submit quotes.
 
-The implemented scope is foundation work:
+Not production-hard yet:
 
-- Authentication shell.
-- Onboarding.
-- Role persistence in PostgreSQL.
-- Basic route authorization.
-- Local database setup and proof scripts.
-- AI planning/execution scaffold.
-
-The next product work should probably build the first real marketplace slice rather than add more infrastructure.
+- Production deployment runbook and production smoke are pending.
+- Production admin seed/provisioning process is pending.
+- `.ai/core/*` was realigned after V1 hardening; keep it current after future execution.
 
 ## Explicit Non-Goals For V1
 
@@ -60,6 +72,7 @@ Do not turn this into a logistics operating system.
 
 Out of scope unless explicitly approved:
 
+- Public forwarder profile SEO or route/lane SEO pages.
 - Shipment tracking.
 - Freight operations management.
 - Warehouse management.
@@ -69,16 +82,25 @@ Out of scope unless explicitly approved:
 - Ratings and reviews.
 - Analytics dashboards.
 - AI recommendations.
+- Report/moderation platform.
+- User-level suspension or Clerk account disabling.
+- Email delivery.
 - Microservices, queues, Redis, WebSockets, event buses, or separate backend services.
 
-If a feature does not directly improve request creation, forwarder quoting, importer comparison, messaging, or quote selection, challenge it before implementation.
+## Accepted Limitations
 
-## Unknown / Open Gaps
+- Request creation is posted-only in the UI; `draft` exists in schema only.
+- Attachments are notes-only; no file storage exists.
+- Quote versions do not exist.
+- Messaging is request/response only; no realtime, read receipts, or attachments.
+- Notifications are in-app DB records only; email/Resend is deferred.
+- Admin provisioning is manual/seeded; onboarding must not create admins.
+- Reports are deferred.
+- Public forwarder profile SEO remains deferred.
 
-- Exact shipment request fields are not implemented.
-- Quote fields, quote privacy, and quote lifecycle are not implemented.
-- Messaging model and access rules are not implemented.
-- Admin responsibilities are not defined beyond a proof route.
-- Whether forwarder relevance/filtering is manual, category-based, lane-based, or invite-based is unknown.
-- Request statuses and quote statuses need a product decision before schema work.
-- No test coverage proves role privacy beyond basic route code.
+## Open Gaps
+
+- Production deployment and smoke checklist still need execution.
+- Production admin provisioning needs an operator-controlled runbook.
+- Public SEO initiative remains deferred until the marketplace loop is validated with real users.
+- Future product decisions are needed before adding report workflows, user suspension, email delivery, quote revisions, file storage, or public directory/SEO pages.

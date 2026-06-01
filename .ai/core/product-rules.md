@@ -2,58 +2,107 @@
 
 ## Product Direction
 
-Importing.ph is a Philippines-first import coordination marketplace.
+Importing.ph is a Philippines-first import quotation marketplace.
 
 The product should help importers and cargo forwarders coordinate shipment/import requests and quotes in one organized place instead of scattered chat threads, social messages, referrals, and private contact lists.
 
-Core validation loop:
+Implemented V1 validation loop:
 
 ```text
 Importer posts request
--> Forwarders submit quotes or responses
--> Importer compares options
--> Importer and forwarder communicate when allowed
--> Importer chooses how to proceed
+-> Forwarder browses open posted requests
+-> Forwarder submits a private quote
+-> Importer compares and accepts/rejects quotes
+-> Quote-gated messaging opens
+-> DB notifications record marketplace events
+-> Admin can inspect activity and suspend unsafe forwarder companies
 ```
 
-Everything else is suspect until this loop works.
+Anything outside this loop is suspect until real validation proves the need.
 
-## Observed Business Rules
-
-Implemented today:
+## Implemented Business Rules
 
 - Supported persisted roles are `importer`, `forwarder`, and `admin`.
-- Onboarding allows `importer` and `forwarder`.
-- Admin exists in the database enum and route map but is not selectable in onboarding.
-- Importer onboarding creates a user profile and importer profile.
-- Forwarder onboarding creates a user profile, forwarder company, and owner membership.
-- Protected workspace routes require a PostgreSQL-backed profile.
-- Role-gated pages redirect users to their own role destination when they hit the wrong workspace.
+- Clerk is authentication/identity only.
+- PostgreSQL owns business roles, profiles, company membership, request ownership, quotes, messages, notifications, and suspension state.
+- Importer onboarding creates `user_profiles` and `importer_profiles`.
+- Forwarder onboarding creates `user_profiles`, `forwarder_companies`, and owner `forwarder_members`.
+- Admin is not selectable in onboarding.
+- Signed-in users without a profile go to `/onboarding`.
+- Wrong-role route access redirects to `/unauthorized`.
+- Importer request creation is guarded by importer profile.
+- Forwarder request browsing and quote submission are guarded by forwarder role and membership.
+- Admin routes/actions are guarded by `admin` role.
 
-## Planned Marketplace Rules
+## Shipment Request Rules
 
-These are product rules to preserve when implementing the marketplace, but they are not yet proven as code:
+- Importers own shipment requests through `shipment_requests.importer_profile_id`.
+- Current UI creates posted requests only.
+- `draft` exists in schema but has no create/edit/resume UI.
+- Attachments are notes-only through `attachment_notes`; no file upload/storage exists.
+- Request status enum values: `draft`, `posted`, `quote_selected`, `cancelled`.
+- Forwarder open-request browsing exposes posted quoteable request data only.
+- Forwarder filters currently use request fields such as origin, destination, cargo type, delivery preference, shipping preference, and MSDS/special-handling signals from notes.
 
-- Importers own shipment/import requests.
-- Cargo forwarders can review relevant requests.
-- Forwarders submit private quotes or responses to importers.
-- Importers compare forwarder options.
-- Pricing and communication should become more organized and trackable than scattered external channels.
-- Quote privacy matters: competitor forwarders must not see each other's prices, notes, transit times, or commercial details.
-- Messaging should be tied to marketplace context, not become an unrestricted chat product.
+## Quote Rules
 
-## Trust Boundaries
+- Forwarder companies submit quotes.
+- One forwarder company can submit one quote per shipment request.
+- Currency is currently PHP.
+- Quote status enum values: `submitted`, `accepted`, `rejected`, `withdrawn`.
+- Quote versions do not exist.
+- Quote details are private to:
+  - importer owner of the request.
+  - submitting forwarder/company.
+- Competitor forwarders may see allowed aggregate metadata such as quote count.
+- Competitor forwarders must not see identity, amount, transit range, service, inclusions, exclusions, notes, messages, or version details for another forwarder's quote.
+- Importer owner can compare submitted quote details.
+- Importer owner can accept or reject quotes.
+- Accepting a quote sets the selected quote to `accepted` and the request to `quote_selected`.
+- Non-selected quotes are not automatically rejected unless the importer explicitly rejects them.
+- Expired quotes cannot be accepted.
 
-- Clerk identity is not enough for product authorization; use PostgreSQL role/profile state.
-- Forwarder users act through a forwarder company membership.
-- Importer-owned request data and forwarder-owned quote data need explicit visibility checks.
-- Quote visibility must be designed before quote tables or UI are implemented.
-- Admin access must stay separate from importer and forwarder workspaces.
+## Messaging Rules
+
+- Messaging is quote-gated.
+- No quote means no messaging.
+- One conversation exists per shipment request plus importer plus forwarder company.
+- Importer can message only forwarder companies that submitted a quote on that request.
+- Forwarder can message only the importer for requests where its company submitted a quote.
+- Messages are private to conversation participants.
+- V1 messaging is request/response only.
+- No realtime delivery, WebSockets, read receipts, attachments, or admin inspection exists.
+
+## Notification Rules
+
+- Notifications are in-app DB records only.
+- Notification records are scoped to `recipient_user_profile_id`.
+- Implemented notification types:
+  - `new_quote_received`.
+  - `quote_accepted`.
+  - `quote_rejected`.
+  - `message_received`.
+- Notification writes are best-effort and must not corrupt core marketplace actions.
+- Email/Resend delivery is deferred.
+- New matching request notifications are deferred until matching rules exist.
+- Quote-expiring-soon notifications are deferred until scheduling or opportunistic behavior is designed.
+
+## Admin And Safety Rules
+
+- Admins can view users/profiles, shipment requests, and quotes.
+- Admins can suspend/unsuspend forwarder companies.
+- Suspended forwarder companies cannot submit quotes.
+- Suspension is company-level only.
+- Suspended users can still sign in; action blocking is enforced in app code.
+- Admin provisioning is manual/seeded for V1.
+- Ordinary onboarding must never create admins.
+- Reports, user-level suspension, Clerk account disabling, and admin action logs are deferred.
 
 ## Non-Goals
 
 Do not build these for V1 unless explicitly approved:
 
+- Public forwarder profile SEO or route/lane SEO pages.
 - Logistics ERP.
 - Forwarder ERP.
 - Shipment tracking.
@@ -63,29 +112,21 @@ Do not build these for V1 unless explicitly approved:
 - Ratings and reviews.
 - Analytics dashboards.
 - AI recommendations.
-- Complex automation around freight operations.
+- Full moderation/report workflows.
+- Realtime messaging or notification infrastructure.
 
 ## Hard Stops
 
 Stop and ask for a product decision before implementing:
 
-- Quote visibility rules.
-- Messaging access rules.
-- Request status lifecycle.
-- Quote status lifecycle.
-- Admin powers.
-- Forwarder eligibility for seeing a request.
-- Any payment, escrow, or billing behavior.
+- Any competitor quote visibility change.
+- Quote revision/version behavior.
+- Messaging access beyond quote-gated participants.
+- User-level suspension or Clerk disabling.
+- Report/moderation workflows.
+- Email delivery semantics.
+- Public SEO/data exposure rules.
+- Any payment, escrow, billing, tracking, review, analytics, or ERP behavior.
 - Any destructive data behavior.
-- Any feature that exposes one forwarder's quote details to another forwarder.
 
-## Unknown Product Questions
-
-- What shipment request fields are required for first launch?
-- Which origins/destinations are supported first?
-- Are requests open to all forwarders, filtered by lane/service, or invite-only?
-- Can importers close, cancel, or reopen requests?
-- Can forwarders revise quotes?
-- Can multiple users belong to one importer company?
-- Can multiple users belong to one forwarder company beyond the current owner model?
-- What does "selected quote" mean operationally: preference marker, accepted quote, or binding agreement?
+If a feature does not directly improve request creation, forwarder quoting, importer comparison, messaging, quote selection, notifications, or minimum safety, challenge it before implementation.

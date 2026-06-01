@@ -43,6 +43,20 @@
       "when": 1780286184519,
       "tag": "0005_bright_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780287393567,
+      "tag": "0006_legal_azazel",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780288528106,
+      "tag": "0007_dry_firebird",
+      "breakpoints": true
     }
   ]
 }

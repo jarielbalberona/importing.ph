@@ -1,6 +1,6 @@
 # Phase 5: Verification And Smoke Plan
 
-Status: pending
+Status: passed_with_issues
 
 ## Goal
 
@@ -111,4 +111,6 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Final automated verification passed. Browser smoke passed for admin access, read views, forwarder-company suspension, suspended quote blocking, normal forwarder quote submission, non-admin admin-route denial, and exact fixture cleanup.
+
+The phase is `passed_with_issues` because the first suspension smoke attempt targeted the wrong forwarder company due multiple admin forms. The fixture was reset by exact local IDs, the admin UI action was rerun with a scoped Forwarder A article locator, and the full smoke passed.

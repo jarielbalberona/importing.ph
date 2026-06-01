@@ -1,6 +1,6 @@
 # Phase 5: Verification And Smoke Plan
 
-Status: pending
+Status: passed_with_issues
 
 ## Goal
 
@@ -109,4 +109,11 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Final automated verification passed: `db:migrate`, `db:check`, `type-check`, `lint`, and `build`.
+- Runner check-only passed.
+- Browser smoke proved quote submission creates importer notification, mark-read works, quote acceptance creates forwarder notification, message send creates forwarder notification, and forwarder cannot see importer-only notification.
+- Database smoke confirmed three notification rows with deterministic dedupe keys and expected read state before cleanup.
+- Smoke request cleanup removed request, quote, conversation, and notification rows by exact request id.
+- Accepted issues: dev server restart was required after a stale server-action overlay, and browser text fill required keypress fallback.

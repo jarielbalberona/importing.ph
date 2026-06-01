@@ -1,6 +1,6 @@
 # Phase 2: Admin Access And Read-Only Views Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -92,4 +92,9 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Replaced admin proof page with a compact guarded control-plane overview.
+- Added admin-only query helper in `lib/admin.ts`.
+- Admin can view users/profiles, shipment requests, and quotes.
+- No mutation behavior, CRM/support tooling, analytics, impersonation, or Clerk account management was added.

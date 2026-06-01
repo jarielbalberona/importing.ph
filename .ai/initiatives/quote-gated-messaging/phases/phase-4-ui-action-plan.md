@@ -1,6 +1,6 @@
 # Phase 4: UI Action Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -96,4 +96,11 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added importer messaging routes under `/app/requests/messages`.
+- Added forwarder messaging routes under `/app/forwarder/messages`.
+- Added participant-scoped message send actions.
+- Added quote-detail entry points: importer can message a quoting forwarder from a quote card; forwarder can message the importer after submitting a quote.
+- Rendered chronological message lists and empty states.
+- No realtime, queue, Redis, WebSocket, notification, attachment, or admin inspection behavior was added.

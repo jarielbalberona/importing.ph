@@ -1,6 +1,6 @@
 # Phase 4: Notification UI List Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -93,4 +93,10 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added `/app/notifications` recipient-scoped notification list.
+- Added mark-read server action that repeats recipient ownership check.
+- Added read/unread display and protected destination links.
+- Added notification entry links to importer and forwarder request workspaces.
+- No email, push, realtime, preferences, admin tooling, queue, worker, Redis, or analytics behavior was added.

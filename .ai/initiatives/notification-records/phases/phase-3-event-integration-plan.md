@@ -1,6 +1,6 @@
 # Phase 3: Event Integration Plan
 
-Status: pending
+Status: passed
 
 ## Goal
 
@@ -94,4 +94,12 @@ Hard-stop instead of repairing when:
 
 ## Completion Notes
 
-Filled by the execution skill or runner.
+Executed on 2026-06-01.
+
+- Added idempotent notification helper functions in `lib/notifications.ts`.
+- Integrated quote-submitted notifications for importer owners.
+- Integrated quote-accepted and quote-rejected notifications for the submitting forwarder member.
+- Integrated message-received notifications for the opposite participant.
+- Skipped new matching request notifications because no safe matching rules exist.
+- Skipped quote-expiring-soon notifications because no scheduler/opportunistic behavior is approved.
+- Notification writes are best-effort and deduped; they do not corrupt core marketplace actions.

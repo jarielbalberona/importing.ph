@@ -12,10 +12,12 @@ Dependency rule: do not begin execution until the core role model, request creat
 
 ## Initiative Status
 
-- Status: locked
+- Status: complete
 - Ready for execution: yes
-- Execution started: no
-- Latest execution status: not started.
+- Execution started: yes
+- Latest execution status: `PASS WITH ISSUES`
+- Final report: `reports/final-report.md`
+- Next recommended initiative: none; non-deferred V1 initiatives are complete.
 
 Lifecycle rule: this initiative is authored for review. Lock it only after dependencies and report/message scope are reviewed.
 

@@ -75,6 +75,7 @@ export async function requireForwarderMember() {
       id: forwarderMembers.id,
       companyId: forwarderMembers.forwarderCompanyId,
       companyName: forwarderCompanies.name,
+      companyIsSuspended: forwarderCompanies.isSuspended,
       memberRole: forwarderMembers.memberRole,
     })
     .from(forwarderMembers)

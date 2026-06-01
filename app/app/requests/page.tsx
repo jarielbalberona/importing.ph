@@ -20,6 +20,9 @@ export default async function ImporterRequestsPage() {
             <h1 className="text-3xl font-semibold">Requests</h1>
           </div>
           <div className="flex items-center gap-3">
+            <Button asChild variant="outline">
+              <Link href="/app/notifications">Notifications</Link>
+            </Button>
             <Button asChild>
               <Link href="/app/requests/new">New request</Link>
             </Button>
