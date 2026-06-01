@@ -6,12 +6,12 @@ import { z } from "zod";
 import {
   createQuoteForCurrentForwarder,
   QuoteSubmissionError,
-  quoteSubmissionInputFromFormData,
 } from "@/lib/quotes";
 import {
   getOrCreateConversationForCurrentForwarder,
   MessagingAccessError,
 } from "@/lib/messages";
+import { quoteSubmissionInputFromFormData } from "@/lib/validation";
 
 const requestIdSchema = z.string().uuid();
 

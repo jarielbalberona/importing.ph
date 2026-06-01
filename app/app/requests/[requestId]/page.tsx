@@ -1,9 +1,25 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import {
+  DetailCard,
+  DetailValue,
+  EmptyState,
+  InfoGrid,
+  PageHeader,
+  StatusBadge,
+} from "@/components/app-shell";
+import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
 import { Button } from "@/components/ui/button";
+import {
+  formatDate,
+  formatDimensions,
+  formatMeasure,
+  formatMoney,
+  formatRoute,
+  titleFromEnum,
+} from "@/lib/format";
 import { getImporterVisibleQuotesForOwnedRequest } from "@/lib/quotes";
 import {
   getShipmentRequestForCurrentImporter,
@@ -51,77 +67,88 @@ export default async function RequestDetailPage({
   );
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Importer</p>
-            <h1 className="text-3xl font-semibold">{request.cargoDescription}</h1>
-          </div>
-          <UserButton />
-        </header>
+    <>
+      <PageHeader
+        eyebrow="Importer"
+        title={request.cargoDescription}
+        description={`${formatRoute(request.origin, request.destination)} / ${titleFromEnum(request.status)}`}
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href="/app/requests">Back to requests</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/app/requests/new">New request</Link>
+            </Button>
+          </>
+        }
+      />
 
-        <div className="mt-6">
-          <Button asChild variant="outline">
-            <Link href="/app/requests">Back to requests</Link>
-          </Button>
+      <div className="mt-6 grid gap-6">
+        <DetailCard title="Shipment summary">
+          <InfoGrid>
+            <DetailValue label="Status" value={<StatusBadge>{titleFromEnum(request.status)}</StatusBadge>} />
+            <DetailValue label="Route" value={formatRoute(request.origin, request.destination)} />
+            <DetailValue label="Cargo type" value={titleFromEnum(request.cargoType)} />
+            <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
+            <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
+          </InfoGrid>
+        </DetailCard>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DetailCard title="Cargo details">
+            <InfoGrid columns={2}>
+              <DetailValue label="Cargo" value={request.cargoDescription} />
+              <DetailValue label="Cargo type" value={titleFromEnum(request.cargoType)} />
+            </InfoGrid>
+          </DetailCard>
+
+          <DetailCard title="Pickup and destination">
+            <InfoGrid columns={2}>
+              <DetailValue label="Origin" value={request.origin} />
+              <DetailValue label="Destination" value={request.destination} />
+            </InfoGrid>
+          </DetailCard>
         </div>
 
-        <section className="mt-6 grid gap-4 rounded-lg border bg-card p-6 shadow-sm">
-          <div className="grid gap-1">
-            <p className="text-sm font-medium text-muted-foreground">Status</p>
-            <p className="font-semibold uppercase">{request.status}</p>
-          </div>
-          <div className="grid gap-1">
-            <p className="text-sm font-medium text-muted-foreground">Route</p>
-            <p>
-              {request.origin} to {request.destination}
-            </p>
-          </div>
-          <div className="grid gap-1">
-            <p className="text-sm font-medium text-muted-foreground">
-              Cargo type
-            </p>
-            <p>{request.cargoType}</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <DetailValue label="Total CBM" value={request.totalCbm} />
-            <DetailValue label="Total weight kg" value={request.totalWeightKg} />
+        <DetailCard title="Size and value">
+          <InfoGrid>
+            <DetailValue label="Total CBM" value={formatMeasure(request.totalCbm, "CBM")} />
+            <DetailValue label="Total weight" value={formatMeasure(request.totalWeightKg, "kg")} />
             <DetailValue
-              label="Package count"
-              value={request.packageCount?.toString()}
+              label="Package or carton count"
+              value={request.packageCount?.toString() || "Not provided"}
             />
-            <DetailValue label="Length cm" value={request.lengthCm} />
-            <DetailValue label="Width cm" value={request.widthCm} />
-            <DetailValue label="Height cm" value={request.heightCm} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+            <DetailValue label="Dimensions" value={formatDimensions(request)} />
             <DetailValue
-              label="Delivery preference"
-              value={request.deliveryPreference}
+              label="Declared value"
+              value={request.declaredValue || "Not provided"}
             />
-            <DetailValue
-              label="Shipping preference"
-              value={request.shippingPreference}
-            />
-            <DetailValue label="Declared value" value={request.declaredValue} />
-          </div>
-          <DetailValue label="Notes" value={request.notes} />
-          <DetailValue label="Attachment notes" value={request.attachmentNotes} />
-        </section>
+          </InfoGrid>
+        </DetailCard>
 
-        <section className="mt-6 rounded-lg border bg-card p-6 shadow-sm">
-          <div>
-            <h2 className="text-lg font-semibold">Quotes</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Submitted quotes are visible only to you and the submitting
-              forwarder.
-            </p>
+        <DetailCard title="Shipping preferences">
+          <InfoGrid columns={2}>
+            <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
+            <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
+          </InfoGrid>
+        </DetailCard>
+
+        <DetailCard title="Notes and supporting documents">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <DetailValue label="Notes" value={request.notes} />
+            <DetailValue label="Supporting document notes" value={request.attachmentNotes} />
           </div>
+        </DetailCard>
+
+        <DetailCard
+          title="Quote comparison"
+          description="Only you and the forwarder who sent each quote can see the quote details."
+        >
 
           {query.decision ? (
             <div className="mt-4 rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
-              Quote {query.decision === "accept" ? "accepted" : "rejected"}.
+              Quote {query.decision === "accept" ? "accepted" : "declined"}.
             </div>
           ) : null}
 
@@ -138,9 +165,10 @@ export default async function RequestDetailPage({
           ) : null}
 
           {quotes.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              No quotes submitted yet.
-            </p>
+            <EmptyState
+              title="No quotes yet"
+              description="Forwarders can send quotes once they find this request."
+            />
           ) : (
             <div className="mt-4 grid gap-4">
               {quotes.map((quote) => (
@@ -153,9 +181,9 @@ export default async function RequestDetailPage({
               ))}
             </div>
           )}
-        </section>
+        </DetailCard>
       </div>
-    </main>
+    </>
   );
 }
 
@@ -180,24 +208,35 @@ function QuoteCard({
   const canReject = quote.status === "submitted";
 
   return (
-    <article className="grid gap-3 rounded-md border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-semibold">{quote.forwarderCompanyName}</h3>
+    <article className="grid min-w-0 gap-5 rounded-md border bg-background p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="break-words text-lg font-semibold">
+            {quote.forwarderCompanyName}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {quote.serviceOffered}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           {isExpired ? (
-            <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs uppercase text-amber-900">
-              expired
+          <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium uppercase text-amber-900">
+              Expired
             </span>
           ) : null}
-          <span className="rounded-md border px-2 py-1 text-xs uppercase text-muted-foreground">
-            {quote.status}
-          </span>
+          <StatusBadge>{titleFromEnum(quote.status)}</StatusBadge>
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-md border bg-muted p-4">
+        <p className="text-sm font-medium text-muted-foreground">Amount</p>
+        <p className="mt-1 text-2xl font-semibold">
+          {formatMoney(quote.currency, quote.quoteAmount)}
+        </p>
+      </div>
+      <InfoGrid>
         <DetailValue
-          label="Amount"
-          value={`${quote.currency} ${quote.quoteAmount}`}
+          label="Forwarder"
+          value={quote.forwarderCompanyName}
         />
         <DetailValue
           label="Transit range"
@@ -206,47 +245,66 @@ function QuoteCard({
         <DetailValue label="Service offered" value={quote.serviceOffered} />
         <DetailValue
           label="Valid until"
-          value={quote.validUntil.toLocaleDateString()}
+          value={formatDate(quote.validUntil)}
         />
+      </InfoGrid>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DetailValue label="Inclusions" value={quote.inclusions} />
+        <DetailValue label="Exclusions" value={quote.exclusions} />
+        <DetailValue label="Notes" value={quote.notes} />
       </div>
-      <DetailValue label="Inclusions" value={quote.inclusions} />
-      <DetailValue label="Exclusions" value={quote.exclusions} />
-      <DetailValue label="Notes" value={quote.notes} />
 
-      <div className="pt-2">
-        <form action={startImporterConversation}>
+      <div className="grid gap-3 border-t pt-4 sm:flex sm:flex-wrap">
+        <form action={startImporterConversation} className="w-full sm:w-auto">
           <input type="hidden" name="requestId" value={requestId} />
           <input
             type="hidden"
             name="forwarderCompanyId"
             value={quote.forwarderCompanyId}
           />
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="outline" className="w-full sm:w-auto">
             Message forwarder
           </Button>
         </form>
-      </div>
 
       {canAccept || canReject ? (
-        <div className="flex flex-wrap gap-3 pt-2">
+        <>
           {canAccept ? (
-            <form action={acceptQuote}>
+            <form action={acceptQuote} className="w-full sm:w-auto">
               <input type="hidden" name="requestId" value={requestId} />
               <input type="hidden" name="quoteId" value={quote.id} />
-              <Button type="submit">Accept quote</Button>
+              <ConfirmSubmitButton
+                type="submit"
+                className="w-full sm:w-auto"
+                title="Accept this quote?"
+                message="This will mark the quote as accepted for this shipment request. Other quotes will remain visible for your records."
+                confirmLabel="Accept quote"
+                cancelLabel="Cancel"
+              >
+                Accept quote
+              </ConfirmSubmitButton>
             </form>
           ) : null}
           {canReject ? (
-            <form action={rejectQuote}>
+            <form action={rejectQuote} className="w-full sm:w-auto">
               <input type="hidden" name="requestId" value={requestId} />
               <input type="hidden" name="quoteId" value={quote.id} />
-              <Button type="submit" variant="outline">
+              <ConfirmSubmitButton
+                type="submit"
+                variant="outline"
+                className="w-full sm:w-auto"
+                title="Reject this quote?"
+                message="This will mark the quote as rejected. You can still review the quote details later."
+                confirmLabel="Reject quote"
+                cancelLabel="Cancel"
+              >
                 Reject quote
-              </Button>
+              </ConfirmSubmitButton>
             </form>
           ) : null}
-        </div>
+        </>
       ) : null}
+      </div>
     </article>
   );
 }
@@ -262,32 +320,17 @@ function decisionErrorMessage(error: string) {
     case "already_selected":
       return "This request already has an accepted quote.";
     default:
-      return "The quote decision could not be saved.";
+      return "The quote decision was not saved. Try again.";
   }
 }
 
 function messageErrorMessage(error: string) {
   switch (error) {
     case "no_quote":
-      return "Messaging opens only after this forwarder has submitted a quote.";
+      return "Messages are available after this forwarder sends a quote.";
     case "not_found":
       return "That conversation is not available.";
     default:
-      return "Messaging could not be opened.";
+      return "Messages are not available right now.";
   }
-}
-
-function DetailValue({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="grid gap-1">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p>{value || "Not provided"}</p>
-    </div>
-  );
 }

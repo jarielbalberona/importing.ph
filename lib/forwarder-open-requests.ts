@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -35,6 +35,7 @@ export type ForwarderSafeRequest = {
   notes: string | null;
   attachmentNotes: string | null;
   createdAt: Date;
+  quoteCount: number;
 };
 
 export type OpenRequestFilters = {
@@ -65,6 +66,7 @@ const forwarderSafeRequestColumns = {
   notes: shipmentRequests.notes,
   attachmentNotes: shipmentRequests.attachmentNotes,
   createdAt: shipmentRequests.createdAt,
+  quoteCount: sql<number>`cast((select count(*) from ${quotes} where ${quotes.shipmentRequestId} = ${shipmentRequests.id}) as int)`,
 };
 
 export async function requireForwarderMember() {

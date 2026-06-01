@@ -1,9 +1,19 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import {
+  DetailCard,
+  DetailValue,
+  EmptyState,
+  InfoGrid,
+  PageHeader,
+  StatusBadge,
+} from "@/components/app-shell";
+import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { formatDateTime, formatRoute, titleFromEnum } from "@/lib/format";
 import { getConversationForCurrentForwarder } from "@/lib/messages";
 import { sendForwarderMessage } from "./actions";
 
@@ -37,26 +47,19 @@ export default async function ForwarderConversationPage({
   }
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
+    <>
       <div className="mx-auto max-w-4xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Forwarder</p>
-            <h1 className="text-3xl font-semibold">
-              {conversation.cargoDescription}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {conversation.origin} to {conversation.destination}
-            </p>
-          </div>
-          <UserButton />
-        </header>
+        <PageHeader
+          eyebrow="Forwarder"
+          title={conversation.cargoDescription}
+          description="Ask or answer follow-up questions about this shipment."
+        />
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild variant="outline">
+        <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/app/forwarder/messages">Back to messages</Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link
               href={`/app/forwarder/requests/${conversation.shipmentRequestId}`}
             >
@@ -73,13 +76,30 @@ export default async function ForwarderConversationPage({
 
         {query.messageError ? (
           <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            Message could not be sent.
+            Message was not sent. Try again.
           </div>
         ) : null}
 
-        <section className="mt-6 rounded-lg border bg-card p-6 shadow-sm">
+        <DetailCard title="Shipment request" className="mt-6">
+          <InfoGrid>
+            <DetailValue label="Request" value={conversation.cargoDescription} />
+            <DetailValue
+              label="Route"
+              value={formatRoute(conversation.origin, conversation.destination)}
+            />
+          </InfoGrid>
+        </DetailCard>
+
+        <DetailCard
+          title="Thread"
+          description="Messages are not live. Refresh the page to check for new replies."
+          className="mt-6"
+        >
           {conversation.messages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No messages yet.</p>
+            <EmptyState
+              title="No messages yet"
+              description="Ask or answer a follow-up question about this shipment."
+            />
           ) : (
             <div className="grid gap-4">
               {conversation.messages.map((message) => (
@@ -87,28 +107,40 @@ export default async function ForwarderConversationPage({
               ))}
             </div>
           )}
-        </section>
+        </DetailCard>
 
-        <form action={sendForwarderMessage} className="mt-6 grid gap-3">
+        <form
+          action={sendForwarderMessage}
+          className="mt-6 grid gap-3 rounded-lg border bg-card p-4 shadow-sm sm:p-5"
+        >
           <input
             type="hidden"
             name="conversationId"
             value={conversation.id}
           />
-          <textarea
+          <Textarea
             name="body"
             required
             rows={4}
             maxLength={2000}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="Write a message"
+            placeholder="Ask or answer a follow-up question about this shipment."
           />
-          <div>
-            <Button type="submit">Send message</Button>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Keep the message focused on shipment details, documents, quote
+            scope, or delivery questions.
+          </p>
+          <div className="flex justify-end">
+            <PendingSubmitButton
+              type="submit"
+              pendingText="Sending..."
+              className="w-full sm:w-auto"
+            >
+              Send message
+            </PendingSubmitButton>
           </div>
         </form>
       </div>
-    </main>
+    </>
   );
 }
 
@@ -120,16 +152,18 @@ type MessageItemProps = {
 
 function MessageItem({ message }: MessageItemProps) {
   return (
-    <article className="rounded-md border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="font-medium">{message.senderName}</p>
-        <p className="text-xs uppercase text-muted-foreground">
-          {message.senderRole}
+    <article className="min-w-0 rounded-md border bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="break-words font-medium">{message.senderName}</p>
+          <StatusBadge>{titleFromEnum(message.senderRole)}</StatusBadge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {formatDateTime(message.createdAt)}
         </p>
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {message.createdAt.toLocaleString()}
+      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
+        {message.body}
       </p>
     </article>
   );

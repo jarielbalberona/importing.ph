@@ -1,7 +1,12 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import {
+  DetailValue,
+  EmptyState,
+  InfoGrid,
+  PageHeader,
+} from "@/components/app-shell";
+import { formatDateTime, formatRoute } from "@/lib/format";
 import { getConversationsForCurrentForwarder } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
@@ -10,55 +15,54 @@ export default async function ForwarderMessagesPage() {
   const conversations = await getConversationsForCurrentForwarder();
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Forwarder</p>
-            <h1 className="text-3xl font-semibold">Messages</h1>
-          </div>
-          <UserButton />
-        </header>
-
-        <div className="mt-6">
-          <Button asChild variant="outline">
-            <Link href="/app/forwarder/requests">Back to open requests</Link>
-          </Button>
-        </div>
+    <>
+      <PageHeader
+        eyebrow="Forwarder"
+        title="Messages"
+        description="Continue conversations with importers after your company sends a quote."
+      />
 
         {conversations.length === 0 ? (
-          <section className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">No conversations yet</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Conversations open after your company submits a quote.
-            </p>
-          </section>
+          <div className="mt-8">
+            <EmptyState
+              title="No conversations yet"
+              description="Messages are available after your company sends a quote for a shipment request."
+            />
+          </div>
         ) : (
-          <section className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
-            <div className="grid divide-y">
+          <section className="mt-8 grid gap-4">
               {conversations.map((conversation) => (
                 <Link
                   key={conversation.id}
                   href={`/app/forwarder/messages/${conversation.id}`}
-                  className="grid gap-3 p-5 transition-colors hover:bg-muted/60 sm:grid-cols-[1fr_auto]"
+                  className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/60 sm:p-5"
                 >
-                  <div>
-                    <h2 className="font-semibold">
+                  <article className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                  <div className="min-w-0">
+                    <h2 className="break-words text-lg font-semibold">
                       {conversation.cargoDescription}
                     </h2>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {conversation.origin} to {conversation.destination}
-                    </p>
+                    <div className="mt-4">
+                      <InfoGrid columns={2}>
+                        <DetailValue
+                          label="Route"
+                          value={formatRoute(conversation.origin, conversation.destination)}
+                        />
+                        <DetailValue
+                          label="Updated"
+                          value={formatDateTime(conversation.updatedAt)}
+                        />
+                      </InfoGrid>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {conversation.updatedAt.toLocaleString()}
-                  </p>
+                  <span className="text-sm font-medium text-cyan-800">
+                    Open thread
+                  </span>
+                  </article>
                 </Link>
               ))}
-            </div>
           </section>
         )}
-      </div>
-    </main>
+    </>
   );
 }

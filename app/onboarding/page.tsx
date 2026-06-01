@@ -17,16 +17,18 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-10">
-      <div className="mx-auto max-w-2xl rounded-lg border bg-card p-6 shadow-sm">
-        <div>
+    <main className="min-h-screen overflow-x-hidden bg-muted px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-2xl rounded-lg border bg-card p-4 shadow-sm sm:p-6">
+        <div className="min-w-0">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-cyan-700">
             Onboarding
           </p>
-          <h1 className="mt-3 text-3xl font-semibold">Set up your workspace</h1>
+          <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
+            Set up your account
+          </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            This writes the business role to PostgreSQL. Clerk remains identity
-            only.
+            Tell us how you will use importing.ph so we can show the right
+            tools.
           </p>
         </div>
         <form action={completeOnboarding} className="mt-8 grid gap-6">
@@ -50,9 +52,9 @@ export default async function OnboardingPage() {
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-semibold">Importer</span>
+                  <span className="block font-semibold">I import goods</span>
                   <span className="mt-1 block text-sm font-normal leading-6 text-muted-foreground">
-                    Create import requests and collect forwarder responses.
+                    Post shipment requests and compare quotes from forwarders.
                   </span>
                 </span>
               </Label>
@@ -65,15 +67,18 @@ export default async function OnboardingPage() {
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-semibold">Forwarder</span>
+                  <span className="block font-semibold">
+                    I provide shipping quotes
+                  </span>
                   <span className="mt-1 block text-sm font-normal leading-6 text-muted-foreground">
-                    Create a forwarder company and join as owner.
+                    Browse shipment requests and send quotes as a logistics
+                    provider.
                   </span>
                 </span>
               </Label>
             </div>
           </fieldset>
-          <Button type="submit" size="lg">
+          <Button type="submit" size="lg" className="w-full sm:w-auto">
             Continue
           </Button>
         </form>

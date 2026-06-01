@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "importing.ph",
-  description: "Import requests and freight forwarding workflow for the Philippines.",
+  title: "Importing PH - A simpler way to find the right shipment quote.",
+  description: "A simpler way to find the right shipment quote.",
 };
 
 export default function RootLayout({

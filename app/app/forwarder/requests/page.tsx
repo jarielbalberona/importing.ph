@@ -1,8 +1,15 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
+import {
+  DetailValue,
+  EmptyState,
+  InfoGrid,
+  PageHeader,
+  StatusBadge,
+} from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   cargoTypeEnum,
   deliveryPreferenceEnum,
@@ -12,6 +19,14 @@ import {
   getOpenShipmentRequestsForForwarder,
   openRequestFiltersFromSearchParams,
 } from "@/lib/forwarder-open-requests";
+import {
+  formatCount,
+  formatDate,
+  formatDimensions,
+  formatMeasure,
+  formatRoute,
+  titleFromEnum,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -27,25 +42,23 @@ export default async function ForwarderRequestsPage({
   const requests = await getOpenShipmentRequestsForForwarder(filters);
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Forwarder</p>
-            <h1 className="text-3xl font-semibold">Open requests</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline">
-              <Link href="/app/notifications">Notifications</Link>
-            </Button>
-            <UserButton />
-          </div>
-        </header>
+    <>
+      <PageHeader
+        eyebrow="Forwarder"
+        title="Open shipment requests"
+        description="Find importer requests that match your service lanes and send private quotes."
+      />
 
-        <form className="mt-8 grid gap-4 rounded-lg border bg-card p-5 shadow-sm">
-          <div className="grid gap-4 md:grid-cols-2">
+        <form className="mt-8 grid gap-5 rounded-lg border bg-card p-4 shadow-sm sm:p-5">
+          <div>
+            <h2 className="text-lg font-semibold">Filter requests</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Narrow the list by route, cargo, delivery, and handling needs.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="grid gap-2 text-sm font-medium">
-              Origin
+              Origin city or area
               <Input
                 name="origin"
                 defaultValue={filters.origin}
@@ -53,7 +66,7 @@ export default async function ForwarderRequestsPage({
               />
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Destination
+              Philippine destination
               <Input
                 name="destination"
                 defaultValue={filters.destination}
@@ -80,79 +93,101 @@ export default async function ForwarderRequestsPage({
             />
             <label className="grid gap-2 text-sm font-medium">
               Special handling
-              <select
+              <Select
                 name="specialHandling"
                 defaultValue={filters.specialHandling ?? ""}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">Any</option>
                 <option value="msds">MSDS mentioned</option>
-              </select>
+              </Select>
             </label>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button type="submit">Apply filters</Button>
-            <Button asChild variant="outline">
-              <Link href="/app/forwarder/requests">Clear</Link>
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Button type="submit" className="w-full sm:w-auto">
+              Apply filters
+            </Button>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href="/app/forwarder/requests">Clear filters</Link>
             </Button>
           </div>
         </form>
 
         {requests.length === 0 ? (
-          <section className="mt-6 rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">No open requests found</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Posted importer requests will appear here when they match the
-              current filters.
-            </p>
-          </section>
+          <div className="mt-6">
+            <EmptyState
+              title="No matching shipment requests"
+              description="Try changing your filters or check again later."
+            />
+          </div>
         ) : (
-          <section className="mt-6 overflow-hidden rounded-lg border bg-card shadow-sm">
-            <div className="grid divide-y">
+          <section className="mt-6 grid gap-4">
               {requests.map((request) => (
                 <Link
                   key={request.id}
                   href={`/app/forwarder/requests/${request.id}`}
-                  className="grid gap-3 p-5 transition-colors hover:bg-muted/60 md:grid-cols-[1fr_auto]"
+                  className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/60 sm:p-5"
                 >
-                  <div>
+                  <article className="grid gap-5 lg:grid-cols-[1fr_auto]">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-semibold">
+                      <h2 className="min-w-0 break-words text-lg font-semibold">
                         {request.cargoDescription}
                       </h2>
-                      <span className="rounded-md border px-2 py-1 text-xs uppercase text-muted-foreground">
-                        {request.status}
-                      </span>
-                      <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-                        {formatLabel(request.cargoType)}
-                      </span>
+                      <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
+                      <StatusBadge>{titleFromEnum(request.cargoType)}</StatusBadge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {request.origin} to {request.destination}
+                      {formatRoute(request.origin, request.destination)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {formatLabel(request.deliveryPreference)} /{" "}
-                      {formatLabel(request.shippingPreference)}
+                      {titleFromEnum(request.deliveryPreference)} /{" "}
+                      {titleFromEnum(request.shippingPreference)}
                     </p>
+                    <div className="mt-4">
+                      <InfoGrid>
+                        <DetailValue
+                          label="Size and weight"
+                          value={sizeSummary(request)}
+                        />
+                        <DetailValue
+                          label="Dimensions"
+                          value={formatDimensions(request)}
+                        />
+                        <DetailValue
+                          label="Posted"
+                          value={formatDate(request.createdAt)}
+                        />
+                      </InfoGrid>
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {request.totalCbm ? `${request.totalCbm} CBM` : null}
-                    {request.totalCbm && request.totalWeightKg ? " / " : null}
-                    {request.totalWeightKg
-                      ? `${request.totalWeightKg} kg`
-                      : null}
-                    {!request.totalCbm && !request.totalWeightKg
-                      ? "Dimensions provided"
-                      : null}
+                  <div className="flex flex-col items-start gap-3 lg:items-end">
+                    <span className="rounded-md border bg-background px-3 py-2 text-sm font-medium">
+                      {formatCount(request.quoteCount, "quote")}
+                    </span>
+                    <span className="text-sm font-medium text-cyan-800">
+                      View request
+                    </span>
                   </div>
+                  </article>
                 </Link>
               ))}
-            </div>
           </section>
         )}
-      </div>
-    </main>
+    </>
   );
+}
+
+type ForwarderRequest = Awaited<
+  ReturnType<typeof getOpenShipmentRequestsForForwarder>
+>[number];
+
+function sizeSummary(request: ForwarderRequest) {
+  const values = [
+    request.totalCbm ? formatMeasure(request.totalCbm, "CBM") : null,
+    request.totalWeightKg ? formatMeasure(request.totalWeightKg, "kg") : null,
+  ].filter(Boolean);
+
+  return values.length > 0 ? values.join(" / ") : "Not provided";
 }
 
 function SelectFilter({
@@ -169,22 +204,17 @@ function SelectFilter({
   return (
     <label className="grid gap-2 text-sm font-medium">
       {label}
-      <select
+      <Select
         name={name}
         defaultValue={value ?? ""}
-        className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <option value="">Any</option>
         {options.map((option) => (
           <option key={option} value={option}>
-            {formatLabel(option)}
+            {titleFromEnum(option)}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
-}
-
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
 }

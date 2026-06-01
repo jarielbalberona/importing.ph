@@ -1,5 +1,13 @@
-import { UserButton } from "@clerk/nextjs";
-
+import {
+  AppShell,
+  DetailCard,
+  EmptyState,
+  PageHeader,
+  StatusBadge,
+} from "@/components/app-shell";
+import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
+import { Input } from "@/components/ui/input";
+import { formatDateTime, titleFromEnum } from "@/lib/format";
 import { getAdminOverview } from "@/lib/admin";
 import {
   suspendForwarderCompany,
@@ -17,106 +25,58 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const overview = await getAdminOverview();
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Admin</p>
-            <h1 className="text-3xl font-semibold">Control plane</h1>
-          </div>
-          <UserButton />
-        </header>
+    <AppShell role="admin">
+      <PageHeader
+        eyebrow="Admin"
+        title="Marketplace safety"
+        description="Review current marketplace activity and pause forwarder companies when quoting needs to be stopped."
+      />
 
-        <section className="mt-8 grid gap-4 md:grid-cols-3">
+      <section id="overview" className="mt-8 scroll-mt-24">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Marketplace overview</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            A simple snapshot of users, shipment requests, and quotes.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
           <SummaryTile label="Users" value={overview.users.length} />
-          <SummaryTile label="Requests" value={overview.requests.length} />
+          <SummaryTile
+            label="Shipment requests"
+            value={overview.requests.length}
+          />
           <SummaryTile label="Quotes" value={overview.quotes.length} />
-        </section>
+        </div>
+      </section>
 
-        {query.safety ? (
-          <div className="mt-6 rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
-            Forwarder company{" "}
-            {query.safety === "suspended" ? "suspended" : "unsuspended"}.
-          </div>
-        ) : null}
+      {query.safety ? (
+        <div className="mt-6 rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
+          Forwarder company{" "}
+          {query.safety === "suspended" ? "suspended" : "restored"}.
+        </div>
+      ) : null}
 
-        {query.error ? (
-          <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            Admin action could not be saved.
-          </div>
-        ) : null}
+      {query.error ? (
+        <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Change was not saved. Try again.
+        </div>
+      ) : null}
 
-        <AdminSection title="Users and profiles">
+        <AdminSection id="users" title="Users">
           {overview.users.length === 0 ? (
-            <EmptyState>No users found.</EmptyState>
+            <EmptyState title="No users found" description="New users will appear here after they create an account." />
           ) : (
             <div className="grid divide-y">
               {overview.users.map((user) => (
                 <article key={user.id} className="grid gap-2 py-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{user.fullName}</h3>
-                    <span className="rounded-md border px-2 py-1 text-xs uppercase text-muted-foreground">
-                      {user.role}
-                    </span>
+                    <StatusBadge>{titleFromEnum(user.role)}</StatusBadge>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {user.importerCompanyName ||
                       user.forwarderCompanyName ||
-                      "No business profile"}
-                  </p>
-                  {user.forwarderCompanyId ? (
-                    <div className="mt-2 rounded-md border p-3">
-                      <p className="text-sm font-medium">
-                        Forwarder safety:{" "}
-                        {user.forwarderCompanyIsSuspended
-                          ? "suspended"
-                          : "active"}
-                      </p>
-                      {user.forwarderCompanySuspendedReason ? (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {user.forwarderCompanySuspendedReason}
-                        </p>
-                      ) : null}
-                      {user.forwarderCompanyIsSuspended ? (
-                        <form
-                          action={unsuspendForwarderCompany}
-                          className="mt-3"
-                        >
-                          <input
-                            type="hidden"
-                            name="forwarderCompanyId"
-                            value={user.forwarderCompanyId}
-                          />
-                          <button className="rounded-md border px-3 py-2 text-sm font-medium">
-                            Unsuspend
-                          </button>
-                        </form>
-                      ) : (
-                        <form
-                          action={suspendForwarderCompany}
-                          className="mt-3 flex flex-wrap gap-2"
-                        >
-                          <input
-                            type="hidden"
-                            name="forwarderCompanyId"
-                            value={user.forwarderCompanyId}
-                          />
-                          <input
-                            name="reason"
-                            required
-                            maxLength={500}
-                            placeholder="Suspension reason"
-                            className="h-10 min-w-64 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          />
-                          <button className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
-                            Suspend
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  ) : null}
-                  <p className="text-xs text-muted-foreground">
-                    Clerk user: {user.clerkUserId}
+                      "No company yet"}
                   </p>
                 </article>
               ))}
@@ -124,9 +84,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           )}
         </AdminSection>
 
-        <AdminSection title="Shipment requests">
+        <AdminSection id="requests" title="Shipment requests">
           {overview.requests.length === 0 ? (
-            <EmptyState>No shipment requests found.</EmptyState>
+            <EmptyState title="No shipment requests found" description="Shipment requests will appear here." />
           ) : (
             <div className="grid divide-y">
               {overview.requests.map((request) => (
@@ -135,12 +95,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <h3 className="font-semibold">
                       {request.cargoDescription}
                     </h3>
-                    <span className="rounded-md border px-2 py-1 text-xs uppercase text-muted-foreground">
-                      {request.status}
-                    </span>
-                    <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-                      {formatLabel(request.cargoType)}
-                    </span>
+                    <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
+                    <StatusBadge>{titleFromEnum(request.cargoType)}</StatusBadge>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {request.origin} to {request.destination}
@@ -155,9 +111,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           )}
         </AdminSection>
 
-        <AdminSection title="Quotes">
+        <AdminSection id="quotes" title="Quotes">
           {overview.quotes.length === 0 ? (
-            <EmptyState>No quotes found.</EmptyState>
+            <EmptyState title="No quotes found" description="Forwarder quotes will appear here." />
           ) : (
             <div className="grid divide-y">
               {overview.quotes.map((quote) => (
@@ -166,9 +122,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <h3 className="font-semibold">
                       {quote.forwarderCompanyName}
                     </h3>
-                    <span className="rounded-md border px-2 py-1 text-xs uppercase text-muted-foreground">
-                      {quote.status}
-                    </span>
+                    <StatusBadge>{titleFromEnum(quote.status)}</StatusBadge>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {quote.currency} {quote.amount} / {quote.serviceOffered}
@@ -181,39 +135,148 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </div>
           )}
         </AdminSection>
-      </div>
-    </main>
+        <AdminSection
+          id="forwarders"
+          title="Forwarder companies"
+          description="Company-level safety controls. This company cannot submit quotes while suspended."
+        >
+          {overview.forwarders.length === 0 ? (
+            <EmptyState
+              title="No forwarder companies found"
+              description="Forwarder companies will appear here after providers set up their accounts."
+            />
+          ) : (
+            <div className="grid gap-4">
+              {overview.forwarders.map((forwarder) => (
+                <article
+                  key={forwarder.id}
+                  className="grid min-w-0 gap-4 rounded-md border p-4 lg:grid-cols-[1fr_auto]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="break-words font-semibold">
+                        {forwarder.name}
+                      </h3>
+                      <ForwarderStatusBadge
+                        isSuspended={forwarder.isSuspended}
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {forwarder.isSuspended
+                        ? "This company cannot submit quotes while suspended."
+                        : "This company can submit quotes on open shipment requests."}
+                    </p>
+                    {forwarder.suspendedReason ? (
+                      <p className="mt-2 text-sm">
+                        <span className="font-medium">Reason:</span>{" "}
+                        {forwarder.suspendedReason}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Last updated {formatDateTime(forwarder.updatedAt)}
+                    </p>
+                  </div>
+                  <div className="lg:min-w-80">
+                    {forwarder.isSuspended ? (
+                      <form action={unsuspendForwarderCompany}>
+                        <input
+                          type="hidden"
+                          name="forwarderCompanyId"
+                          value={forwarder.id}
+                        />
+                        <ConfirmSubmitButton
+                          type="submit"
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                          message={`Restore ${forwarder.name}? This company will be able to submit quotes again.`}
+                        >
+                          Restore company
+                        </ConfirmSubmitButton>
+                      </form>
+                    ) : (
+                      <form
+                        action={suspendForwarderCompany}
+                        className="grid gap-2"
+                      >
+                        <input
+                          type="hidden"
+                          name="forwarderCompanyId"
+                          value={forwarder.id}
+                        />
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor={`reason-${forwarder.id}`}
+                        >
+                          Safety note
+                        </label>
+                        <Input
+                          id={`reason-${forwarder.id}`}
+                          name="reason"
+                          required
+                          maxLength={500}
+                          placeholder="Why quoting should be paused"
+                        />
+                        <ConfirmSubmitButton
+                          type="submit"
+                          className="w-full sm:w-auto"
+                          message={`Suspend ${forwarder.name}? This company cannot submit quotes while suspended.`}
+                        >
+                          Suspend company
+                        </ConfirmSubmitButton>
+                      </form>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </AdminSection>
+    </AppShell>
   );
 }
 
 function SummaryTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border bg-card p-5 shadow-sm">
+    <DetailCard>
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <p className="mt-2 text-3xl font-semibold">{value}</p>
-    </div>
+    </DetailCard>
   );
 }
 
 function AdminSection({
+  id,
   title,
+  description,
   children,
 }: {
+  id: string;
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
+    <DetailCard
+      title={title}
+      description={description}
+      className="mt-8 scroll-mt-24"
+      id={id}
+    >
+      {children}
+    </DetailCard>
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-muted-foreground">{children}</p>;
-}
-
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
+function ForwarderStatusBadge({ isSuspended }: { isSuspended: boolean }) {
+  return (
+    <span
+      className={
+        isSuspended
+          ? "rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive"
+          : "rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
+      }
+    >
+      {isSuspended ? "Suspended" : "Active"}
+    </span>
+  );
 }

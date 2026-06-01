@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 
 import {
   createShipmentRequestForCurrentImporter,
+} from "@/lib/shipment-requests";
+import {
   createShipmentRequestSchema,
   shipmentRequestInputFromFormData,
-} from "@/lib/shipment-requests";
+} from "@/lib/validation";
 
 export async function createShipmentRequest(formData: FormData) {
   const input = shipmentRequestInputFromFormData(formData);

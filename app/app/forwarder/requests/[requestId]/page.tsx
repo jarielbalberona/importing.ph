@@ -1,11 +1,25 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import {
+  DetailCard,
+  DetailValue,
+  InfoGrid,
+  PageHeader,
+  StatusBadge,
+} from "@/components/app-shell";
+import { QuoteSubmissionForm } from "@/components/forms/quote-submission-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  formatCount,
+  formatDate,
+  formatDimensions,
+  formatMeasure,
+  formatMoney,
+  formatRoute,
+  titleFromEnum,
+} from "@/lib/format";
 import {
   getShipmentRequestForForwarderDetail,
   requireForwarderMember,
@@ -14,7 +28,11 @@ import {
   getForwarderOwnQuoteForRequest,
   getQuoteCountForRequest,
 } from "@/lib/quotes";
-import { startForwarderConversation, submitQuote } from "./actions";
+import {
+  defaultValidUntilFromDays,
+  getForwarderQuoteDefaultsForCurrentCompany,
+} from "@/lib/profile-settings";
+import { startForwarderConversation } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,76 +65,93 @@ export default async function ForwarderRequestDetailPage({
     notFound();
   }
 
-  const [quoteCount, ownQuote] = await Promise.all([
+  const [quoteCount, ownQuote, quoteDefaults] = await Promise.all([
     getQuoteCountForRequest(request.id),
     getForwarderOwnQuoteForRequest(request.id, member.companyId),
+    getForwarderQuoteDefaultsForCurrentCompany(member.companyId),
   ]);
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Forwarder</p>
-            <h1 className="text-3xl font-semibold">{request.cargoDescription}</h1>
-          </div>
-          <UserButton />
-        </header>
-
-        <div className="mt-6">
+    <>
+      <PageHeader
+        eyebrow="Forwarder"
+        title={request.cargoDescription}
+        description={`${formatRoute(request.origin, request.destination)} / ${titleFromEnum(request.status)}`}
+        actions={
           <Button asChild variant="outline">
             <Link href="/app/forwarder/requests">Back to open requests</Link>
           </Button>
+        }
+      />
+
+      <div className="mt-6 grid gap-6">
+        <DetailCard title="Shipment summary">
+          <InfoGrid>
+            <DetailValue label="Status" value={<StatusBadge>{titleFromEnum(request.status)}</StatusBadge>} />
+            <DetailValue label="Route" value={formatRoute(request.origin, request.destination)} />
+            <DetailValue label="Cargo type" value={titleFromEnum(request.cargoType)} />
+            <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
+            <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
+            <DetailValue label="Quotes sent" value={formatCount(quoteCount, "quote")} />
+          </InfoGrid>
+        </DetailCard>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DetailCard title="Cargo details">
+            <InfoGrid columns={2}>
+              <DetailValue label="Cargo" value={request.cargoDescription} />
+              <DetailValue label="Cargo type" value={titleFromEnum(request.cargoType)} />
+            </InfoGrid>
+          </DetailCard>
+
+          <DetailCard title="Pickup and destination">
+            <InfoGrid columns={2}>
+              <DetailValue label="Origin" value={request.origin} />
+              <DetailValue label="Destination" value={request.destination} />
+            </InfoGrid>
+          </DetailCard>
         </div>
 
-        <section className="mt-6 grid gap-4 rounded-lg border bg-card p-6 shadow-sm">
-          <DetailValue label="Status" value={request.status.toUpperCase()} />
-          <DetailValue
-            label="Route"
-            value={`${request.origin} to ${request.destination}`}
-          />
-          <DetailValue label="Cargo type" value={formatLabel(request.cargoType)} />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <DetailValue label="Total CBM" value={request.totalCbm} />
-            <DetailValue label="Total weight kg" value={request.totalWeightKg} />
+        <DetailCard title="Size and value">
+          <InfoGrid>
+            <DetailValue label="Total CBM" value={formatMeasure(request.totalCbm, "CBM")} />
+            <DetailValue label="Total weight" value={formatMeasure(request.totalWeightKg, "kg")} />
             <DetailValue
-              label="Package count"
-              value={request.packageCount?.toString()}
+              label="Package or carton count"
+              value={request.packageCount?.toString() || "Not provided"}
             />
-            <DetailValue label="Length cm" value={request.lengthCm} />
-            <DetailValue label="Width cm" value={request.widthCm} />
-            <DetailValue label="Height cm" value={request.heightCm} />
+            <DetailValue label="Dimensions" value={formatDimensions(request)} />
+            <DetailValue label="Declared value" value={request.declaredValue || "Not provided"} />
+          </InfoGrid>
+        </DetailCard>
+
+        <DetailCard title="Shipping preferences">
+          <InfoGrid columns={2}>
+            <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
+            <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
+          </InfoGrid>
+        </DetailCard>
+
+        <DetailCard title="Notes and supporting documents">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DetailValue label="Notes" value={request.notes} />
+            <DetailValue label="Supporting document notes" value={request.attachmentNotes} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailValue
-              label="Delivery preference"
-              value={formatLabel(request.deliveryPreference)}
-            />
-            <DetailValue
-              label="Shipping preference"
-              value={formatLabel(request.shippingPreference)}
-            />
-            <DetailValue label="Declared value" value={request.declaredValue} />
-          </div>
-          <DetailValue label="Notes" value={request.notes} />
-          <DetailValue label="Attachment notes" value={request.attachmentNotes} />
-          <DetailValue label="Quote count" value={quoteCount.toString()} />
-        </section>
+        </DetailCard>
 
         {ownQuote ? (
-          <section className="mt-6 grid gap-4 rounded-lg border bg-card p-6 shadow-sm">
-            <div>
-              <h2 className="text-lg font-semibold">Your quote</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Only your company and the importer owner can see these details.
+            <DetailCard
+              title="Your quote"
+              description="You already sent a quote for this request. Your quote is private. Other forwarders cannot see your price or service details."
+            >
+            <div className="mb-5 rounded-md border bg-muted p-4">
+              <p className="text-sm font-medium text-muted-foreground">Amount</p>
+              <p className="mt-1 break-words text-2xl font-semibold">
+                {formatMoney(ownQuote.currency, ownQuote.quoteAmount)}
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <DetailValue label="Status" value={ownQuote.status} />
-              <DetailValue
-                label="Amount"
-                value={`${ownQuote.currency} ${ownQuote.quoteAmount}`}
-              />
+            <InfoGrid>
+              <DetailValue label="Status" value={<StatusBadge>{titleFromEnum(ownQuote.status)}</StatusBadge>} />
               <DetailValue
                 label="Transit range"
                 value={`${ownQuote.estimatedTransitMinDays}-${ownQuote.estimatedTransitMaxDays} days`}
@@ -127,24 +162,28 @@ export default async function ForwarderRequestDetailPage({
               />
               <DetailValue
                 label="Valid until"
-                value={ownQuote.validUntil.toLocaleDateString()}
+                value={formatDate(ownQuote.validUntil)}
               />
+            </InfoGrid>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <DetailValue label="Inclusions" value={ownQuote.inclusions} />
+              <DetailValue label="Exclusions" value={ownQuote.exclusions} />
+              <DetailValue label="Notes" value={ownQuote.notes} />
             </div>
-            <DetailValue label="Inclusions" value={ownQuote.inclusions} />
-            <DetailValue label="Exclusions" value={ownQuote.exclusions} />
-            <DetailValue label="Notes" value={ownQuote.notes} />
-            <form action={startForwarderConversation}>
-              <input type="hidden" name="requestId" value={request.id} />
-              <Button type="submit" variant="outline">
-                Message importer
-              </Button>
-            </form>
-          </section>
+            <div className="mt-5 border-t pt-5">
+              <form action={startForwarderConversation}>
+                <input type="hidden" name="requestId" value={request.id} />
+                <Button type="submit" variant="outline" className="w-full sm:w-auto">
+                  Message importer
+                </Button>
+              </form>
+            </div>
+          </DetailCard>
         ) : null}
 
         {query.quote === "submitted" ? (
           <div className="mt-6 rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
-            Quote submitted.
+            Your quote was sent.
           </div>
         ) : null}
 
@@ -161,111 +200,33 @@ export default async function ForwarderRequestDetailPage({
         ) : null}
 
         {ownQuote ? null : (
-        <form action={submitQuote} className="mt-6 grid gap-5 rounded-lg border bg-card p-6 shadow-sm">
-          <input type="hidden" name="requestId" value={request.id} />
-          <div>
-            <h2 className="text-lg font-semibold">Submit quote</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              One submitted quote per forwarder company is allowed for this
-              request.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="quoteAmount">Amount</Label>
-              <Input
-                id="quoteAmount"
-                name="quoteAmount"
-                required
-                inputMode="decimal"
-                placeholder="25000.00"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Input id="currency" name="currency" defaultValue="PHP" required />
-            </div>
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="serviceOffered">Service offered</Label>
-              <Input
-                id="serviceOffered"
-                name="serviceOffered"
-                required
-                placeholder="China to Philippines door-to-door consolidation"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="estimatedTransitMinDays">
-                Minimum transit days
-              </Label>
-              <Input
-                id="estimatedTransitMinDays"
-                name="estimatedTransitMinDays"
-                required
-                inputMode="numeric"
-                placeholder="12"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="estimatedTransitMaxDays">
-                Maximum transit days
-              </Label>
-              <Input
-                id="estimatedTransitMaxDays"
-                name="estimatedTransitMaxDays"
-                required
-                inputMode="numeric"
-                placeholder="18"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="validUntil">Valid until</Label>
-              <Input id="validUntil" name="validUntil" type="date" required />
-            </div>
-          </div>
-
-          <label className="grid gap-2 text-sm font-medium">
-            Inclusions
-            <textarea
-              name="inclusions"
-              required
-              rows={3}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Exclusions
-            <textarea
-              name="exclusions"
-              required
-              rows={3}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Notes
-            <textarea
-              name="notes"
-              rows={3}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </label>
-
-          <div>
-            <Button type="submit">Submit quote</Button>
-          </div>
-        </form>
+          <QuoteSubmissionForm
+            requestId={request.id}
+            defaultValues={{
+              currency: quoteDefaults?.currency ?? "PHP",
+              serviceOffered: quoteDefaults?.serviceOffered ?? "",
+              estimatedTransitMinDays:
+                quoteDefaults?.transitMinDays?.toString() ?? "",
+              estimatedTransitMaxDays:
+                quoteDefaults?.transitMaxDays?.toString() ?? "",
+              inclusions: quoteDefaults?.inclusions ?? "",
+              exclusions: quoteDefaults?.exclusions ?? "",
+              notes: quoteDefaults?.notes ?? "",
+              validUntil:
+                defaultValidUntilFromDays(quoteDefaults?.validForDays ?? null) ??
+                "",
+            }}
+          />
         )}
       </div>
-    </main>
+    </>
   );
 }
 
 function errorMessage(error: string) {
   switch (error) {
     case "duplicate":
-      return "Your company already submitted a quote for this request.";
+      return "Your company already sent a quote for this request.";
     case "request_unavailable":
       return "This request is no longer available for quoting.";
     case "forwarder_suspended":
@@ -273,36 +234,17 @@ function errorMessage(error: string) {
     case "validation":
       return "Complete the quote fields with a valid amount, transit range, and future validity date.";
     default:
-      return "The quote could not be submitted.";
+      return "The quote was not sent. Try again.";
   }
 }
 
 function messageErrorMessage(error: string) {
   switch (error) {
     case "no_quote":
-      return "Messaging opens only after your company has submitted a quote.";
+      return "Messages are available after your company sends a quote.";
     case "not_found":
       return "That conversation is not available.";
     default:
-      return "Messaging could not be opened.";
+      return "Messages are not available right now.";
   }
-}
-
-function DetailValue({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="grid gap-1">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p>{value || "Not provided"}</p>
-    </div>
-  );
-}
-
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
 }

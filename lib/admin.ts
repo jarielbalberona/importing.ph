@@ -19,13 +19,14 @@ export async function requireAdmin() {
 export async function getAdminOverview() {
   await requireAdmin();
 
-  const [users, requests, quoteRows] = await Promise.all([
+  const [users, requests, quoteRows, forwarders] = await Promise.all([
     getAdminUsers(),
     getAdminRequests(),
     getAdminQuotes(),
+    getAdminForwarders(),
   ]);
 
-  return { users, requests, quotes: quoteRows };
+  return { users, requests, quotes: quoteRows, forwarders };
 }
 
 async function getAdminUsers() {
@@ -34,12 +35,8 @@ async function getAdminUsers() {
       id: userProfiles.id,
       role: userProfiles.role,
       fullName: userProfiles.fullName,
-      clerkUserId: userProfiles.clerkUserId,
       importerCompanyName: importerProfiles.companyName,
       forwarderCompanyName: forwarderCompanies.name,
-      forwarderCompanyId: forwarderCompanies.id,
-      forwarderCompanyIsSuspended: forwarderCompanies.isSuspended,
-      forwarderCompanySuspendedReason: forwarderCompanies.suspendedReason,
       createdAt: userProfiles.createdAt,
     })
     .from(userProfiles)
@@ -50,6 +47,21 @@ async function getAdminUsers() {
       eq(forwarderCompanies.id, forwarderMembers.forwarderCompanyId),
     )
     .orderBy(desc(userProfiles.createdAt));
+}
+
+async function getAdminForwarders() {
+  return db
+    .select({
+      id: forwarderCompanies.id,
+      name: forwarderCompanies.name,
+      isSuspended: forwarderCompanies.isSuspended,
+      suspendedReason: forwarderCompanies.suspendedReason,
+      suspendedAt: forwarderCompanies.suspendedAt,
+      createdAt: forwarderCompanies.createdAt,
+      updatedAt: forwarderCompanies.updatedAt,
+    })
+    .from(forwarderCompanies)
+    .orderBy(desc(forwarderCompanies.updatedAt));
 }
 
 export async function suspendForwarderCompanyForCurrentAdmin(input: {

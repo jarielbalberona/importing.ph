@@ -93,7 +93,7 @@ export async function notifyQuoteSubmitted(input: {
     actorUserProfileId: input.actorUserProfileId,
     type: "new_quote_received",
     title: "New quote received",
-    body: `${target.forwarderCompanyName} submitted a quote for ${target.cargoDescription}.`,
+    body: `${target.forwarderCompanyName} sent a quote for ${target.cargoDescription}.`,
     linkHref: `/app/requests/${input.requestId}`,
     sourceShipmentRequestId: input.requestId,
     sourceQuoteId: input.quoteId,
@@ -134,8 +134,10 @@ export async function notifyQuoteDecision(input: {
     recipientUserProfileId: target.forwarderUserProfileId,
     actorUserProfileId: input.actorUserProfileId,
     type: isAccepted ? "quote_accepted" : "quote_rejected",
-    title: isAccepted ? "Quote accepted" : "Quote rejected",
-    body: `Your quote for ${target.cargoDescription} was ${input.decision}.`,
+    title: isAccepted ? "Quote accepted" : "Quote declined",
+    body: `Your quote for ${target.cargoDescription} was ${
+      isAccepted ? "accepted" : "declined"
+    }.`,
     linkHref: `/app/forwarder/requests/${input.requestId}`,
     sourceShipmentRequestId: input.requestId,
     sourceQuoteId: input.quoteId,

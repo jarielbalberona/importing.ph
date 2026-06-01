@@ -1,16 +1,7 @@
-import { redirect } from "next/navigation";
-
-import { getProfileForCurrentUser } from "@/lib/authz";
-import { destinationForRole } from "@/lib/routes";
+import { AfterAuthResolver } from "./resolver";
 
 export const dynamic = "force-dynamic";
 
-export default async function AfterAuthPage() {
-  const { profile } = await getProfileForCurrentUser();
-
-  if (!profile) {
-    redirect("/onboarding");
-  }
-
-  redirect(destinationForRole(profile.role));
+export default function AfterAuthPage() {
+  return <AfterAuthResolver />;
 }

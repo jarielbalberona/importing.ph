@@ -110,6 +110,8 @@ export const importerProfiles = pgTable(
       .notNull()
       .references(() => userProfiles.id, { onDelete: "cascade" }),
     companyName: text("company_name").notNull(),
+    location: text("location"),
+    contactPhone: text("contact_phone"),
     ...timestamps,
   },
   (table) => [
@@ -122,6 +124,12 @@ export const importerProfiles = pgTable(
 export const forwarderCompanies = pgTable("forwarder_companies", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  contactPerson: text("contact_person"),
+  contactEmail: text("contact_email"),
+  originCities: text("origin_cities"),
+  destinationAreas: text("destination_areas"),
+  shippingModes: text("shipping_modes"),
+  serviceDescription: text("service_description"),
   isSuspended: boolean("is_suspended").notNull().default(false),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   suspendedReason: text("suspended_reason"),
@@ -131,6 +139,30 @@ export const forwarderCompanies = pgTable("forwarder_companies", {
   ),
   ...timestamps,
 });
+
+export const forwarderQuoteDefaults = pgTable(
+  "forwarder_quote_defaults",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    forwarderCompanyId: uuid("forwarder_company_id")
+      .notNull()
+      .references(() => forwarderCompanies.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull().default("PHP"),
+    serviceOffered: text("service_offered"),
+    transitMinDays: integer("transit_min_days"),
+    transitMaxDays: integer("transit_max_days"),
+    inclusions: text("inclusions"),
+    exclusions: text("exclusions"),
+    notes: text("notes"),
+    validForDays: integer("valid_for_days"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("forwarder_quote_defaults_company_id_idx").on(
+      table.forwarderCompanyId,
+    ),
+  ],
+);
 
 export const forwarderMembers = pgTable(
   "forwarder_members",

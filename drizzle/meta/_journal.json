@@ -57,6 +57,13 @@
       "when": 1780288528106,
       "tag": "0007_dry_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780316988511,
+      "tag": "0008_zippy_prism",
+      "breakpoints": true
     }
   ]
 }

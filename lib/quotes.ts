@@ -1,5 +1,4 @@
 import { and, count, eq, sql } from "drizzle-orm";
-import { z } from "zod";
 
 import { db } from "@/db";
 import {
@@ -10,6 +9,7 @@ import {
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyQuoteDecision, notifyQuoteSubmitted } from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
+import { dateFromDateInput, quoteSubmissionSchema } from "@/lib/validation";
 
 export class QuoteSubmissionError extends Error {
   constructor(
@@ -29,62 +29,6 @@ export class QuoteDecisionError extends Error {
   ) {
     super(code);
   }
-}
-
-const optionalLongText = z
-  .string()
-  .trim()
-  .max(2000)
-  .optional()
-  .transform((value) => value || undefined);
-
-export const quoteSubmissionSchema = z
-  .object({
-    quoteAmount: z
-      .string()
-      .trim()
-      .regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount."),
-    currency: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .default("PHP")
-      .pipe(z.literal("PHP")),
-    serviceOffered: z.string().trim().min(3).max(240),
-    estimatedTransitMinDays: z.coerce.number().int().min(1).max(365),
-    estimatedTransitMaxDays: z.coerce.number().int().min(1).max(365),
-    inclusions: z.string().trim().min(1).max(2000),
-    exclusions: z.string().trim().min(1).max(2000),
-    notes: optionalLongText,
-    validUntil: z.coerce.date(),
-  })
-  .refine(
-    (input) =>
-      input.estimatedTransitMaxDays >= input.estimatedTransitMinDays,
-    {
-      message: "Maximum transit days must be greater than or equal to minimum.",
-      path: ["estimatedTransitMaxDays"],
-    },
-  )
-  .refine((input) => input.validUntil.getTime() > Date.now(), {
-    message: "Quote validity must be in the future.",
-    path: ["validUntil"],
-  });
-
-export type QuoteSubmissionInput = z.infer<typeof quoteSubmissionSchema>;
-
-export function quoteSubmissionInputFromFormData(formData: FormData) {
-  return {
-    quoteAmount: formData.get("quoteAmount"),
-    currency: formData.get("currency") || "PHP",
-    serviceOffered: formData.get("serviceOffered"),
-    estimatedTransitMinDays: formData.get("estimatedTransitMinDays"),
-    estimatedTransitMaxDays: formData.get("estimatedTransitMaxDays"),
-    inclusions: formData.get("inclusions"),
-    exclusions: formData.get("exclusions"),
-    notes: formData.get("notes"),
-    validUntil: formData.get("validUntil"),
-  };
 }
 
 export const importerQuoteColumns = {
@@ -348,7 +292,7 @@ export async function createQuoteForCurrentForwarder(
       inclusions: parsed.inclusions,
       exclusions: parsed.exclusions,
       notes: parsed.notes,
-      validUntil: parsed.validUntil,
+      validUntil: dateFromDateInput(parsed.validUntil),
     })
     .returning({ id: quotes.id });
 

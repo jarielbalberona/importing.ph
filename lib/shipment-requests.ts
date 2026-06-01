@@ -1,94 +1,17 @@
-import { and, desc, eq } from "drizzle-orm";
-import { z } from "zod";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
-  cargoTypeEnum,
-  deliveryPreferenceEnum,
   importerProfiles,
+  quotes,
   shipmentRequests,
-  shippingPreferenceEnum,
   type UserRole,
 } from "@/db/schema";
 import { requireRole } from "@/lib/authz";
-
-const optionalDecimal = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value) => (value ? value : undefined))
-  .pipe(
-    z
-      .string()
-      .regex(/^\d+(\.\d+)?$/, "Must be a positive number")
-      .optional(),
-  );
-
-const optionalInteger = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value) => (value ? value : undefined))
-  .pipe(z.string().regex(/^\d+$/, "Must be a positive whole number").optional());
-
-export const createShipmentRequestSchema = z
-  .object({
-    cargoDescription: z.string().trim().min(3).max(240),
-    cargoType: z.enum(cargoTypeEnum.enumValues),
-    totalCbm: optionalDecimal,
-    totalWeightKg: optionalDecimal,
-    packageCount: optionalInteger,
-    lengthCm: optionalDecimal,
-    widthCm: optionalDecimal,
-    heightCm: optionalDecimal,
-    declaredValue: optionalDecimal,
-    origin: z.string().trim().min(2).max(160),
-    destination: z.string().trim().min(2).max(160),
-    deliveryPreference: z.enum(deliveryPreferenceEnum.enumValues),
-    shippingPreference: z.enum(shippingPreferenceEnum.enumValues),
-    notes: z.string().trim().max(1000).optional(),
-    attachmentNotes: z.string().trim().max(1000).optional(),
-  })
-  .refine(
-    (input) =>
-      Boolean(input.totalCbm) ||
-      Boolean(input.totalWeightKg) ||
-      Boolean(
-        input.lengthCm &&
-          input.widthCm &&
-          input.heightCm &&
-          input.packageCount,
-      ),
-    {
-      message:
-        "Provide total CBM, total weight, or dimensions plus package count.",
-      path: ["totalCbm"],
-    },
-  );
-
-export type CreateShipmentRequestInput = z.infer<
-  typeof createShipmentRequestSchema
->;
-
-export function shipmentRequestInputFromFormData(formData: FormData) {
-  return {
-    cargoDescription: formData.get("cargoDescription"),
-    cargoType: formData.get("cargoType"),
-    totalCbm: formData.get("totalCbm"),
-    totalWeightKg: formData.get("totalWeightKg"),
-    packageCount: formData.get("packageCount"),
-    lengthCm: formData.get("lengthCm"),
-    widthCm: formData.get("widthCm"),
-    heightCm: formData.get("heightCm"),
-    declaredValue: formData.get("declaredValue"),
-    origin: formData.get("origin"),
-    destination: formData.get("destination"),
-    deliveryPreference: formData.get("deliveryPreference"),
-    shippingPreference: formData.get("shippingPreference"),
-    notes: formData.get("notes"),
-    attachmentNotes: formData.get("attachmentNotes"),
-  };
-}
+import {
+  createShipmentRequestSchema,
+  type CreateShipmentRequestInput,
+} from "@/lib/validation";
 
 export async function requireImporterProfile() {
   const profile = await requireRole(["importer"] satisfies UserRole[]);
@@ -142,7 +65,10 @@ export async function getShipmentRequestsForCurrentImporter() {
   const { importerProfile } = await requireImporterProfile();
 
   return db
-    .select()
+    .select({
+      ...getTableColumns(shipmentRequests),
+      quoteCount: sql<number>`cast((select count(*) from ${quotes} where ${quotes.shipmentRequestId} = ${shipmentRequests.id}) as int)`,
+    })
     .from(shipmentRequests)
     .where(eq(shipmentRequests.importerProfileId, importerProfile.id))
     .orderBy(desc(shipmentRequests.createdAt));

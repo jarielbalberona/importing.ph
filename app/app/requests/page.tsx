@@ -1,8 +1,22 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
-import { requireRole } from "@/lib/authz";
+import {
+  DetailValue,
+  EmptyState,
+  InfoGrid,
+  PageHeader,
+  StatusBadge,
+} from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import {
+  formatCount,
+  formatDate,
+  formatDimensions,
+  formatMeasure,
+  formatRoute,
+  titleFromEnum,
+} from "@/lib/format";
+import { requireRole } from "@/lib/authz";
 import { getShipmentRequestsForCurrentImporter } from "@/lib/shipment-requests";
 
 export const dynamic = "force-dynamic";
@@ -12,73 +26,99 @@ export default async function ImporterRequestsPage() {
   const requests = await getShipmentRequestsForCurrentImporter();
 
   return (
-    <main className="min-h-screen bg-muted px-6 py-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-cyan-700">Importer</p>
-            <h1 className="text-3xl font-semibold">Requests</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline">
-              <Link href="/app/notifications">Notifications</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/app/requests/new">New request</Link>
-            </Button>
-            <UserButton />
-          </div>
-        </header>
+    <>
+      <PageHeader
+        eyebrow="Importer"
+        title="Shipment requests"
+        description="Review your posted shipment requests, compare private quotes, and continue conversations with forwarders."
+        actions={
+          <Button asChild size="lg">
+            <Link href="/app/requests/new">New request</Link>
+          </Button>
+        }
+      />
 
         {requests.length === 0 ? (
-          <section className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">No requests yet</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Create the first quoteable shipment request before inviting
-              forwarder activity.
-            </p>
-            <Button asChild className="mt-5">
+          <div className="mt-8">
+            <EmptyState
+              title="No shipment requests yet"
+              description="Create your first request so forwarders can send quotes."
+              action={
+                <Button asChild>
               <Link href="/app/requests/new">Create request</Link>
-            </Button>
-          </section>
+                </Button>
+              }
+            />
+          </div>
         ) : (
-          <section className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
-            <div className="grid gap-0 divide-y">
+          <section className="mt-8 grid gap-4">
               {requests.map((request) => (
                 <Link
                   key={request.id}
                   href={`/app/requests/${request.id}`}
-                  className="grid gap-3 p-5 transition-colors hover:bg-muted/60 sm:grid-cols-[1fr_auto]"
+                  className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/60 sm:p-5"
                 >
-                  <div>
+                  <article className="grid gap-5 lg:grid-cols-[1fr_auto]">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-semibold">
+                      <h2 className="min-w-0 break-words text-lg font-semibold">
                         {request.cargoDescription}
                       </h2>
-                      <span className="rounded-md border px-2 py-1 text-xs uppercase text-muted-foreground">
-                        {request.status}
-                      </span>
+                      <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {request.origin} to {request.destination}
+                      {formatRoute(request.origin, request.destination)}
                     </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {titleFromEnum(request.cargoType)} /{" "}
+                      {titleFromEnum(request.deliveryPreference)}
+                    </p>
+                    <div className="mt-4">
+                      <InfoGrid>
+                        <DetailValue
+                          label="Size and weight"
+                          value={sizeSummary(request)}
+                        />
+                        <DetailValue
+                          label="Dimensions"
+                          value={formatDimensions(request)}
+                        />
+                        <DetailValue
+                          label="Last updated"
+                          value={formatDate(request.updatedAt)}
+                        />
+                      </InfoGrid>
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {request.totalCbm ? `${request.totalCbm} CBM` : null}
-                    {request.totalCbm && request.totalWeightKg ? " / " : null}
-                    {request.totalWeightKg
-                      ? `${request.totalWeightKg} kg`
-                      : null}
-                    {!request.totalCbm && !request.totalWeightKg
-                      ? "Dimensions provided"
-                      : null}
+                  <div className="flex flex-col items-start gap-3 lg:items-end">
+                    <span className="rounded-md border bg-background px-3 py-2 text-sm font-medium">
+                      {formatCount(request.quoteCount, "quote")}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Posted {formatDate(request.createdAt)}
+                    </span>
+                    <span className="text-sm font-medium text-cyan-800">
+                      View details
+                    </span>
                   </div>
+                  </article>
                 </Link>
               ))}
-            </div>
           </section>
         )}
-      </div>
-    </main>
+    </>
   );
+}
+
+type ImporterRequest = Awaited<
+  ReturnType<typeof getShipmentRequestsForCurrentImporter>
+>[number];
+
+function sizeSummary(request: ImporterRequest) {
+  const values = [
+    request.totalCbm ? formatMeasure(request.totalCbm, "CBM") : null,
+    request.totalWeightKg ? formatMeasure(request.totalWeightKg, "kg") : null,
+  ].filter(Boolean);
+
+  return values.length > 0 ? values.join(" / ") : "Not provided";
 }
