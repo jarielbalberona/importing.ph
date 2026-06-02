@@ -7,7 +7,10 @@ import {
   PageHeader,
   StatusBadge,
 } from "@/components/app-shell";
+import { SummaryCard } from "@/components/summary-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   formatCount,
   formatDate,
@@ -24,6 +27,16 @@ export const dynamic = "force-dynamic";
 export default async function ImporterRequestsPage() {
   await requireRole(["importer"]);
   const requests = await getShipmentRequestsForCurrentImporter();
+  const totalQuotes = requests.reduce(
+    (sum, request) => sum + request.quoteCount,
+    0,
+  );
+  const activeRequests = requests.filter(
+    (request) => request.status === "posted",
+  ).length;
+  const selectedRequests = requests.filter(
+    (request) => request.status === "quote_selected",
+  ).length;
 
   return (
     <>
@@ -38,27 +51,30 @@ export default async function ImporterRequestsPage() {
         }
       />
 
-        {requests.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState
-              title="No shipment requests yet"
-              description="Create your first request so forwarders can send quotes."
-              action={
-                <Button asChild>
-              <Link href="/app/requests/new">Create request</Link>
-                </Button>
-              }
-            />
-          </div>
-        ) : (
-          <section className="mt-8 grid gap-4">
-              {requests.map((request) => (
-                <Link
-                  key={request.id}
-                  href={`/app/requests/${request.id}`}
-                  className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/60 sm:p-5"
-                >
-                  <article className="grid gap-5 lg:grid-cols-[1fr_auto]">
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <SummaryCard label="Active requests" value={activeRequests} />
+        <SummaryCard label="Quotes received" value={totalQuotes} />
+        <SummaryCard label="Quotes selected" value={selectedRequests} />
+      </section>
+
+      {requests.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            title="No shipment requests yet"
+            description="Create your first request so forwarders can send quotes."
+            action={
+              <Button asChild>
+                <Link href="/app/requests/new">Create request</Link>
+              </Button>
+            }
+          />
+        </div>
+      ) : (
+        <section className="mt-8 grid gap-4 xl:grid-cols-2">
+          {requests.map((request) => (
+            <Link key={request.id} href={`/app/requests/${request.id}`}>
+              <Card className="transition-colors hover:bg-accent">
+                <CardContent>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="min-w-0 break-words text-lg font-semibold">
@@ -90,22 +106,23 @@ export default async function ImporterRequestsPage() {
                       </InfoGrid>
                     </div>
                   </div>
-                  <div className="flex flex-col items-start gap-3 lg:items-end">
-                    <span className="rounded-md border bg-background px-3 py-2 text-sm font-medium">
-                      {formatCount(request.quoteCount, "quote")}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Posted {formatDate(request.createdAt)}
-                    </span>
-                    <span className="text-sm font-medium text-cyan-800">
-                      View details
-                    </span>
-                  </div>
-                  </article>
-                </Link>
-              ))}
-          </section>
-        )}
+                </CardContent>
+                <CardFooter className="justify-between gap-3">
+                  <Badge variant="outline">
+                    {formatCount(request.quoteCount, "quote")}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Posted {formatDate(request.createdAt)}
+                  </span>
+                  <span className="text-sm font-medium text-primary">
+                    View details
+                  </span>
+                </CardFooter>
+              </Card>
+            </Link>
+          ))}
+        </section>
+      )}
     </>
   );
 }

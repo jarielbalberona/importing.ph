@@ -1,7 +1,18 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { Menu, X } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  ClipboardList,
+  Home,
+  Menu,
+  MessageSquare,
+  UserRound,
+  UsersRound,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,6 +25,7 @@ import { cn } from "@/lib/utils";
 type NavItem = {
   href: string;
   label: string;
+  icon: LucideIcon;
   startsWith?: string;
   exclude?: string[];
 };
@@ -23,37 +35,41 @@ const navByRole: Record<UserRole, NavItem[]> = {
     {
       href: "/app/requests",
       label: "Requests",
+      icon: ClipboardList,
       startsWith: "/app/requests",
       exclude: ["/app/requests/messages"],
     },
     {
       href: "/app/requests/messages",
       label: "Messages",
+      icon: MessageSquare,
       startsWith: "/app/requests/messages",
     },
-    { href: "/app/notifications", label: "Notifications" },
-    { href: "/app/profile", label: "Profile" },
+    { href: "/app/notifications", label: "Notifications", icon: Bell },
+    { href: "/app/profile", label: "Profile", icon: UserRound },
   ],
   forwarder: [
     {
       href: "/app/forwarder/requests",
       label: "Open requests",
+      icon: ClipboardList,
       startsWith: "/app/forwarder/requests",
     },
     {
       href: "/app/forwarder/messages",
       label: "Messages",
+      icon: MessageSquare,
       startsWith: "/app/forwarder/messages",
     },
-    { href: "/app/notifications", label: "Notifications" },
-    { href: "/app/forwarder/company", label: "Company profile" },
+    { href: "/app/notifications", label: "Notifications", icon: Bell },
+    { href: "/app/forwarder/company", label: "Company profile", icon: Building2 },
   ],
   admin: [
-    { href: "/admin", label: "Overview" },
-    { href: "/admin#users", label: "Users" },
-    { href: "/admin#requests", label: "Requests" },
-    { href: "/admin#quotes", label: "Quotes" },
-    { href: "/admin#forwarders", label: "Forwarders" },
+    { href: "/admin", label: "Overview", icon: Home },
+    { href: "/admin#users", label: "Users", icon: UsersRound },
+    { href: "/admin#requests", label: "Requests", icon: ClipboardList },
+    { href: "/admin#quotes", label: "Quotes", icon: MessageSquare },
+    { href: "/admin#forwarders", label: "Forwarders", icon: Building2 },
   ],
 };
 
@@ -107,9 +123,9 @@ export function AppHeader({ role }: { role: UserRole }) {
   }, [isDrawerOpen]);
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background">
-      <div className="mx-auto grid min-h-16 w-full max-w-6xl grid-cols-1 gap-3 px-4 py-3 sm:px-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-        <div className="flex min-w-0 items-center justify-between gap-4">
+    <>
+      <header className="sticky top-0 z-40 border-b bg-background lg:hidden">
+        <div className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               ref={toggleRef}
@@ -133,20 +149,37 @@ export function AppHeader({ role }: { role: UserRole }) {
               />
             </Link>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center lg:hidden">
+          <div className="flex h-10 w-10 items-center justify-center">
             <UserButton />
           </div>
         </div>
-        <nav
-          aria-label="Main navigation"
-          className="hidden w-full lg:flex lg:h-10 lg:flex-nowrap lg:items-center lg:justify-center lg:gap-2"
-        >
+      </header>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-background lg:flex">
+        <div className="flex h-24 items-center px-6">
+          <Link href="/" className="shrink-0" aria-label="importing.ph home">
+            <Image
+              src="/assets/importingph.png"
+              alt="importing.ph"
+              width={173}
+              height={50}
+              priority
+              className="h-11 w-auto"
+            />
+          </Link>
+        </div>
+        <nav aria-label="Main navigation" className="grid gap-1 px-4">
           <NavLinks items={navItems} pathname={pathname} variant="desktop" />
         </nav>
-        <div className="hidden h-10 w-10 items-center justify-center lg:flex">
+        <div className="mt-auto flex items-center gap-3 border-t px-5 py-5">
           <UserButton />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{roleLabel(role)}</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Account
+            </p>
+          </div>
         </div>
-      </div>
+      </aside>
       <MobileNavigationDrawer
         closeRef={closeRef}
         drawerId={drawerId}
@@ -155,7 +188,7 @@ export function AppHeader({ role }: { role: UserRole }) {
         pathname={pathname}
         onClose={() => setIsDrawerOpen(false)}
       />
-    </header>
+    </>
   );
 }
 
@@ -261,6 +294,7 @@ function NavLinks({
 }) {
   return items.map((item) => {
     const isActive = isNavItemActive(item, pathname);
+    const Icon = item.icon;
 
     return (
       <Link
@@ -269,15 +303,16 @@ function NavLinks({
         aria-current={isActive ? "page" : undefined}
         tabIndex={isInteractive ? undefined : -1}
         className={cn(
-          "inline-flex h-10 min-w-0 items-center rounded-md px-3 text-sm font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+          "inline-flex h-10 min-w-0 items-center gap-3 rounded-md px-3 text-sm font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
           variant === "desktop"
-            ? "w-36 justify-center text-center whitespace-nowrap"
+            ? "w-full justify-start text-left"
             : "w-full justify-start text-left",
           isActive &&
-            "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+            "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
         )}
         onClick={onNavigate}
       >
+        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="truncate">{item.label}</span>
       </Link>
     );
@@ -290,4 +325,15 @@ function isNavItemActive(item: NavItem, pathname: string) {
       Boolean(item.startsWith && pathname.startsWith(item.startsWith))) &&
     !item.exclude?.some((path) => pathname.startsWith(path))
   );
+}
+
+function roleLabel(role: UserRole) {
+  switch (role) {
+    case "importer":
+      return "Importer workspace";
+    case "forwarder":
+      return "Forwarder workspace";
+    case "admin":
+      return "Admin workspace";
+  }
 }

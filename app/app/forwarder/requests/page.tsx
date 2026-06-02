@@ -7,7 +7,17 @@ import {
   PageHeader,
   StatusBadge,
 } from "@/components/app-shell";
+import { SummaryCard } from "@/components/summary-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -40,6 +50,12 @@ export default async function ForwarderRequestsPage({
   const rawSearchParams = await searchParams;
   const filters = openRequestFiltersFromSearchParams(rawSearchParams);
   const requests = await getOpenShipmentRequestsForForwarder(filters);
+  const totalQuotes = requests.reduce(
+    (sum, request) => sum + request.quoteCount,
+    0,
+  );
+  const withQuotes = requests.filter((request) => request.quoteCount > 0).length;
+  const hasFilters = Object.values(filters).some(Boolean);
 
   return (
     <>
@@ -49,92 +65,108 @@ export default async function ForwarderRequestsPage({
         description="Find importer requests that match your service lanes and send private quotes."
       />
 
-        <form className="mt-8 grid gap-5 rounded-lg border bg-card p-4 shadow-sm sm:p-5">
-          <div>
-            <h2 className="text-lg font-semibold">Filter requests</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Narrow the list by route, cargo, delivery, and handling needs.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label className="grid gap-2 text-sm font-medium">
-              Origin city or area
-              <Input
-                name="origin"
-                defaultValue={filters.origin}
-                placeholder="Guangzhou, Yiwu, Shenzhen"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Philippine destination
-              <Input
-                name="destination"
-                defaultValue={filters.destination}
-                placeholder="Manila, Cebu, Davao"
-              />
-            </label>
-            <SelectFilter
-              label="Cargo type"
-              name="cargoType"
-              value={filters.cargoType}
-              options={cargoTypeEnum.enumValues}
-            />
-            <SelectFilter
-              label="Delivery preference"
-              name="deliveryPreference"
-              value={filters.deliveryPreference}
-              options={deliveryPreferenceEnum.enumValues}
-            />
-            <SelectFilter
-              label="Shipping preference"
-              name="shippingPreference"
-              value={filters.shippingPreference}
-              options={shippingPreferenceEnum.enumValues}
-            />
-            <label className="grid gap-2 text-sm font-medium">
-              Special handling
-              <Select
-                name="specialHandling"
-                defaultValue={filters.specialHandling ?? ""}
-              >
-                <option value="">Any</option>
-                <option value="msds">MSDS mentioned</option>
-              </Select>
-            </label>
-          </div>
-          <div className="grid gap-3 sm:flex sm:flex-wrap">
-            <Button type="submit" className="w-full sm:w-auto">
-              Apply filters
-            </Button>
-            <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link href="/app/forwarder/requests">Clear filters</Link>
-            </Button>
-          </div>
-        </form>
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <SummaryCard label="Open requests" value={requests.length} />
+        <SummaryCard label="With quotes" value={withQuotes} />
+        <SummaryCard label="Quote activity" value={totalQuotes} />
+      </section>
 
-        {requests.length === 0 ? (
-          <div className="mt-6">
-            <EmptyState
-              title="No matching shipment requests"
-              description="Try changing your filters or check again later."
-            />
-          </div>
-        ) : (
-          <section className="mt-6 grid gap-4">
-              {requests.map((request) => (
-                <Link
-                  key={request.id}
-                  href={`/app/forwarder/requests/${request.id}`}
-                  className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/60 sm:p-5"
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Filter requests</CardTitle>
+          <CardDescription>
+            Narrow the list by route, cargo, delivery, and handling needs.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <label className="grid gap-2 text-sm font-medium">
+                Origin city or area
+                <Input
+                  name="origin"
+                  defaultValue={filters.origin}
+                  placeholder="Guangzhou, Yiwu, Shenzhen"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Philippine destination
+                <Input
+                  name="destination"
+                  defaultValue={filters.destination}
+                  placeholder="Manila, Cebu, Davao"
+                />
+              </label>
+              <SelectFilter
+                label="Cargo type"
+                name="cargoType"
+                value={filters.cargoType}
+                options={cargoTypeEnum.enumValues}
+              />
+              <SelectFilter
+                label="Delivery preference"
+                name="deliveryPreference"
+                value={filters.deliveryPreference}
+                options={deliveryPreferenceEnum.enumValues}
+              />
+              <SelectFilter
+                label="Shipping preference"
+                name="shippingPreference"
+                value={filters.shippingPreference}
+                options={shippingPreferenceEnum.enumValues}
+              />
+              <label className="grid gap-2 text-sm font-medium">
+                Special handling
+                <Select
+                  name="specialHandling"
+                  defaultValue={filters.specialHandling ?? ""}
                 >
-                  <article className="grid gap-5 lg:grid-cols-[1fr_auto]">
+                  <option value="">Any</option>
+                  <option value="msds">MSDS mentioned</option>
+                </Select>
+              </label>
+            </div>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Button type="submit" className="w-full sm:w-auto">
+                Apply filters
+              </Button>
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/app/forwarder/requests">Clear filters</Link>
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {requests.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            title="No matching shipment requests"
+            description={
+              hasFilters
+                ? "Try changing your filters or check again later."
+                : "No importer has posted an open shipment request yet."
+            }
+          />
+        </div>
+      ) : (
+        <section className="mt-6 grid gap-4 xl:grid-cols-2">
+          {requests.map((request) => (
+            <Link
+              key={request.id}
+              href={`/app/forwarder/requests/${request.id}`}
+            >
+              <Card className="transition-colors hover:bg-accent">
+                <CardContent>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="min-w-0 break-words text-lg font-semibold">
                         {request.cargoDescription}
                       </h2>
                       <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
-                      <StatusBadge>{titleFromEnum(request.cargoType)}</StatusBadge>
+                      <StatusBadge>
+                        {titleFromEnum(request.cargoType)}
+                      </StatusBadge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
                       {formatRoute(request.origin, request.destination)}
@@ -160,19 +192,20 @@ export default async function ForwarderRequestsPage({
                       </InfoGrid>
                     </div>
                   </div>
-                  <div className="flex flex-col items-start gap-3 lg:items-end">
-                    <span className="rounded-md border bg-background px-3 py-2 text-sm font-medium">
-                      {formatCount(request.quoteCount, "quote")}
-                    </span>
-                    <span className="text-sm font-medium text-cyan-800">
-                      View request
-                    </span>
-                  </div>
-                  </article>
-                </Link>
-              ))}
-          </section>
-        )}
+                </CardContent>
+                <CardFooter className="justify-between gap-3">
+                  <Badge variant="outline">
+                    {formatCount(request.quoteCount, "quote")}
+                  </Badge>
+                  <span className="text-sm font-medium text-primary">
+                    View request
+                  </span>
+                </CardFooter>
+              </Card>
+            </Link>
+          ))}
+        </section>
+      )}
     </>
   );
 }

@@ -1,6 +1,14 @@
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/db/schema";
 import { AppHeader } from "@/components/app-nav";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export function AppShell({
   role,
@@ -12,7 +20,7 @@ export function AppShell({
   return (
     <main className="min-h-screen overflow-x-hidden bg-muted">
       <AppHeader role={role} />
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
+      <div className="w-full px-4 py-6 sm:px-6 lg:pl-72 lg:pr-9 lg:py-10">
         {children}
       </div>
     </main>
@@ -34,9 +42,9 @@ export function PageHeader({
     <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="text-sm font-medium text-cyan-700">{eyebrow}</p>
+          <p className="text-sm font-medium text-primary">{eyebrow}</p>
         ) : null}
-        <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="mt-1 break-words text-2xl font-semibold sm:text-3xl">
           {title}
         </h1>
         {description ? (
@@ -64,13 +72,15 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border bg-card p-4 shadow-sm sm:p-6">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-        {description}
-      </p>
-      {action ? <div className="mt-5">{action}</div> : null}
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription className="max-w-xl leading-6">
+          {description}
+        </CardDescription>
+      </CardHeader>
+      {action ? <CardContent>{action}</CardContent> : null}
+    </Card>
   );
 }
 
@@ -88,22 +98,19 @@ export function DetailCard({
   children: React.ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className={cn("min-w-0 rounded-lg border bg-card p-4 shadow-sm sm:p-6", className)}
-    >
+    <Card id={id} className={cn("min-w-0", className)}>
       {title ? (
-        <div className="mb-5">
-          <h2 className="break-words text-lg font-semibold">{title}</h2>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
           {description ? (
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <CardDescription className="leading-6">
               {description}
-            </p>
+            </CardDescription>
           ) : null}
-        </div>
+        </CardHeader>
       ) : null}
-      {children}
-    </section>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
@@ -145,9 +152,9 @@ export function DetailValue({
 
 export function StatusBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-md border bg-background px-2 py-1 text-xs font-medium uppercase text-muted-foreground">
+    <Badge variant="outline" className="uppercase text-muted-foreground">
       {children}
-    </span>
+    </Badge>
   );
 }
 
@@ -163,15 +170,19 @@ export function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border bg-card p-4 shadow-sm sm:p-5">
-      {step ? <p className="text-sm font-medium text-cyan-700">{step}</p> : null}
-      <h2 className="mt-1 text-lg font-semibold">{title}</h2>
-      {description ? (
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
-      <div className="mt-5 grid gap-4">{children}</div>
-    </section>
+    <Card>
+      <CardHeader>
+        {step ? (
+          <p className="text-sm font-medium text-primary">{step}</p>
+        ) : null}
+        <CardTitle>{title}</CardTitle>
+        {description ? (
+          <CardDescription className="leading-6">
+            {description}
+          </CardDescription>
+        ) : null}
+      </CardHeader>
+      <CardContent className="grid gap-4">{children}</CardContent>
+    </Card>
   );
 }
