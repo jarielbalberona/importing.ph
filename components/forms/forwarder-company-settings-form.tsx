@@ -2,14 +2,20 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import type { z } from "zod";
 
 import { saveForwarderCompanySettings } from "@/app/app/forwarder/company/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { forwarderCompanySettingsSchema } from "@/lib/validation";
 
@@ -24,6 +30,7 @@ export function ForwarderCompanySettingsForm({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(forwarderCompanySettingsSchema),
@@ -68,11 +75,22 @@ export function ForwarderCompanySettingsForm({
             helper="Choose the lanes your company commonly quotes."
             error={errors.shippingModes?.message}
           >
-            <Select {...register("shippingModes")}>
-              <option value="both">Sea and air</option>
-              <option value="sea">Sea freight</option>
-              <option value="air">Air freight</option>
-            </Select>
+            <Controller
+              control={control}
+              name="shippingModes"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="both">Sea and air</SelectItem>
+                    <SelectItem value="sea">Sea freight</SelectItem>
+                    <SelectItem value="air">Air freight</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </Field>
         </div>
       </section>

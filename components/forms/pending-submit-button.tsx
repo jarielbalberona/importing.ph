@@ -1,10 +1,11 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import type { ComponentProps } from "react";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
-type PendingSubmitButtonProps = ButtonProps & {
+type PendingSubmitButtonProps = ComponentProps<typeof Button> & {
   pendingText: string;
 };
 

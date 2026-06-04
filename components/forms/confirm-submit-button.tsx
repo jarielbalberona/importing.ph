@@ -1,10 +1,10 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type ComponentProps } from "react";
 
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
-type ConfirmSubmitButtonProps = ButtonProps & {
+type ConfirmSubmitButtonProps = ComponentProps<typeof Button> & {
   message: string;
   title?: string;
   confirmLabel?: string;

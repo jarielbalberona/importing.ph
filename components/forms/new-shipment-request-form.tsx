@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import type { FieldPath, FieldValues } from "react-hook-form";
 import type { z } from "zod";
 
@@ -15,7 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   cargoTypeEnum,
@@ -148,11 +154,21 @@ export function NewShipmentRequestForm() {
       </DetailCard>
 
       <DetailCard>
-        {currentStep === 0 ? <CargoBasicsStep register={register} errors={errors} /> : null}
-        {currentStep === 1 ? <SizeStep register={register} errors={errors} /> : null}
-        {currentStep === 2 ? <RouteStep register={register} errors={errors} /> : null}
-        {currentStep === 3 ? <PreferencesStep register={register} errors={errors} /> : null}
-        {currentStep === 4 ? <NotesStep register={register} errors={errors} /> : null}
+        {currentStep === 0 ? (
+          <CargoBasicsStep control={control} register={register} errors={errors} />
+        ) : null}
+        {currentStep === 1 ? (
+          <SizeStep control={control} register={register} errors={errors} />
+        ) : null}
+        {currentStep === 2 ? (
+          <RouteStep control={control} register={register} errors={errors} />
+        ) : null}
+        {currentStep === 3 ? (
+          <PreferencesStep control={control} register={register} errors={errors} />
+        ) : null}
+        {currentStep === 4 ? (
+          <NotesStep control={control} register={register} errors={errors} />
+        ) : null}
         {currentStep === 5 ? <ReviewStep values={values} /> : null}
       </DetailCard>
 
@@ -206,6 +222,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 }
 
 function CargoBasicsStep({
+  control,
   register,
   errors,
 }: StepComponentProps<FormValues>) {
@@ -226,13 +243,24 @@ function CargoBasicsStep({
         helper="Choose the closest match. Forwarders can ask follow-up questions after they review the request."
         error={errors.cargoType?.message}
       >
-        <Select {...register("cargoType")}>
-          {cargoTypeEnum.enumValues.map((value) => (
-            <option key={value} value={value}>
-              {titleFromEnum(value)}
-            </option>
-          ))}
-        </Select>
+        <Controller
+          control={control}
+          name="cargoType"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {cargoTypeEnum.enumValues.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {titleFromEnum(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
       </Field>
     </div>
   );
@@ -308,7 +336,7 @@ function RouteStep({ register, errors }: StepComponentProps<FormValues>) {
 }
 
 function PreferencesStep({
-  register,
+  control,
   errors,
 }: StepComponentProps<FormValues>) {
   return (
@@ -318,26 +346,48 @@ function PreferencesStep({
         helper="Choose Not sure if you want forwarders to recommend the best route."
         error={errors.deliveryPreference?.message}
       >
-        <Select {...register("deliveryPreference")}>
-          {deliveryPreferenceEnum.enumValues.map((value) => (
-            <option key={value} value={value}>
-              {titleFromEnum(value)}
-            </option>
-          ))}
-        </Select>
+        <Controller
+          control={control}
+          name="deliveryPreference"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {deliveryPreferenceEnum.enumValues.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {titleFromEnum(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
       </Field>
       <Field
         label="Shipping preference"
         helper="Choose what matters most: cost, speed, or a balance of both."
         error={errors.shippingPreference?.message}
       >
-        <Select {...register("shippingPreference")}>
-          {shippingPreferenceEnum.enumValues.map((value) => (
-            <option key={value} value={value}>
-              {titleFromEnum(value)}
-            </option>
-          ))}
-        </Select>
+        <Controller
+          control={control}
+          name="shippingPreference"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {shippingPreferenceEnum.enumValues.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {titleFromEnum(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
       </Field>
       <div className="rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground sm:col-span-2">
         If the shipment needs MSDS, permits, special handling, or supplier
@@ -449,6 +499,7 @@ type ReviewGroup = {
 type ReviewItem = [label: string, value: unknown];
 
 type StepComponentProps<T extends FieldValues> = {
+  control: ReturnType<typeof useForm<T>>["control"];
   register: ReturnType<typeof useForm<T>>["register"];
   errors: ReturnType<typeof useForm<T>>["formState"]["errors"];
 };

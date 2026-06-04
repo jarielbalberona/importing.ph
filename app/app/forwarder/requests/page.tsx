@@ -19,7 +19,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   cargoTypeEnum,
   deliveryPreferenceEnum,
@@ -119,10 +125,15 @@ export default async function ForwarderRequestsPage({
                 Special handling
                 <Select
                   name="specialHandling"
-                  defaultValue={filters.specialHandling ?? ""}
+                  defaultValue={filters.specialHandling ?? "__any"}
                 >
-                  <option value="">Any</option>
-                  <option value="msds">MSDS mentioned</option>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__any">Any</SelectItem>
+                    <SelectItem value="msds">MSDS mentioned</SelectItem>
+                  </SelectContent>
                 </Select>
               </label>
             </div>
@@ -237,16 +248,18 @@ function SelectFilter({
   return (
     <label className="grid gap-2 text-sm font-medium">
       {label}
-      <Select
-        name={name}
-        defaultValue={value ?? ""}
-      >
-        <option value="">Any</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {titleFromEnum(option)}
-          </option>
-        ))}
+      <Select name={name} defaultValue={value ?? "__any"}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__any">Any</SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {titleFromEnum(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
     </label>
   );
