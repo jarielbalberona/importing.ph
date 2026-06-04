@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/db/schema";
-import { AppHeader } from "@/components/app-nav";
+import { AppHeader, AppSidebar } from "@/components/app-nav";
 import {
   Card,
   CardContent,
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export function AppShell({
   role,
@@ -18,12 +19,15 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-muted">
-      <AppHeader role={role} />
-      <div className="w-full px-4 py-6 sm:px-6 lg:pl-72 lg:pr-9 lg:py-10">
-        {children}
-      </div>
-    </main>
+    <SidebarProvider className="min-h-screen overflow-x-hidden bg-muted">
+      <AppSidebar role={role} />
+      <SidebarInset className="min-w-0 bg-muted">
+        <AppHeader role={role} />
+        <div className="w-full px-4 py-6 sm:px-6 lg:px-9 lg:py-10">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

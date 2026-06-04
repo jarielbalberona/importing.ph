@@ -21,6 +21,17 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import type { UserRole } from "@/db/schema";
 import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 
 type NavItem = {
   href: string;
@@ -154,32 +165,6 @@ export function AppHeader({ role }: { role: UserRole }) {
           </div>
         </div>
       </header>
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-background lg:flex">
-        <div className="flex h-24 items-center px-6">
-          <Link href="/" className="shrink-0" aria-label="importing.ph home">
-            <Image
-              src="/assets/importingph.png"
-              alt="importing.ph"
-              width={173}
-              height={50}
-              priority
-              className="h-11 w-auto"
-            />
-          </Link>
-        </div>
-        <nav aria-label="Main navigation" className="grid gap-1 px-4">
-          <NavLinks items={navItems} pathname={pathname} variant="desktop" />
-        </nav>
-        <div className="mt-auto flex items-center gap-3 border-t px-5 py-5">
-          <UserButton />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{roleLabel(role)}</p>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Account
-            </p>
-          </div>
-        </div>
-      </aside>
       <MobileNavigationDrawer
         closeRef={closeRef}
         drawerId={drawerId}
@@ -189,6 +174,51 @@ export function AppHeader({ role }: { role: UserRole }) {
         onClose={() => setIsDrawerOpen(false)}
       />
     </>
+  );
+}
+
+export function AppSidebar({ role }: { role: UserRole }) {
+  const pathname = usePathname();
+  const navItems = navByRole[role];
+
+  return (
+    <Sidebar
+      collapsible="none"
+      className="hidden h-svh w-64 shrink-0 border-r bg-background lg:flex"
+    >
+      <SidebarHeader className="h-24 justify-center px-6 py-0">
+        <Link href="/" className="shrink-0" aria-label="importing.ph home">
+          <Image
+            src="/assets/importingph.png"
+            alt="importing.ph"
+            width={173}
+            height={50}
+            priority
+            className="h-11 w-auto"
+          />
+        </Link>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup className="px-4 py-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <DesktopNavLinks items={navItems} pathname={pathname} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="mt-auto border-t px-5 py-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <UserButton />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{roleLabel(role)}</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Account
+            </p>
+          </div>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
 
@@ -315,6 +345,37 @@ function NavLinks({
         <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="truncate">{item.label}</span>
       </Link>
+    );
+  });
+}
+
+function DesktopNavLinks({
+  items,
+  pathname,
+}: {
+  items: NavItem[];
+  pathname: string;
+}) {
+  return items.map((item) => {
+    const isActive = isNavItemActive(item, pathname);
+    const Icon = item.icon;
+
+    return (
+      <SidebarMenuItem key={item.href}>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          className="h-10 px-3 font-medium"
+        >
+          <Link
+            href={item.href}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{item.label}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
     );
   });
 }
