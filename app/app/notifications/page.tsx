@@ -1,12 +1,13 @@
 import Link from "next/link";
-
 import {
-  DetailValue,
-  EmptyState,
-  InfoGrid,
-  PageHeader,
-  StatusBadge,
-} from "@/components/app-shell";
+  CheckIcon,
+  ExternalLinkIcon,
+  FileSearchIcon,
+  MessageSquareIcon,
+} from "lucide-react";
+
+import { EmptyState, PageHeader } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireProfile } from "@/lib/authz";
 import { formatDateTime, titleFromEnum } from "@/lib/format";
@@ -29,87 +30,95 @@ export default async function NotificationsPage({
   return (
     <>
       <PageHeader
-        eyebrow="Account"
         title="Notifications"
-        description="Quote updates, decisions, and messages will appear here."
+        description="Quote updates, messages, and decisions appear here."
       />
 
-        {query.error ? (
-          <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            Notification was not updated. Try again.
-          </div>
-        ) : null}
+      {query.error ? (
+        <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Notification was not updated. Try again.
+        </div>
+      ) : null}
 
-        {notifications.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState
-              title="No notifications yet"
-              description="Quote updates, decisions, and messages will appear here."
-            />
-          </div>
-        ) : (
-          <section className="mt-8 grid gap-4">
-              {notifications.map((notification) => (
+      {notifications.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            title="No notifications yet"
+            description="Notifications will appear here when quotes, messages, or decisions are updated."
+          />
+        </div>
+      ) : (
+        <section className="mt-6 overflow-hidden rounded-md border bg-background">
+          <ul className="divide-y">
+            {notifications.map((notification) => (
+              <li key={notification.id}>
                 <article
-                  key={notification.id}
                   className={
                     notification.readAt
-                      ? "grid gap-4 rounded-lg border bg-card p-4 shadow-sm sm:grid-cols-[1fr_auto] sm:p-5"
-                      : "grid gap-4 rounded-lg border border-cyan-200 bg-cyan-50 p-4 shadow-sm sm:grid-cols-[1fr_auto] sm:p-5"
+                      ? "grid gap-3 px-4 py-4 transition-colors hover:bg-muted/40 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+                      : "grid gap-3 border-l-2 border-l-primary bg-primary/5 px-4 py-4 transition-colors hover:bg-primary/10 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
                   }
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="break-words font-semibold">
+                      <h2
+                        className={
+                          notification.readAt
+                            ? "break-words text-sm font-medium"
+                            : "break-words text-sm font-semibold"
+                        }
+                      >
                         {notification.title}
                       </h2>
-                      <StatusBadge>
+                      <Badge
+                        variant={notification.readAt ? "outline" : "default"}
+                      >
                         {notification.readAt ? "Read" : "Unread"}
-                      </StatusBadge>
+                      </Badge>
+                      <Badge variant="secondary">
+                        {notificationTypeLabel(notification.type)}
+                      </Badge>
+                      <time
+                        dateTime={notification.createdAt.toISOString()}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {formatDateTime(notification.createdAt)}
+                      </time>
                     </div>
                     {notification.body ? (
-                      <p className="mt-2 break-words text-sm text-muted-foreground">
+                      <p className="mt-2 break-words text-sm leading-6 text-muted-foreground">
                         {notification.body}
                       </p>
                     ) : null}
-                    <div className="mt-4">
-                      <InfoGrid columns={2}>
-                        <DetailValue
-                          label="Type"
-                          value={notificationTypeLabel(notification.type)}
-                        />
-                        <DetailValue
-                          label={notification.readAt ? "Read" : "Received"}
-                          value={formatDateTime(
-                            notification.readAt ?? notification.createdAt,
-                          )}
-                        />
-                      </InfoGrid>
-                    </div>
                   </div>
-                  <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-start">
-                    <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-                      <Link href={notification.linkHref}>
-                        {actionLabel(notification.type)}
-                      </Link>
-                    </Button>
+
+                  <div className="flex items-center gap-1 sm:justify-end">
+                    <NotificationAction notification={notification} />
                     {notification.readAt ? null : (
-                      <form action={markNotificationRead} className="w-full sm:w-auto">
+                      <form action={markNotificationRead}>
                         <input
                           type="hidden"
                           name="notificationId"
                           value={notification.id}
                         />
-                        <Button type="submit" size="sm" className="w-full sm:w-auto">
-                          Mark as read
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Mark as read"
+                          title="Mark as read"
+                        >
+                          <CheckIcon />
                         </Button>
                       </form>
                     )}
                   </div>
                 </article>
-              ))}
-          </section>
-        )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
@@ -126,16 +135,33 @@ function notificationTypeLabel(type: Notification["type"]) {
     .replace("Message Received", "Message");
 }
 
-function actionLabel(type: Notification["type"]) {
+function NotificationAction({ notification }: { notification: Notification }) {
+  const action = actionMeta(notification.type);
+  const Icon = action.Icon;
+
+  return (
+    <Link
+      href={notification.linkHref}
+      aria-label={action.label}
+      title={action.label}
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+    >
+      <Icon className="size-4" aria-hidden="true" />
+      <span className="sr-only">{action.label}</span>
+    </Link>
+  );
+}
+
+function actionMeta(type: Notification["type"]) {
   switch (type) {
     case "new_quote_received":
-      return "View quote";
+      return { label: "View quote", Icon: FileSearchIcon };
     case "quote_accepted":
     case "quote_rejected":
-      return "View request";
+      return { label: "View request", Icon: ExternalLinkIcon };
     case "message_received":
-      return "Open message";
+      return { label: "Open message", Icon: MessageSquareIcon };
     default:
-      return "Open";
+      return { label: "Open", Icon: ExternalLinkIcon };
   }
 }

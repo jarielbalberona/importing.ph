@@ -30,6 +30,16 @@ export type ForwarderSafeRequest = {
   declaredValue: string | null;
   origin: string;
   destination: string;
+  destinationRegionCode: string | null;
+  destinationRegionName: string | null;
+  destinationProvinceCode: string | null;
+  destinationProvinceName: string | null;
+  destinationCityMunicipalityCode: string | null;
+  destinationCityMunicipalityName: string | null;
+  destinationBarangayCode: string | null;
+  destinationBarangayName: string | null;
+  destinationAddressDetails: string | null;
+  destinationDisplayName: string | null;
   deliveryPreference: string;
   shippingPreference: string;
   notes: string | null;
@@ -61,6 +71,16 @@ const forwarderSafeRequestColumns = {
   declaredValue: shipmentRequests.declaredValue,
   origin: shipmentRequests.origin,
   destination: shipmentRequests.destination,
+  destinationRegionCode: shipmentRequests.destinationRegionCode,
+  destinationRegionName: shipmentRequests.destinationRegionName,
+  destinationProvinceCode: shipmentRequests.destinationProvinceCode,
+  destinationProvinceName: shipmentRequests.destinationProvinceName,
+  destinationCityMunicipalityCode: shipmentRequests.destinationCityMunicipalityCode,
+  destinationCityMunicipalityName: shipmentRequests.destinationCityMunicipalityName,
+  destinationBarangayCode: shipmentRequests.destinationBarangayCode,
+  destinationBarangayName: shipmentRequests.destinationBarangayName,
+  destinationAddressDetails: shipmentRequests.destinationAddressDetails,
+  destinationDisplayName: shipmentRequests.destinationDisplayName,
   deliveryPreference: shipmentRequests.deliveryPreference,
   shippingPreference: shipmentRequests.shippingPreference,
   notes: shipmentRequests.notes,

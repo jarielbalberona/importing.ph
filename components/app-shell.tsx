@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/db/schema";
 import { AppHeader, AppSidebar } from "@/components/app-nav";
+import { RealtimeProvider } from "@/components/realtime-provider";
 import {
   Card,
   CardContent,
@@ -19,25 +20,25 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider className="min-h-screen overflow-x-hidden bg-muted">
-      <AppSidebar role={role} />
-      <SidebarInset className="min-w-0 bg-muted">
-        <AppHeader role={role} />
-        <div className="w-full px-4 py-6 sm:px-6 lg:px-9 lg:py-10">
-          {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <RealtimeProvider>
+      <SidebarProvider className="h-screen overflow-hidden bg-muted">
+        <AppSidebar role={role} />
+        <SidebarInset className="h-svh min-w-0 overflow-y-auto bg-muted">
+          <AppHeader role={role} />
+          <div className="w-full px-2 py-4 sm:px-6">
+            {children}
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </RealtimeProvider>
   );
 }
 
 export function PageHeader({
-  eyebrow,
   title,
   description,
   actions,
 }: {
-  eyebrow?: string;
   title: string;
   description?: string;
   actions?: React.ReactNode;
@@ -45,14 +46,11 @@ export function PageHeader({
   return (
     <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        {eyebrow ? (
-          <p className="text-sm font-medium text-primary">{eyebrow}</p>
-        ) : null}
-        <h1 className="mt-1 break-words text-2xl font-semibold sm:text-3xl">
+        <h1 className="break-words text-lg font-semibold sm:text-md">
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-muted-foreground">
+          <p className="max-w-2xl break-words text-sm leading-6 text-muted-foreground">
             {description}
           </p>
         ) : null}

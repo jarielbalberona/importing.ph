@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyMessageCreated } from "@/lib/notifications";
+import { publishRealtimeEvent } from "@/lib/realtime-events";
 import { requireImporterProfile } from "@/lib/shipment-requests";
 
 const messagingQuoteStatuses = ["submitted", "accepted", "rejected"] as const;
@@ -37,9 +38,36 @@ const conversationColumns = {
   createdAt: conversations.createdAt,
   updatedAt: conversations.updatedAt,
   cargoDescription: shipmentRequests.cargoDescription,
+  cargoType: shipmentRequests.cargoType,
+  totalCbm: shipmentRequests.totalCbm,
+  totalWeightKg: shipmentRequests.totalWeightKg,
+  requestStatus: shipmentRequests.status,
   origin: shipmentRequests.origin,
   destination: shipmentRequests.destination,
+  destinationRegionName: shipmentRequests.destinationRegionName,
+  destinationProvinceName: shipmentRequests.destinationProvinceName,
+  destinationCityMunicipalityName: shipmentRequests.destinationCityMunicipalityName,
+  destinationBarangayName: shipmentRequests.destinationBarangayName,
+  destinationDisplayName: shipmentRequests.destinationDisplayName,
+  deliveryPreference: shipmentRequests.deliveryPreference,
+  shippingPreference: shipmentRequests.shippingPreference,
+  requestNotes: shipmentRequests.notes,
   forwarderCompanyName: forwarderCompanies.name,
+  forwarderContactPerson: forwarderCompanies.contactPerson,
+  forwarderOriginCities: forwarderCompanies.originCities,
+  forwarderDestinationAreas: forwarderCompanies.destinationAreas,
+  forwarderShippingModes: forwarderCompanies.shippingModes,
+  forwarderServiceDescription: forwarderCompanies.serviceDescription,
+  quoteStatus: quotes.status,
+  quoteAmount: quotes.quoteAmount,
+  quoteCurrency: quotes.currency,
+  quoteServiceOffered: quotes.serviceOffered,
+  quoteTransitMinDays: quotes.estimatedTransitMinDays,
+  quoteTransitMaxDays: quotes.estimatedTransitMaxDays,
+  quoteInclusions: quotes.inclusions,
+  quoteExclusions: quotes.exclusions,
+  quoteNotes: quotes.notes,
+  quoteValidUntil: quotes.validUntil,
 };
 
 const messageColumns = {
@@ -234,6 +262,7 @@ async function getConversationForParticipant(input: {
       forwarderCompanies,
       eq(conversations.forwarderCompanyId, forwarderCompanies.id),
     )
+    .innerJoin(quotes, eq(conversations.openedByQuoteId, quotes.id))
     .where(and(...conditions))
     .limit(1);
 
@@ -257,7 +286,7 @@ async function getConversationForParticipant(input: {
 export async function getConversationsForCurrentImporter() {
   const { importerProfile } = await requireImporterProfile();
 
-  return db
+  const importerConversations = await db
     .select(conversationColumns)
     .from(conversations)
     .innerJoin(
@@ -268,8 +297,11 @@ export async function getConversationsForCurrentImporter() {
       forwarderCompanies,
       eq(conversations.forwarderCompanyId, forwarderCompanies.id),
     )
+    .innerJoin(quotes, eq(conversations.openedByQuoteId, quotes.id))
     .where(eq(conversations.importerProfileId, importerProfile.id))
     .orderBy(desc(conversations.updatedAt));
+
+  return attachLatestMessages(importerConversations);
 }
 
 export async function getConversationsForCurrentForwarder() {
@@ -286,8 +318,56 @@ export async function getConversationsForCurrentForwarder() {
       forwarderCompanies,
       eq(conversations.forwarderCompanyId, forwarderCompanies.id),
     )
+    .innerJoin(quotes, eq(conversations.openedByQuoteId, quotes.id))
     .where(eq(conversations.forwarderCompanyId, member.companyId))
     .orderBy(desc(conversations.updatedAt));
+}
+
+async function attachLatestMessages<T extends { id: string }>(
+  conversationRows: T[],
+) {
+  if (conversationRows.length === 0) {
+    return conversationRows.map((conversation) => ({
+      ...conversation,
+      latestMessageBody: null,
+      latestMessageAt: null,
+    }));
+  }
+
+  const conversationIds = conversationRows.map((conversation) => conversation.id);
+  const latestRows = await db
+    .select({
+      conversationId: messages.conversationId,
+      body: messages.body,
+      createdAt: messages.createdAt,
+    })
+    .from(messages)
+    .where(inArray(messages.conversationId, conversationIds))
+    .orderBy(desc(messages.createdAt));
+
+  const latestByConversationId = new Map<
+    string,
+    { body: string; createdAt: Date }
+  >();
+
+  for (const message of latestRows) {
+    if (!latestByConversationId.has(message.conversationId)) {
+      latestByConversationId.set(message.conversationId, {
+        body: message.body,
+        createdAt: message.createdAt,
+      });
+    }
+  }
+
+  return conversationRows.map((conversation) => {
+    const latestMessage = latestByConversationId.get(conversation.id);
+
+    return {
+      ...conversation,
+      latestMessageBody: latestMessage?.body ?? null,
+      latestMessageAt: latestMessage?.createdAt ?? null,
+    };
+  });
 }
 
 export async function createMessageForCurrentImporter(
@@ -368,26 +448,75 @@ async function createMessageInConversation(input: {
   const body = messageBodySchema.parse(input.bodyInput);
   const now = new Date();
 
-  const [message] = await db
-    .insert(messages)
-    .values({
-      conversationId: input.conversationId,
-      senderUserProfileId: input.senderUserProfileId,
-      body,
-      updatedAt: now,
-    })
-    .returning({ id: messages.id });
+  const result = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(messages)
+      .values({
+        conversationId: input.conversationId,
+        senderUserProfileId: input.senderUserProfileId,
+        body,
+        updatedAt: now,
+      })
+      .returning({
+        id: messages.id,
+        createdAt: messages.createdAt,
+      });
 
-  await db
-    .update(conversations)
-    .set({ updatedAt: now })
-    .where(eq(conversations.id, input.conversationId));
+    await tx
+      .update(conversations)
+      .set({ updatedAt: now })
+      .where(eq(conversations.id, input.conversationId));
+
+    const [message] = await tx
+      .select(messageColumns)
+      .from(messages)
+      .innerJoin(userProfiles, eq(messages.senderUserProfileId, userProfiles.id))
+      .where(eq(messages.id, inserted.id))
+      .limit(1);
+
+    if (!message) {
+      throw new Error("Message was not available after insert.");
+    }
+
+    return {
+      message,
+      inserted,
+      conversationUpdatedAt: now,
+    };
+  });
 
   await notifyMessageCreated({
     conversationId: input.conversationId,
-    messageId: message.id,
+    messageId: result.inserted.id,
     senderUserProfileId: input.senderUserProfileId,
   });
 
-  return message;
+  publishRealtimeEvent({
+    type: "conversation.message.created",
+    version: 1,
+    eventId: `message:${result.message.id}:created`,
+    occurredAt: new Date().toISOString(),
+    conversationId: input.conversationId,
+    message: {
+      id: result.message.id,
+      conversationId: result.message.conversationId,
+      senderUserProfileId: result.message.senderUserProfileId,
+      senderRole: result.message.senderRole,
+      senderName: result.message.senderName,
+      body: result.message.body,
+      createdAt: result.message.createdAt.toISOString(),
+    },
+  });
+  publishRealtimeEvent({
+    type: "conversation.updated",
+    version: 1,
+    eventId: `conversation:${input.conversationId}:updated:${result.conversationUpdatedAt.toISOString()}`,
+    occurredAt: new Date().toISOString(),
+    conversationId: input.conversationId,
+    updatedAt: result.conversationUpdatedAt.toISOString(),
+    latestMessageId: result.message.id,
+    latestMessagePreview: result.message.body,
+  });
+
+  return { id: result.inserted.id };
 }

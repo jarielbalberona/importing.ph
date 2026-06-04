@@ -26,6 +26,46 @@ export function formatRoute(origin: string, destination: string) {
   return `${origin} to ${destination}`;
 }
 
+export function formatDestination(input: {
+  destination?: string | null;
+  destinationDisplayName?: string | null;
+  destinationRegionName?: string | null;
+  destinationProvinceName?: string | null;
+  destinationCityMunicipalityName?: string | null;
+  destinationBarangayName?: string | null;
+  destinationAddressDetails?: string | null;
+}) {
+  if (input.destinationDisplayName) {
+    return input.destinationDisplayName;
+  }
+
+  const locality = [
+    input.destinationBarangayName,
+    input.destinationCityMunicipalityName,
+    input.destinationProvinceName,
+    input.destinationProvinceName ? null : input.destinationRegionName,
+  ].filter(Boolean);
+
+  if (locality.length > 0) {
+    return locality.join(", ");
+  }
+
+  return input.destination || "Not provided";
+}
+
+export function formatStructuredRoute(input: {
+  origin: string;
+  destination?: string | null;
+  destinationDisplayName?: string | null;
+  destinationRegionName?: string | null;
+  destinationProvinceName?: string | null;
+  destinationCityMunicipalityName?: string | null;
+  destinationBarangayName?: string | null;
+  destinationAddressDetails?: string | null;
+}) {
+  return formatRoute(input.origin, formatDestination(input));
+}
+
 export function formatMeasure(value: string | number | null | undefined, unit: string) {
   if (value === null || value === undefined || value === "") {
     return "Not provided";

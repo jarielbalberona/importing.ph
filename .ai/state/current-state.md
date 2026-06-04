@@ -232,3 +232,33 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Final verdict: `PASS WITH ISSUES`.
   - Current launch category: `local validation only`.
   - Next recommended work: provide real Render/staging URL, target DB confirmation, Clerk target config, and admin owner so target migration and deployed smoke can run.
+- `realtime-messaging-v1`: active initiative.
+  - Phase 0 `phase-0-current-state-audit`: `passed_with_issues`.
+  - Phase 1 `phase-1-realtime-contract-design`: `passed_with_issues`.
+  - Architecture decision is locked: WebSocket for V1 realtime delivery/events only; message creation remains REST/API-first and PostgreSQL remains source of truth.
+  - Phase 0 confirmed current message writes are server actions through `lib/messages.ts`, not route handlers or socket writes.
+  - Phase 0 confirmed no React Query/TanStack Query setup exists; messaging is server-rendered plus form/server-action redirects, with importer messages using a client component fed by server props.
+  - Phase 0 confirmed notification unread state is notification-level via `notifications.read_at`; there is no conversation unread/read-receipt table.
+  - Phase 0 confirmed Render Node web services can support WebSockets, but the current `next start` entrypoint has no app-owned HTTP upgrade hook. Phase 1 must design a minimal custom Node server or equivalent WebSocket attachment before implementation.
+  - Phase 0 recommended emitting realtime events from `lib/messages.ts` after durable message persistence and conversation `updated_at` update; Phase 1 should decide whether to wrap message insert plus conversation update in an explicit transaction.
+  - Final Phase 0 report: `reports/phase-0-current-state-audit.md`.
+  - Phase 1 selected `/api/realtime/ws` as the WebSocket upgrade path and recommended a minimal root `server.mjs` custom Node server that delegates normal HTTP requests to Next.js.
+  - Phase 1 recommended a short-lived first-party realtime token minted from Clerk-authenticated app context, then validated in the WebSocket handshake and mapped to PostgreSQL `user_profiles`.
+  - Phase 1 defined V1 events: `realtime.connected`, `realtime.error`, `conversation.subscribe`, `conversation.unsubscribe`, `conversation.subscribed`, `conversation.unsubscribed`, `conversation.message.created`, and `conversation.updated`.
+  - Phase 1 deferred `conversation.unread.changed` because current unread state is notification-level via `notifications.read_at`, not conversation unread/read receipts.
+  - Phase 2 `phase-2-backend-transport-foundation`: `passed_with_issues`.
+  - Phase 3 `phase-3-backend-message-event-emission`: `passed`.
+  - Phase 4 `phase-4-frontend-realtime-client`: `passed`.
+  - Phase 5 `phase-5-ui-behavior-and-fallback`: `passed_with_issues`.
+  - Phase 6 `phase-6-verification-and-hardening`: `passed_with_issues`.
+  - Phase 2 added root `server.mjs`, changed production `npm run start` to `NODE_ENV=production node server.mjs`, added `ws`, and preserved normal Next.js HTTP handling while intercepting only `/api/realtime/ws` upgrades.
+  - Phase 2 added short-lived first-party realtime tokens at `/api/realtime/token`, validates them during WebSocket handshake, and re-resolves authenticated users to PostgreSQL `user_profiles`.
+  - Phase 2 added in-memory socket/subscription registries and server-side subscription authorization for importer conversation ownership and forwarder company membership.
+  - Phase 3 wrapped message insert plus conversation `updated_at` update in one transaction and emits `conversation.message.created` plus `conversation.updated` only after the transaction succeeds.
+  - Phase 4 added `RealtimeProvider` without React Query or a new client state framework; reconnect recovery uses `router.refresh()`.
+  - Phase 5 wired importer and forwarder conversation detail/list UI for realtime updates and conservative server refresh fallback.
+  - Final report: `reports/final-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Accepted final issue: automated/static/custom-server verification passed, but full authenticated two-browser importer/forwarder realtime delivery smoke was not completed in this turn.
+  - Phase 1 required Phase 3 to wrap message insert plus conversation `updated_at` update in one transaction before post-commit event emission.
+  - Final Phase 1 report: `reports/phase-1-realtime-contract-design.md`.

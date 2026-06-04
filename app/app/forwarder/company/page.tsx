@@ -25,7 +25,6 @@ export default async function ForwarderCompanyPage({
   return (
     <>
       <PageHeader
-        eyebrow="Forwarder"
         title="Company profile"
         description="Keep your company details, service coverage, and quote defaults updated."
       />

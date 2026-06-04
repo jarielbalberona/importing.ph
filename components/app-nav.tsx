@@ -20,6 +20,7 @@ import type { RefObject } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { UserRole } from "@/db/schema";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
@@ -31,6 +32,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 type NavItem = {
@@ -135,7 +137,7 @@ export function AppHeader({ role }: { role: UserRole }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b bg-background lg:hidden">
+      <header className="sticky top-0 z-40 border-b bg-background md:hidden">
         <div className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -144,7 +146,7 @@ export function AppHeader({ role }: { role: UserRole }) {
               aria-label="Open main navigation"
               aria-controls={drawerId}
               aria-expanded={isDrawerOpen}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
               onClick={() => setIsDrawerOpen(true)}
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
@@ -179,27 +181,39 @@ export function AppHeader({ role }: { role: UserRole }) {
 
 export function AppSidebar({ role }: { role: UserRole }) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const navItems = navByRole[role];
 
+  if (isMobile) {
+    return null;
+  }
+
   return (
-    <Sidebar
-      collapsible="none"
-      className="hidden h-svh w-64 shrink-0 border-r bg-background lg:flex"
-    >
-      <SidebarHeader className="h-24 justify-center px-6 py-0">
-        <Link href="/" className="shrink-0" aria-label="importing.ph home">
-          <Image
-            src="/assets/importingph.png"
-            alt="importing.ph"
-            width={173}
-            height={50}
-            priority
-            className="h-11 w-auto"
+    <Sidebar collapsible="icon" className="bg-background">
+      <SidebarHeader className="h-20 justify-center px-3 py-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+        <div className="flex w-full min-w-0 items-center gap-2 group-data-[collapsible=icon]:justify-center">
+          <SidebarTrigger
+            aria-label="Toggle main navigation"
+            className="h-9 w-9 shrink-0"
           />
-        </Link>
+          <Link
+            href="/"
+            className="min-w-0 shrink-0 group-data-[collapsible=icon]:hidden"
+            aria-label="importing.ph home"
+          >
+            <Image
+              src="/assets/importingph.png"
+              alt="importing.ph"
+              width={173}
+              height={50}
+              priority
+              className="h-10 w-auto"
+            />
+          </Link>
+        </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup className="px-4 py-0">
+        <SidebarGroup className="px-2 py-0 group-data-[collapsible=icon]:px-2">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               <DesktopNavLinks items={navItems} pathname={pathname} />
@@ -207,10 +221,10 @@ export function AppSidebar({ role }: { role: UserRole }) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="mt-auto border-t px-5 py-5">
-        <div className="flex min-w-0 items-center gap-3">
+      <SidebarFooter className="mt-auto border-t px-5 py-5 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+        <div className="flex min-w-0 items-center gap-3 group-data-[collapsible=icon]:justify-center">
           <UserButton />
-          <div className="min-w-0">
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-medium">{roleLabel(role)}</p>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Account
@@ -242,7 +256,7 @@ function MobileNavigationDrawer({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 lg:hidden",
+        "fixed inset-0 z-50 md:hidden",
         isOpen ? "pointer-events-auto" : "pointer-events-none",
       )}
       aria-hidden={!isOpen}
@@ -365,6 +379,7 @@ function DesktopNavLinks({
         <SidebarMenuButton
           asChild
           isActive={isActive}
+          tooltip={item.label}
           className="h-10 px-3 font-medium"
         >
           <Link

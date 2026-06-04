@@ -6,8 +6,9 @@ import {
   StatusBadge,
 } from "@/components/app-shell";
 import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
+import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { Input } from "@/components/ui/input";
-import { formatDateTime, titleFromEnum } from "@/lib/format";
+import { formatDateTime, formatStructuredRoute, titleFromEnum } from "@/lib/format";
 import { getAdminOverview } from "@/lib/admin";
 import {
   suspendForwarderCompany,
@@ -27,7 +28,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   return (
     <AppShell role="admin">
       <PageHeader
-        eyebrow="Admin"
         title="Marketplace safety"
         description="Review current marketplace activity and pause forwarder companies when quoting needs to be stopped."
       />
@@ -95,11 +95,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <h3 className="font-semibold">
                       {request.cargoDescription}
                     </h3>
-                    <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
+                    <RequestStatusBadge status={request.status} />
                     <StatusBadge>{titleFromEnum(request.cargoType)}</StatusBadge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {request.origin} to {request.destination}
+                    {formatStructuredRoute(request)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Importer: {request.importerCompanyName} /{" "}

@@ -7,6 +7,7 @@ import {
   PageHeader,
   StatusBadge,
 } from "@/components/app-shell";
+import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { SummaryCard } from "@/components/summary-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ import {
   formatDate,
   formatDimensions,
   formatMeasure,
-  formatRoute,
+  formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
 
@@ -66,7 +67,6 @@ export default async function ForwarderRequestsPage({
   return (
     <>
       <PageHeader
-        eyebrow="Forwarder"
         title="Open shipment requests"
         description="Find importer requests that match your service lanes and send private quotes."
       />
@@ -174,13 +174,13 @@ export default async function ForwarderRequestsPage({
                       <h2 className="min-w-0 break-words text-lg font-semibold">
                         {request.cargoDescription}
                       </h2>
-                      <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
+                      <RequestStatusBadge status={request.status} />
                       <StatusBadge>
                         {titleFromEnum(request.cargoType)}
                       </StatusBadge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {formatRoute(request.origin, request.destination)}
+                      {formatStructuredRoute(request)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
                       {titleFromEnum(request.deliveryPreference)} /{" "}

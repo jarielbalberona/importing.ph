@@ -33,10 +33,25 @@ export const cargoTypeEnum = pgEnum("cargo_type", [
   "general_goods",
   "electronics",
   "apparel",
-  "machinery",
-  "furniture",
-  "food_or_beverage",
+  "bags_shoes_accessories",
   "cosmetics",
+  "food_or_beverage",
+  "furniture",
+  "home_appliances",
+  "machinery",
+  "auto_motorcycle_parts",
+  "construction_materials",
+  "tools_hardware",
+  "packaging_supplies",
+  "plastic_paper_products",
+  "resin_epoxy_adhesives",
+  "chemicals_liquids",
+  "paints_coatings_solvents",
+  "batteries_power_banks",
+  "fragile_items",
+  "oversized_bulky_cargo",
+  "branded_goods",
+  "mixed_cargo",
   "other",
 ]);
 
@@ -80,6 +95,106 @@ export const notificationTypeEnum = pgEnum("notification_type", [
 ]);
 
 export type NotificationType = (typeof notificationTypeEnum.enumValues)[number];
+
+export const mediaFileContextEnum = pgEnum("media_file_context", [
+  "shipment_request_attachment",
+]);
+
+export type MediaFileContext = (typeof mediaFileContextEnum.enumValues)[number];
+
+export const mediaFileStatusEnum = pgEnum("media_file_status", [
+  "temporary",
+  "active",
+  "deleted",
+  "hidden",
+]);
+
+export type MediaFileStatus = (typeof mediaFileStatusEnum.enumValues)[number];
+
+export const psgcRegions = pgTable("psgc_regions", {
+  code: text("code").primaryKey(),
+  name: text("name").notNull(),
+  geographicLevel: text("geographic_level").notNull().default("Reg"),
+  version: text("version").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const psgcProvinces = pgTable(
+  "psgc_provinces",
+  {
+    code: text("code").primaryKey(),
+    name: text("name").notNull(),
+    regionCode: text("region_code")
+      .notNull()
+      .references(() => psgcRegions.code, { onDelete: "restrict" }),
+    geographicLevel: text("geographic_level").notNull().default("Prov"),
+    version: text("version").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("psgc_provinces_region_code_idx").on(table.regionCode),
+    index("psgc_provinces_name_idx").on(table.name),
+  ],
+);
+
+export const psgcCitiesMunicipalities = pgTable(
+  "psgc_cities_municipalities",
+  {
+    code: text("code").primaryKey(),
+    name: text("name").notNull(),
+    regionCode: text("region_code")
+      .notNull()
+      .references(() => psgcRegions.code, { onDelete: "restrict" }),
+    provinceCode: text("province_code").references(() => psgcProvinces.code, {
+      onDelete: "restrict",
+    }),
+    geographicLevel: text("geographic_level").notNull(),
+    version: text("version").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("psgc_cities_municipalities_region_code_idx").on(table.regionCode),
+    index("psgc_cities_municipalities_province_code_idx").on(table.provinceCode),
+    index("psgc_cities_municipalities_name_idx").on(table.name),
+  ],
+);
+
+export const psgcBarangays = pgTable(
+  "psgc_barangays",
+  {
+    code: text("code").primaryKey(),
+    name: text("name").notNull(),
+    regionCode: text("region_code")
+      .notNull()
+      .references(() => psgcRegions.code, { onDelete: "restrict" }),
+    provinceCode: text("province_code").references(() => psgcProvinces.code, {
+      onDelete: "restrict",
+    }),
+    cityMunicipalityCode: text("city_municipality_code")
+      .notNull()
+      .references(() => psgcCitiesMunicipalities.code, {
+        onDelete: "restrict",
+      }),
+    geographicLevel: text("geographic_level").notNull().default("Bgy"),
+    version: text("version").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("psgc_barangays_city_municipality_code_idx").on(
+      table.cityMunicipalityCode,
+    ),
+    index("psgc_barangays_province_code_idx").on(table.provinceCode),
+    index("psgc_barangays_name_idx").on(table.name),
+  ],
+);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -203,6 +318,16 @@ export const shipmentRequests = pgTable(
     declaredValue: numeric("declared_value", { precision: 12, scale: 2 }),
     origin: text("origin").notNull(),
     destination: text("destination").notNull(),
+    destinationRegionCode: text("destination_region_code"),
+    destinationRegionName: text("destination_region_name"),
+    destinationProvinceCode: text("destination_province_code"),
+    destinationProvinceName: text("destination_province_name"),
+    destinationCityMunicipalityCode: text("destination_city_municipality_code"),
+    destinationCityMunicipalityName: text("destination_city_municipality_name"),
+    destinationBarangayCode: text("destination_barangay_code"),
+    destinationBarangayName: text("destination_barangay_name"),
+    destinationAddressDetails: text("destination_address_details"),
+    destinationDisplayName: text("destination_display_name"),
     deliveryPreference: deliveryPreferenceEnum("delivery_preference").notNull(),
     shippingPreference: shippingPreferenceEnum("shipping_preference").notNull(),
     notes: text("notes"),
@@ -221,7 +346,69 @@ export const shipmentRequests = pgTable(
     index("shipment_requests_shipping_preference_idx").on(
       table.shippingPreference,
     ),
+    index("shipment_requests_destination_province_code_idx").on(
+      table.destinationProvinceCode,
+    ),
+    index("shipment_requests_destination_city_municipality_code_idx").on(
+      table.destinationCityMunicipalityCode,
+    ),
     index("shipment_requests_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const mediaFiles = pgTable(
+  "media_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerUserProfileId: uuid("owner_user_profile_id")
+      .notNull()
+      .references(() => userProfiles.id, { onDelete: "cascade" }),
+    importerProfileId: uuid("importer_profile_id").references(
+      () => importerProfiles.id,
+      { onDelete: "set null" },
+    ),
+    context: mediaFileContextEnum("context").notNull(),
+    objectKey: text("object_key").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    contentType: text("content_type").notNull(),
+    detectedContentType: text("detected_content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    checksumSha256: text("checksum_sha256").notNull(),
+    status: mediaFileStatusEnum("status").notNull().default("temporary"),
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("media_files_object_key_idx").on(table.objectKey),
+    index("media_files_owner_context_status_idx").on(
+      table.ownerUserProfileId,
+      table.context,
+      table.status,
+    ),
+    index("media_files_importer_profile_id_idx").on(table.importerProfileId),
+    index("media_files_status_created_at_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export const shipmentRequestAttachments = pgTable(
+  "shipment_request_attachments",
+  {
+    shipmentRequestId: uuid("shipment_request_id")
+      .notNull()
+      .references(() => shipmentRequests.id, { onDelete: "cascade" }),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => mediaFiles.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("shipment_request_attachments_request_file_idx").on(
+      table.shipmentRequestId,
+      table.fileId,
+    ),
+    index("shipment_request_attachments_file_id_idx").on(table.fileId),
   ],
 );
 

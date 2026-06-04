@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port=3001",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node server.mjs",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -14,8 +14,10 @@
     "db:check": "drizzle-kit check",
     "db:smoke": "tsx scripts/db-smoke.ts",
     "db:smoke:v1": "tsx scripts/v1-marketplace-smoke.ts",
+    "db:import-psgc": "tsx scripts/import-psgc.ts",
     "db:prove-onboarding": "tsx scripts/prove-onboarding.ts",
     "type-check": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
     "ai:run": "node tools/ai-runner/index.mjs",
     "test:ai-runner": "node --test tools/ai-runner/index.test.mjs"
   },
@@ -45,6 +47,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "vaul": "^1.1.2",
+    "ws": "^8.21.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -52,6 +55,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",

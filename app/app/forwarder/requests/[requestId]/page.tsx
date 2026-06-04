@@ -10,14 +10,17 @@ import {
   StatusBadge,
 } from "@/components/app-shell";
 import { QuoteSubmissionForm } from "@/components/forms/quote-submission-form";
+import { RequestStatusBadge } from "@/components/requests/request-status-badge";
+import { AttachmentList } from "@/components/requests/attachment-list";
 import { Button } from "@/components/ui/button";
 import {
   formatCount,
   formatDate,
+  formatDestination,
   formatDimensions,
   formatMeasure,
   formatMoney,
-  formatRoute,
+  formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
 import {
@@ -32,6 +35,7 @@ import {
   defaultValidUntilFromDays,
   getForwarderQuoteDefaultsForCurrentCompany,
 } from "@/lib/profile-settings";
+import { listShipmentRequestAttachmentsForViewer } from "@/lib/media";
 import { startForwarderConversation } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -65,18 +69,18 @@ export default async function ForwarderRequestDetailPage({
     notFound();
   }
 
-  const [quoteCount, ownQuote, quoteDefaults] = await Promise.all([
+  const [quoteCount, ownQuote, quoteDefaults, attachments] = await Promise.all([
     getQuoteCountForRequest(request.id),
     getForwarderOwnQuoteForRequest(request.id, member.companyId),
     getForwarderQuoteDefaultsForCurrentCompany(member.companyId),
+    listShipmentRequestAttachmentsForViewer(request.id),
   ]);
 
   return (
     <>
       <PageHeader
-        eyebrow="Forwarder"
         title={request.cargoDescription}
-        description={`${formatRoute(request.origin, request.destination)} / ${titleFromEnum(request.status)}`}
+        description={`${formatStructuredRoute(request)} / ${titleFromEnum(request.status)}`}
         actions={
           <Button asChild variant="outline">
             <Link href="/app/forwarder/requests">Back to open requests</Link>
@@ -87,8 +91,8 @@ export default async function ForwarderRequestDetailPage({
       <div className="mt-6 grid gap-6">
         <DetailCard title="Shipment summary">
           <InfoGrid>
-            <DetailValue label="Status" value={<StatusBadge>{titleFromEnum(request.status)}</StatusBadge>} />
-            <DetailValue label="Route" value={formatRoute(request.origin, request.destination)} />
+            <DetailValue label="Status" value={<RequestStatusBadge status={request.status} />} />
+            <DetailValue label="Route" value={formatStructuredRoute(request)} />
             <DetailValue label="Cargo type" value={titleFromEnum(request.cargoType)} />
             <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
             <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
@@ -107,7 +111,11 @@ export default async function ForwarderRequestDetailPage({
           <DetailCard title="Pickup and destination">
             <InfoGrid columns={2}>
               <DetailValue label="Origin" value={request.origin} />
-              <DetailValue label="Destination" value={request.destination} />
+              <DetailValue label="Destination" value={formatDestination(request)} />
+              <DetailValue
+                label="Address details"
+                value={request.destinationAddressDetails}
+              />
             </InfoGrid>
           </DetailCard>
         </div>
@@ -136,6 +144,9 @@ export default async function ForwarderRequestDetailPage({
           <div className="grid gap-4 sm:grid-cols-2">
             <DetailValue label="Notes" value={request.notes} />
             <DetailValue label="Supporting document notes" value={request.attachmentNotes} />
+          </div>
+          <div className="mt-4">
+            <AttachmentList files={attachments} />
           </div>
         </DetailCard>
 

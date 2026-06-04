@@ -1,11 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 
-import {
-  DetailCard,
-  DetailValue,
-  InfoGrid,
-  PageHeader,
-} from "@/components/app-shell";
+import { PageHeader } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
 import { ImporterProfileForm } from "@/components/forms/importer-profile-form";
 import { getImporterSettingsForCurrentUser } from "@/lib/profile-settings";
 
@@ -31,7 +27,6 @@ export default async function ImporterProfilePage({
   return (
     <>
       <PageHeader
-        eyebrow="Importer"
         title="Profile"
         description="Keep your contact details updated so forwarders know who they are quoting."
         actions={
@@ -59,37 +54,75 @@ export default async function ImporterProfilePage({
           </div>
         ) : null}
 
-        <DetailCard
-          title="Basic information"
-          description="These details help forwarders understand who they are quoting."
-        >
-          <InfoGrid columns={2}>
-            <DetailValue label="Contact name" value={profile.fullName} />
-            <DetailValue
+        <section className="overflow-hidden rounded-md border bg-background">
+          <ProfileSection
+            title="Basic information"
+            description="Details forwarders use when preparing quotes."
+          >
+            <ProfileRow label="Contact name" value={profile.fullName} />
+            <ProfileRow
               label="Company or business name"
               value={importerProfile.companyName}
             />
-            <DetailValue
+            <ProfileRow
               label="Philippines location"
               value={importerProfile.location}
             />
-            <DetailValue
+            <ProfileRow
               label="Contact number"
               value={importerProfile.contactPhone}
             />
-          </InfoGrid>
-        </DetailCard>
+          </ProfileSection>
 
-        <DetailCard
-          title="Account details"
-          description="Some account details are managed outside this page."
-        >
-          <InfoGrid columns={2}>
-            <DetailValue label="Email" value={email ?? "Not provided"} />
-            <DetailValue label="Account type" value="Importer" />
-          </InfoGrid>
-        </DetailCard>
+          <ProfileSection
+            title="Account details"
+            description="Managed account information."
+          >
+            <ProfileRow label="Email" value={email ?? "Not provided"} />
+            <ProfileRow
+              label="Account type"
+              value={<Badge variant="secondary">Importer</Badge>}
+            />
+          </ProfileSection>
+        </section>
       </div>
     </>
+  );
+}
+
+function ProfileSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-b last:border-b-0">
+      <div className="border-b px-4 py-4 sm:px-5">
+        <h2 className="text-base font-semibold">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <dl className="divide-y">{children}</dl>
+    </section>
+  );
+}
+
+function ProfileRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-1 px-4 py-3 sm:grid-cols-[16rem_minmax(0,1fr)] sm:gap-6 sm:px-5">
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words text-sm leading-6">
+        {value || "Not provided"}
+      </dd>
+    </div>
   );
 }

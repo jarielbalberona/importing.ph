@@ -20,7 +20,6 @@ export default async function NewShipmentRequestPage({
   return (
     <>
       <PageHeader
-        eyebrow="Importer"
         title="New shipment request"
         description="Post the shipment once so forwarders can send private quotes."
         actions={

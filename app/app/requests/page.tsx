@@ -1,25 +1,26 @@
 import Link from "next/link";
 
-import {
-  DetailValue,
-  EmptyState,
-  InfoGrid,
-  PageHeader,
-  StatusBadge,
-} from "@/components/app-shell";
-import { SummaryCard } from "@/components/summary-card";
+import { EmptyState, PageHeader } from "@/components/app-shell";
+import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { requireRole } from "@/lib/authz";
 import {
   formatCount,
   formatDate,
   formatDimensions,
   formatMeasure,
-  formatRoute,
+  formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
-import { requireRole } from "@/lib/authz";
 import { getShipmentRequestsForCurrentImporter } from "@/lib/shipment-requests";
 
 export const dynamic = "force-dynamic";
@@ -41,9 +42,8 @@ export default async function ImporterRequestsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Importer"
         title="Shipment requests"
-        description="Review your posted shipment requests, compare private quotes, and continue conversations with forwarders."
+        description="Review posted shipment requests, compare private quotes, and continue conversations with forwarders."
         actions={
           <Button asChild size="lg">
             <Link href="/app/requests/new">New request</Link>
@@ -51,10 +51,10 @@ export default async function ImporterRequestsPage() {
         }
       />
 
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <SummaryCard label="Active requests" value={activeRequests} />
-        <SummaryCard label="Quotes received" value={totalQuotes} />
-        <SummaryCard label="Quotes selected" value={selectedRequests} />
+      <section className="mt-6 flex flex-wrap gap-x-10 gap-y-4 border-y py-4 text-sm">
+        <RequestMetric label="Active" value={activeRequests} />
+        <RequestMetric label="Quotes" value={totalQuotes} />
+        <RequestMetric label="Selected" value={selectedRequests} />
       </section>
 
       {requests.length === 0 ? (
@@ -70,57 +70,83 @@ export default async function ImporterRequestsPage() {
           />
         </div>
       ) : (
-        <section className="mt-8 grid gap-4 xl:grid-cols-2">
-          {requests.map((request) => (
-            <Link key={request.id} href={`/app/requests/${request.id}`}>
-              <Card className="transition-colors hover:bg-accent">
-                <CardContent>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="min-w-0 break-words text-lg font-semibold">
-                        {request.cargoDescription}
-                      </h2>
-                      <StatusBadge>{titleFromEnum(request.status)}</StatusBadge>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {formatRoute(request.origin, request.destination)}
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {titleFromEnum(request.cargoType)} /{" "}
-                      {titleFromEnum(request.deliveryPreference)}
-                    </p>
-                    <div className="mt-4">
-                      <InfoGrid>
-                        <DetailValue
-                          label="Size and weight"
-                          value={sizeSummary(request)}
-                        />
-                        <DetailValue
-                          label="Dimensions"
-                          value={formatDimensions(request)}
-                        />
-                        <DetailValue
-                          label="Last updated"
-                          value={formatDate(request.updatedAt)}
-                        />
-                      </InfoGrid>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="justify-between gap-3">
-                  <Badge variant="outline">
-                    {formatCount(request.quoteCount, "quote")}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Posted {formatDate(request.createdAt)}
-                  </span>
-                  <span className="text-sm font-medium text-primary">
-                    View details
-                  </span>
-                </CardFooter>
-              </Card>
-            </Link>
-          ))}
+        <section className="mt-6 rounded-md border bg-background">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-80 w-[34%]">Request</TableHead>
+                <TableHead className="min-w-[260px]">Route</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead>Dimensions</TableHead>
+                <TableHead>Quotes</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead>
+                  <span className="sr-only">Open</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.map((request) => {
+                const href = `/app/requests/${request.id}`;
+
+                return (
+                  <TableRow key={request.id} className="group cursor-pointer">
+                    <TableCell className="min-w-80 whitespace-normal">
+                      <Link href={href} className="block py-1">
+                        <span className="font-medium">
+                          {request.cargoDescription}
+                        </span>
+                        <span className="mt-2 flex flex-wrap gap-2">
+                          <RequestStatusBadge status={request.status} />
+                          <span className="text-xs text-muted-foreground">
+                            Posted {formatDate(request.createdAt)}
+                          </span>
+                        </span>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="min-w-[260px] whitespace-normal">
+                      <Link href={href} className="block py-1">
+                        <span className="block">
+                          {formatStructuredRoute(request)}
+                        </span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {titleFromEnum(request.cargoType)} /{" "}
+                          {titleFromEnum(request.deliveryPreference)}
+                        </span>
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={href} className="block py-1">
+                        {sizeSummary(request)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={href} className="block py-1">
+                        {formatDimensions(request)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={href} className="block py-1">
+                        <Badge variant="outline">
+                          {formatCount(request.quoteCount, "quote")}
+                        </Badge>
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={href} className="block py-1">
+                        {formatDate(request.updatedAt)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={href}>Open</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </section>
       )}
     </>
@@ -130,6 +156,17 @@ export default async function ImporterRequestsPage() {
 type ImporterRequest = Awaited<
   ReturnType<typeof getShipmentRequestsForCurrentImporter>
 >[number];
+
+function RequestMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid gap-1">
+      <span className="text-xs font-medium uppercase text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-2xl font-semibold">{value}</span>
+    </div>
+  );
+}
 
 function sizeSummary(request: ImporterRequest) {
   const values = [

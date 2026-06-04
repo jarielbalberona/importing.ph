@@ -13,6 +13,68 @@ Baseline command placeholders:
 
 Do not claim repository health from memory.
 
+## realtime-messaging-v1 / Phase 0
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `git status --short`: pass; dirty worktree recorded, including unrelated existing changes outside `.ai/initiatives/realtime-messaging-v1`.
+- `rg -n "conversation|conversations|message|messages|notification|unread|quote" db lib app components hooks`: pass; current messaging, notification, quote, and route surfaces identified.
+- `rg -n "useQuery|QueryClient|queryKey|revalidatePath|fetch\\(" app components lib hooks package.json`: pass; no React Query/TanStack Query usage found; fetch usage is unrelated to messaging except attachment/location surfaces.
+- `rg -n "websocket|ws|sse|eventsource|upgrade|server-sent|socket" app lib package.json next.config.* render.yaml`: pass; no app-level WebSocket/SSE/socket implementation found.
+- `test -f render.yaml`: pass.
+
+Read-only evidence:
+
+- `db/schema.ts`: conversations, messages, notifications, media/file attachment tables, quote/request relationships, and indexes inspected.
+- `lib/messages.ts`: conversation creation, participant access, message creation, message retrieval, and conversation listing inspected.
+- `lib/notifications.ts`: message notification recipients and notification read state inspected.
+- `lib/authz.ts`, `lib/onboarding.ts`, `lib/shipment-requests.ts`, `lib/forwarder-open-requests.ts`: auth, role, importer, and forwarder membership flows inspected.
+- `package.json`, `render.yaml`, `next.config.ts`, `.env.example`, `.env.local.example`, `docker-compose.yml`: runtime/deployment config inspected.
+- Official docs checked for Render WebSocket behavior, Next.js route handlers, and Next.js custom server guidance.
+
+Skipped by phase scope:
+
+- `npm run type-check`
+- `npm run lint`
+- `npm run build`
+- DB migration/check commands
+- Browser smoke
+- Runtime WebSocket smoke
+
+Impact: Phase 0 proves architecture readiness only. It does not prove implementation correctness or deployed WebSocket behavior.
+
+## realtime-messaging-v1 / Phase 1
+
+Status: `passed_with_issues`
+
+Commands:
+
+- `node tools/ai-runner/index.mjs realtime-messaging-v1 --check-only`: pass; preflight passed.
+- `git diff --check -- .ai/initiatives/realtime-messaging-v1 .ai/state`: pass.
+
+Design verification:
+
+- Custom server approach documented.
+- WebSocket path `/api/realtime/ws` selected.
+- Socket auth strategy documented.
+- Subscription authorization model documented.
+- V1 event contract documented.
+- Reconnect/recovery behavior documented.
+- Frontend strategy avoids React Query.
+- Phase 3 transaction requirement documented.
+
+Skipped by phase scope:
+
+- `npm run type-check`
+- `npm run lint`
+- `npm run build`
+- DB commands
+- Browser/runtime smoke
+
+Impact: Phase 1 proves design readiness only. It does not create the custom server, install `ws`, change scripts, or prove runtime WebSocket behavior.
+
 ## local-db-migration-proof / Phase 1
 
 Status: `passed_with_issues`
@@ -1310,3 +1372,31 @@ Final verification:
 - `git diff --check -- .ai/initiatives/production-readiness-admin-runbook .ai/state`: pass.
 
 Impact: initiative is complete as a runbook. It is ready for Render/staging smoke only after target environment details are provided.
+
+## realtime-messaging-v1 / Final
+
+Status: `PASS WITH ISSUES`
+
+Commands:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm test`: pass, 10 tests.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `git diff --check`: pass.
+- `node tools/ai-runner/index.mjs realtime-messaging-v1 --check-only`: pass.
+
+Runtime probes:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm start`: attempted; failed because port `3001` was already in use.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH PORT=3101 NODE_ENV=production node server.mjs`: pass.
+- `curl -I http://localhost:3101/`: pass, returned `200`.
+- invalid WebSocket path `ws://localhost:3101/not-realtime`: pass, returned `404`.
+- realtime WebSocket path without token `ws://localhost:3101/api/realtime/ws`: pass, returned `401`.
+
+Skipped/unproven:
+
+- Full authenticated two-browser importer/forwarder realtime smoke was not completed in this turn because confirmed local Clerk smoke credentials were not provided and creating new smoke users was not explicitly requested.
+- Deployed Render smoke remains unproven because target URL, target DB, and Clerk target configuration are not operator-confirmed.
+
+Impact: realtime V1 is implemented and locally verified at the static/runtime-probe level. Do not claim browser-proven or production-proven realtime delivery until the focused smoke passes.
