@@ -259,6 +259,17 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Phase 5 wired importer and forwarder conversation detail/list UI for realtime updates and conservative server refresh fallback.
   - Final report: `reports/final-report.md`.
   - Final verdict: `PASS WITH ISSUES`.
-  - Accepted final issue: automated/static/custom-server verification passed, but full authenticated two-browser importer/forwarder realtime delivery smoke was not completed in this turn.
+  - Focused authenticated local browser smoke later passed on `2026-06-04`: importer `a1+clerk_test@clerk.com` and forwarder `a2+clerk_test@clerk.com` exchanged realtime messages in conversation `cf68b210-6a61-4e76-80bd-c91178c51cf8` without manual refresh, refresh recovery preserved one message body each, and unauthorized subscription returned `forbidden`.
+  - Remaining issue: deployed Render smoke and multi-instance fanout are unproven.
   - Phase 1 required Phase 3 to wrap message insert plus conversation `updated_at` update in one transaction before post-commit event emission.
   - Final Phase 1 report: `reports/phase-1-realtime-contract-design.md`.
+- `request-validation-psgc-hardening`: closure initiative.
+  - Final proof report: `.ai/initiatives/request-validation-psgc-hardening/reports/final-proof-report.md`.
+  - Final verdict: `PASS WITH ISSUES`.
+  - Friendly `/app/requests/new` validation, Step 2 size/weight rules, PSGC destination picker, structured destination storage/display, and legacy fallback are locally proven.
+  - Clean build proof passed from `/tmp/importing-ph-clean-build` with fresh dependencies and `/opt/homebrew/bin/pnpm build`.
+  - The working-tree macOS SWC failure is environment-only because the same source builds in a clean dependency install.
+  - Official local PSGC import passed for `2025-2Q` seed files with row counts: 18 regions, 117 province/province-like parent rows, 1656 cities/municipalities, and 42011 barangays.
+  - Authenticated browser smoke passed on `/app/requests/new` for friendly validation, dimensions-based Step 2, normal PSGC hierarchy, NCR direct city/barangay selection, review behavior, final create-only-on-post behavior, and double-click no-duplicate behavior.
+  - Exact browser smoke request `867fc074-ca24-47d3-91bd-8b4a9b22412e` was deleted after proof.
+  - Remaining issue: server-side final-post idempotency token is not implemented and remains a production hardening follow-up.

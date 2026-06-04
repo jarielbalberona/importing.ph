@@ -82,8 +82,15 @@ Runtime probes:
 - Invalid WebSocket upgrade path `ws://localhost:3101/not-realtime`: pass, returned `404`.
 - Realtime WebSocket path without token `ws://localhost:3101/api/realtime/ws`: pass, returned `401`.
 
-Manual smoke:
+Focused authenticated browser smoke:
 
-- Full importer/forwarder two-browser authenticated smoke was not completed in this turn because no confirmed local Clerk smoke credentials were available in the prompt and creating/mutating smoke users was not part of the requested execution. Do not claim browser-proven realtime delivery until that smoke is run.
+- Importer session: in-app browser as `a1+clerk_test@clerk.com`.
+- Forwarder session: isolated Chrome profile/CDP as `a2+clerk_test@clerk.com`, because the in-app browser reported `singleTab` mode.
+- Conversation: `cf68b210-6a61-4e76-80bd-c91178c51cf8`.
+- Importer sent `Importer realtime rt-smoke-1780588596674`; forwarder received it without manual refresh: pass.
+- Forwarder sent `Forwarder realtime rt-smoke-1780588638679`; importer received it without manual refresh: pass.
+- Importer and forwarder refresh recovery preserved both smoke messages with body count `1`: pass.
+- Authenticated unauthorized subscription to unrelated conversation `d56a7bc6-1ef2-4cbb-9741-70684a1e766b` returned `realtime.error` with `code: "forbidden"`: pass.
+- Authenticated token mint, unauthenticated token reject, unauthenticated WebSocket reject, invalid WebSocket path reject, and normal HTTP route probes passed.
 
-Final issue accepted: local automated and runtime verification pass, but authenticated browser realtime delivery remains unproven.
+Final issue accepted: local browser proof passed, but deployed Render smoke and multi-instance production fanout remain unproven.

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeftIcon, HelpCircleIcon, InfoIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, HelpCircleIcon, InfoIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -187,8 +187,6 @@ export function ImporterMessagesClient({
     },
     [activeConversation, conversations, router],
   );
-  const realtimeStatus = realtime.status;
-
   useEffect(
     () => realtime.addListener(handleRealtimeEvent),
     [handleRealtimeEvent, realtime],
@@ -227,7 +225,6 @@ export function ImporterMessagesClient({
           <MessageWindow
             conversation={currentConversation}
             query={query}
-            realtimeStatus={realtimeStatus}
             detailsOpen={detailsOpen}
             onToggleDetails={() => setDetailsOpen((value) => !value)}
           />
@@ -344,7 +341,6 @@ function ConversationList({
 function MessageWindow({
   conversation,
   query,
-  realtimeStatus,
   detailsOpen,
   onToggleDetails,
 }: {
@@ -353,7 +349,6 @@ function MessageWindow({
     message?: string;
     messageError?: string;
   };
-  realtimeStatus: string;
   detailsOpen: boolean;
   onToggleDetails: () => void;
 }) {
@@ -431,20 +426,6 @@ function MessageWindow({
           </div>
         </div>
       </div>
-
-      <div className="border-b bg-background/70 px-4 py-2 text-xs text-muted-foreground">
-        {realtimeStatus === "connected"
-          ? "Live updates connected."
-          : realtimeStatus === "reconnecting"
-            ? "Reconnecting. Messages still send normally."
-            : "Connecting live updates. Messages still send normally."}
-      </div>
-
-      {query?.message === "sent" ? (
-        <div className="border-b border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
-          Message sent.
-        </div>
-      ) : null}
 
       {query?.messageError ? (
         <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -596,8 +577,9 @@ function MessageBubble({ message }: { message: Message }) {
           {message.body}
         </p>
       </div>
-      <p className="px-1 text-xs text-muted-foreground">
+      <p className="flex items-center gap-1 px-1 text-xs text-muted-foreground">
         {message.createdAt}
+        <CheckIcon className="size-3" aria-label="Sent" />
       </p>
     </article>
   );

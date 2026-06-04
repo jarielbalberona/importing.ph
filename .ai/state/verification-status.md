@@ -1400,3 +1400,106 @@ Skipped/unproven:
 - Deployed Render smoke remains unproven because target URL, target DB, and Clerk target configuration are not operator-confirmed.
 
 Impact: realtime V1 is implemented and locally verified at the static/runtime-probe level. Do not claim browser-proven or production-proven realtime delivery until the focused smoke passes.
+
+## request-validation-psgc-hardening / Final Proof
+
+Status: `PASS WITH ISSUES`
+
+Commands:
+
+- `/opt/homebrew/bin/pnpm lint`: pass.
+- `/opt/homebrew/bin/pnpm type-check`: pass.
+- `/opt/homebrew/bin/pnpm test`: pass, 10 tests.
+- `/opt/homebrew/bin/pnpm db:check`: pass.
+- `/opt/homebrew/bin/pnpm db:import-psgc -- --dry-run`: pass; 18 regions, 117 province/province-like parent rows, 1656 cities/municipalities, 42011 barangays.
+- `/opt/homebrew/bin/pnpm db:import-psgc`: pass; imported PSGC `2025-2Q`.
+- `/opt/homebrew/bin/pnpm build` from `/tmp/importing-ph-clean-build` after fresh dependency install: pass.
+
+Build classification:
+
+- Working-tree `pnpm build` and `pnpm dev` remain blocked by the local macOS `@next/swc-darwin-arm64` code-signature failure.
+- Clean dependency build passes, so the SWC failure is environment-only, not app-code-related.
+
+Authenticated browser smoke:
+
+- Browser was already authenticated as an importer on `http://localhost:3001/app/requests`.
+- Empty Step 1 showed friendly required errors.
+- Short description showed `Use at least 3 characters.`
+- Missing cargo type showed a friendly cargo type error.
+- Step 2 dimensions path advanced with weight `120`, package count `12`, and dimensions `40 x 30 x 20 cm`.
+- Empty Step 3 blocked with friendly origin/region/city errors.
+- Normal PSGC path advanced through Region VII -> Cebu -> Alcantara -> Manga.
+- NCR path advanced through National Capital Region (NCR) -> City of Makati -> Bel-Air with no province.
+- Review showed `Bel-Air, City of Makati, National Capital Region (NCR)`, `120 kg`, package count `12`, and `40 x 30 x 20 cm`.
+- Entering Step 6 created no request.
+- Double-clicking `Post request` created exactly one request.
+- Created request id `867fc074-ca24-47d3-91bd-8b4a9b22412e` had structured NCR destination fields and was cleaned up by exact id after proof.
+
+Live PSGC endpoint smoke:
+
+- `/v1/locations/regions`: pass.
+- `/v1/locations/provinces?regionCode=0700000000`: pass.
+- `/v1/locations/cities-municipalities?provinceCode=0702200000`: pass.
+- `/v1/locations/cities-municipalities?regionCode=1300000000&q=Makati`: pass, returned `City of Makati` with `provinceCode: null`.
+- `/v1/locations/barangays?cityMunicipalityCode=1380300000&q=Bel-Air`: pass, returned `Bel-Air` with `provinceCode: null`.
+
+Impact: `/app/requests/new` validation and PSGC destination behavior are proven locally. Staging/production proof still requires target DB import and deployed smoke.
+
+## realtime-messaging-v1 / Focused Authenticated Browser Smoke
+
+Status: `PASS`
+
+Runtime:
+
+- Existing listener on `localhost:3001` was verified as `node server.mjs`.
+- In-app browser was used for importer.
+- Isolated Chrome profile/CDP was used for forwarder because the in-app browser reported `singleTab` mode.
+
+Users:
+
+- Importer: `a1+clerk_test@clerk.com`, Clerk user id `user_3EV8BU6ymuownGqzYo2Dq5bYYhV`.
+- Forwarder: `a2+clerk_test@clerk.com`, Clerk user id `user_3EV8hKwD0R7E7cH4n5XIZsrNLqM`.
+
+Conversation:
+
+- `cf68b210-6a61-4e76-80bd-c91178c51cf8`.
+- Shipment: `Smoke shipment fixed mpv403zq`.
+- Forwarder company: `Smoke Forwarder Logistics`.
+
+Browser proof:
+
+- Importer sent `Importer realtime rt-smoke-1780588596674`: pass.
+- Forwarder received importer message without manual refresh: pass, body count `1`.
+- Forwarder sent `Forwarder realtime rt-smoke-1780588638679`: pass.
+- Importer received forwarder message without manual refresh: pass, body count `1`.
+- Importer refresh recovery: pass, both smoke message bodies count `1`.
+- Forwarder refresh recovery: pass, both smoke message bodies count `1`.
+
+Security/runtime proof:
+
+- Authenticated `/api/realtime/token`: pass, `200`.
+- Unauthenticated `/api/realtime/token`: pass, `401`.
+- Unauthenticated `/api/realtime/ws`: pass, `401`.
+- Invalid WebSocket path: pass, `404`.
+- Normal HTTP route `/`: pass, `200`.
+- Authenticated unauthorized subscription to unrelated conversation `d56a7bc6-1ef2-4cbb-9741-70684a1e766b`: pass, `realtime.error` with `code: "forbidden"`.
+
+Screenshots:
+
+- `/tmp/realtime-forwarder-before.png`
+- `/tmp/realtime-forwarder-after-importer.png`
+- `/tmp/realtime-forwarder-after-send.png`
+- `/tmp/realtime-importer-after-forwarder.png`
+- `/tmp/realtime-importer-after-refresh.png`
+- `/tmp/realtime-forwarder-after-refresh.png`
+
+Final verification after smoke:
+
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run type-check`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run lint`: pass.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm test`: pass, 10 tests.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:$PATH npm run build`: pass.
+- `git diff --check`: pass.
+- `node tools/ai-runner/index.mjs realtime-messaging-v1 --check-only`: pass.
+
+Impact: local authenticated browser realtime proof is complete. Production readiness still requires deployed smoke plus confirmed single-instance or shared fanout strategy.

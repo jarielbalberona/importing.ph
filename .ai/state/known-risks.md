@@ -139,4 +139,10 @@ Risk lifecycle labels:
 - resolved: `realtime-messaging-v1` Phase 3 made message insert and conversation `updated_at` update transaction-safe before post-commit event emission.
 - accepted: `realtime-messaging-v1` uses in-memory socket/subscription registries for V1. This is only correct for local or confirmed single-instance deployment; multi-instance Render deployment needs Redis/pubsub or equivalent later.
 - accepted: `realtime-messaging-v1` production should set a dedicated `REALTIME_TOKEN_SECRET`; fallback to `CLERK_SECRET_KEY` works but couples realtime token signing to Clerk secret rotation.
-- active: `realtime-messaging-v1` full authenticated two-browser realtime delivery smoke is still unproven. Static checks and custom-server probes passed, but browser UX timing and real Clerk session behavior still need a focused smoke.
+- resolved: `realtime-messaging-v1` focused authenticated local browser smoke passed on `2026-06-04` using importer `a1+clerk_test@clerk.com`, forwarder `a2+clerk_test@clerk.com`, and conversation `cf68b210-6a61-4e76-80bd-c91178c51cf8`.
+- active: `realtime-messaging-v1` deployed realtime smoke is still unproven. Production readiness requires target URL, target DB, Clerk target config, and Render instance count confirmation.
+- resolved: `request-validation-psgc-hardening` proved local `/app/requests/new` friendly validation, Step 2 size/weight validation, PSGC normal hierarchy selection, NCR direct city selection, final create-only-on-post behavior, and double-click no-duplicate behavior.
+- resolved: `request-validation-psgc-hardening` proved local PSGC `2025-2Q` import with 18 regions, 117 province/province-like parent rows, 1656 cities/municipalities, and 42011 barangays.
+- accepted: The working-tree macOS SWC package remains damaged; clean dependency build passes, so this is environment-only unless it reappears in CI/staging.
+- accepted: Server-side idempotency for final request posting is not implemented. Current UI disabled state passed the double-click smoke, but production-grade idempotency remains a follow-up.
+- active: PSGC data files are local and gitignored. Staging/production must import PSGC seed data into the target database before PSGC picker smoke can pass there.

@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckIcon } from "lucide-react";
 
 import { DetailCard, EmptyState, StatusBadge } from "@/components/app-shell";
 import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
@@ -87,19 +88,10 @@ export function ForwarderConversationClient({
     },
     [conversationId, messages, router],
   );
-  const realtimeStatus = useConversationRealtime(
-    conversationId,
-    handleRealtimeEvent,
-  );
+  useConversationRealtime(conversationId, handleRealtimeEvent);
 
   return (
     <>
-      {query.message === "sent" ? (
-        <div className="mt-6 rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
-          Message sent.
-        </div>
-      ) : null}
-
       {query.messageError ? (
         <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Message was not sent. Try again.
@@ -108,13 +100,6 @@ export function ForwarderConversationClient({
 
       <DetailCard
         title="Thread"
-        description={
-          realtimeStatus === "connected"
-            ? "Live updates connected."
-            : realtimeStatus === "reconnecting"
-              ? "Reconnecting. Messages still send normally."
-              : "Connecting live updates. Messages still send normally."
-        }
         className="mt-6"
       >
         {displayedMessages.length === 0 ? (
@@ -169,7 +154,10 @@ function MessageItem({ message }: { message: ForwarderMessage }) {
           <p className="break-words font-medium">{message.senderName}</p>
           <StatusBadge>{titleFromEnum(message.senderRole)}</StatusBadge>
         </div>
-        <p className="text-xs text-muted-foreground">{message.createdAt}</p>
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          {message.createdAt}
+          <CheckIcon className="size-3" aria-label="Sent" />
+        </p>
       </div>
       <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
         {message.body}

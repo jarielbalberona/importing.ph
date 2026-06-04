@@ -119,6 +119,23 @@ function cityMunicipalityCode(row: RawLocation) {
   return reg && prv && mun ? `${reg}${prv}${mun}000` : "";
 }
 
+function cityMunicipalityPrimaryCode(row: RawLocation) {
+  const psgc = psgcCode(row);
+
+  if (/^\d{10}$/.test(psgc)) {
+    return psgc;
+  }
+
+  const reg = numericCode(row.reg ?? row.regCode, 2);
+  const prv = numericCode(row.prv ?? row.provCode, 3);
+
+  if (reg && prv && prv !== "000") {
+    return `${reg}${prv}00000`;
+  }
+
+  return psgc;
+}
+
 async function readJsonArray(filePath: string) {
   let raw: string;
 
@@ -167,7 +184,7 @@ async function importPsgc() {
     version,
   }));
   const normalizedCitiesMunicipalities = citiesMunicipalities.map((row) => ({
-    code: psgcCode(row),
+    code: cityMunicipalityPrimaryCode(row),
     name: name(row),
     regionCode: regionCode(row),
     provinceCode: provinceCode(row),
