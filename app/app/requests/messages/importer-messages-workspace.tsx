@@ -116,12 +116,25 @@ function toConversationView(
       "messages" in conversation
         ? conversation.messages.map((message) => ({
             id: message.id,
+            senderUserProfileId: message.senderUserProfileId,
             senderName: message.senderName,
             senderRole: message.senderRole,
             body: message.body,
             createdAt: formatDateTime(message.createdAt),
           }))
         : [],
+    readStates:
+      "readStates" in conversation
+        ? conversation.readStates.map((readState) => ({
+            readerUserProfileId: readState.readerUserProfileId,
+            lastReadMessageId: readState.lastReadMessageId,
+            lastReadAt: readState.lastReadAt.toISOString(),
+          }))
+        : [],
+    currentUserProfileId:
+      "currentUserProfileId" in conversation
+        ? conversation.currentUserProfileId
+        : null,
   };
 }
 

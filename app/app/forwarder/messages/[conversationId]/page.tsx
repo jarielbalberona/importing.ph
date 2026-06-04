@@ -77,11 +77,18 @@ export default async function ForwarderConversationPage({
           conversationId={conversation.id}
           messages={conversation.messages.map((message) => ({
             id: message.id,
+            senderUserProfileId: message.senderUserProfileId,
             senderName: message.senderName,
             senderRole: message.senderRole,
             body: message.body,
             createdAt: formatDateTime(message.createdAt),
           }))}
+          readStates={conversation.readStates.map((readState) => ({
+            readerUserProfileId: readState.readerUserProfileId,
+            lastReadMessageId: readState.lastReadMessageId,
+            lastReadAt: readState.lastReadAt.toISOString(),
+          }))}
+          currentUserProfileId={conversation.currentUserProfileId}
           query={query}
         />
       </div>

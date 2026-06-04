@@ -8,6 +8,8 @@ The `/app/requests/new` validation and PSGC destination hardening pass is proven
 
 The remaining issue is not application correctness: the repository-local `node_modules/@next/swc-darwin-arm64` install is damaged on this macOS machine and still fails local `pnpm build`/`pnpm dev` from the working tree. A fresh workspace with fresh dependencies builds successfully, so the SWC failure is classified as environment-only.
 
+One process issue remains: the repo currently commits `package-lock.json`, not `pnpm-lock.yaml`. That means `pnpm install --frozen-lockfile` cannot run as requested. Clean proof was completed with `npm ci` against the committed lockfile and with a fresh pnpm install using `--no-frozen-lockfile`.
+
 ## Files Changed In Closure
 
 - `scripts/import-psgc.ts`
@@ -21,10 +23,11 @@ The remaining issue is not application correctness: the repository-local `node_m
 
 Clean build environment:
 
-- Source copied to `/tmp/importing-ph-clean-build`.
+- Source copied to `/tmp/importing-ph-clean-build-npm`, `/tmp/importing-ph-clean-build-pnpm`, and `/tmp/importing-ph-clean-build-pnpm-final`.
 - Excluded local `node_modules`, `.next`, `.git`, and `data/psgc`.
-- Fresh dependencies installed with `/opt/homebrew/bin/pnpm install --no-frozen-lockfile`.
-- Build command: `/opt/homebrew/bin/pnpm build`.
+- `npm ci && npm run lint && npm run type-check && npm test && npm run build` passed against the committed `package-lock.json`.
+- `/opt/homebrew/bin/pnpm install --no-frozen-lockfile && /opt/homebrew/bin/pnpm lint && /opt/homebrew/bin/pnpm type-check && /opt/homebrew/bin/pnpm test && /opt/homebrew/bin/pnpm build` passed in a clean temp copy.
+- `/opt/homebrew/bin/pnpm install --frozen-lockfile` failed before install because `pnpm-lock.yaml` is absent.
 
 Result:
 
@@ -69,6 +72,7 @@ Importer hardening completed during closure:
 - Reports missing seed files with setup guidance.
 - Handles NCR with no province.
 - Normalizes short HUC city pseudo-codes such as Makati `80300` to full PSGC code `1380300000`.
+- Deletes stale rows from the same PSGC version that are no longer produced by the normalized import, preventing old short-code rows from surviving repeat imports.
 - Keeps raw 10-digit PSGC codes for runtime storage and display.
 
 Live endpoint proof:
@@ -78,6 +82,8 @@ Live endpoint proof:
 - `/v1/locations/cities-municipalities?provinceCode=0702200000`: returned Cebu cities/municipalities.
 - `/v1/locations/cities-municipalities?regionCode=1300000000&q=Makati`: returned `City of Makati` with `provinceCode: null`.
 - `/v1/locations/barangays?cityMunicipalityCode=1380300000&q=Bel-Air`: returned `Bel-Air` with `provinceCode: null`.
+- Key case checks returned full 10-digit codes for Dumaguete, Cebu City, City of Manila, Quezon City, City of Makati, City of Taguig, City of Davao, City of Puerto Princesa, and City of Zamboanga.
+- NCR duplicates with short pseudo-codes were removed after re-import.
 
 ## Authenticated Browser Smoke
 
@@ -135,16 +141,19 @@ Passed:
 - `/opt/homebrew/bin/pnpm db:check`
 - `/opt/homebrew/bin/pnpm db:import-psgc -- --dry-run`
 - `/opt/homebrew/bin/pnpm db:import-psgc`
-- `/opt/homebrew/bin/pnpm build` in `/tmp/importing-ph-clean-build`
+- `npm ci && npm run lint && npm run type-check && npm test && npm run build` in `/tmp/importing-ph-clean-build-npm`
+- `/opt/homebrew/bin/pnpm install --no-frozen-lockfile && /opt/homebrew/bin/pnpm build` in `/tmp/importing-ph-clean-build-pnpm-final`
 
 Blocked locally:
 
 - Working-tree `pnpm build` and `pnpm dev` still fail when using the damaged local macOS SWC native package in `node_modules`.
+- `/opt/homebrew/bin/pnpm install --frozen-lockfile` cannot run until the repo either commits `pnpm-lock.yaml` or stops requiring pnpm frozen installs.
 
 ## Remaining Risks
 
 - Server-side idempotency token is still not implemented. The browser smoke proved current disabled state prevented accidental duplicate creation in the tested double-click case, but production-grade idempotency remains a separate hardening follow-up.
 - The PSGC source files are local and gitignored. Staging/production must run the same import against the target database before location picker smoke can pass there.
+- Package-manager policy is inconsistent: the repo has an npm lockfile but most commands use pnpm. That is tolerable locally, but it is sloppy CI hygiene and should be resolved before stricter deployment pipelines.
 - This is local authenticated browser proof, not Render/staging proof.
 
 ## Next Recommended Follow-Up

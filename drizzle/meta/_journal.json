@@ -85,6 +85,13 @@
       "when": 1780592400000,
       "tag": "0011_psgc_destinations",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780596000000,
+      "tag": "0012_conversation_read_states",
+      "breakpoints": true
     }
   ]
 }

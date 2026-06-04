@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeftIcon, CheckIcon, HelpCircleIcon, InfoIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CheckCheckIcon,
+  CheckIcon,
+  HelpCircleIcon,
+  InfoIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -33,7 +39,10 @@ import {
   type ClientRealtimeEvent,
   useRealtime,
 } from "@/components/realtime-provider";
-import { sendImporterMessage } from "./[conversationId]/actions";
+import {
+  markImporterConversationRead,
+  sendImporterMessage,
+} from "./[conversationId]/actions";
 
 export type ImporterConversationView = {
   id: string;
@@ -53,11 +62,18 @@ export type ImporterConversationView = {
   quote: ShipmentQuoteDetails["quote"];
   messages: Array<{
     id: string;
+    senderUserProfileId: string;
     senderName: string;
     senderRole: string;
     body: string;
     createdAt: string;
   }>;
+  readStates: Array<{
+    readerUserProfileId: string;
+    lastReadMessageId: string;
+    lastReadAt: string;
+  }>;
+  currentUserProfileId: string | null;
 };
 
 type ImporterMessagesClientProps = {
@@ -90,6 +106,9 @@ export function ImporterMessagesClient({
       }
     >
   >({});
+  const [readStatePatches, setReadStatePatches] = useState<
+    Record<string, ImporterConversationView["readStates"]>
+  >({});
   const currentConversation = useMemo(() => {
     if (!activeConversation) {
       return undefined;
@@ -101,12 +120,23 @@ export function ImporterMessagesClient({
       ...activeConversation.messages,
       ...appendedMessages.filter((message) => !seenMessageIds.has(message.id)),
     ];
+    const readStatesByReader = new Map(
+      activeConversation.readStates.map((readState) => [
+        readState.readerUserProfileId,
+        readState,
+      ]),
+    );
+
+    for (const readState of readStatePatches[activeConversation.id] ?? []) {
+      readStatesByReader.set(readState.readerUserProfileId, readState);
+    }
 
     return {
       ...activeConversation,
       messages: mergedMessages,
+      readStates: Array.from(readStatesByReader.values()),
     };
-  }, [activeConversation, realtimeMessages]);
+  }, [activeConversation, readStatePatches, realtimeMessages]);
   const conversationList = useMemo(() => {
     return conversations
       .map((conversation) => {
@@ -156,6 +186,7 @@ export function ImporterMessagesClient({
               ...currentMessages,
               {
                 id: event.message.id,
+                senderUserProfileId: event.message.senderUserProfileId,
                 senderName: event.message.senderName,
                 senderRole: event.message.senderRole,
                 body: event.message.body,
@@ -184,6 +215,17 @@ export function ImporterMessagesClient({
 
         router.refresh();
       }
+
+      if (event.type === "conversation.read_state.updated") {
+        setReadStatePatches((patches) =>
+          mergeReadStatePatch(patches, {
+            conversationId: event.conversationId,
+            readerUserProfileId: event.readerUserProfileId,
+            lastReadMessageId: event.lastReadMessageId,
+            lastReadAt: event.lastReadAt,
+          }),
+        );
+      }
     },
     [activeConversation, conversations, router],
   );
@@ -205,6 +247,49 @@ export function ImporterMessagesClient({
       }
     };
   }, [conversations, realtime]);
+
+  useEffect(() => {
+    if (!currentConversation?.currentUserProfileId) {
+      return;
+    }
+
+    const latestMessage = currentConversation.messages.at(-1);
+
+    if (
+      !latestMessage ||
+      latestMessage.senderUserProfileId === currentConversation.currentUserProfileId
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    markImporterConversationRead({
+      conversationId: currentConversation.id,
+      lastReadMessageId: latestMessage.id,
+    })
+      .then((readState) => {
+        if (cancelled) {
+          return;
+        }
+
+        setReadStatePatches((patches) =>
+          mergeReadStatePatch(patches, {
+            conversationId: currentConversation.id,
+            readerUserProfileId: readState.readerUserProfileId,
+            lastReadMessageId: readState.lastReadMessageId,
+            lastReadAt: readState.lastReadAt,
+          }),
+        );
+      })
+      .catch(() => {
+        // Do not fake seen/read state if the server-side write fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentConversation]);
 
   return (
     <section
@@ -352,6 +437,8 @@ function MessageWindow({
   detailsOpen: boolean;
   onToggleDetails: () => void;
 }) {
+  const latestSeenOutgoingMessageId = getLatestSeenOutgoingMessageId(conversation);
+
   return (
     <main className="flex h-full min-h-0 min-w-0 flex-col bg-muted/20 lg:border-r">
       <div className="border-b bg-background p-3 sm:p-4">
@@ -446,7 +533,11 @@ function MessageWindow({
         ) : (
           <div className="grid gap-4">
             {conversation.messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isSeen={message.id === latestSeenOutgoingMessageId}
+              />
             ))}
           </div>
         )}
@@ -550,7 +641,13 @@ function ConversationDetails({
 
 type Message = ImporterConversationView["messages"][number];
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  isSeen,
+}: {
+  message: Message;
+  isSeen: boolean;
+}) {
   const isImporter = message.senderRole === "importer";
 
   return (
@@ -568,21 +665,87 @@ function MessageBubble({ message }: { message: Message }) {
             : "rounded-2xl rounded-bl-sm bg-background px-4 py-3 shadow-sm ring-1 ring-border"
         }
       >
-        {!isImporter ? (
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
-            {message.senderName}
-          </p>
-        ) : null}
         <p className="whitespace-pre-wrap break-words text-sm leading-6">
           {message.body}
         </p>
       </div>
       <p className="flex items-center gap-1 px-1 text-xs text-muted-foreground">
         {message.createdAt}
-        <CheckIcon className="size-3" aria-label="Sent" />
+        {isSeen ? (
+          <CheckCheckIcon className="size-3.5" aria-label="Seen" />
+        ) : (
+          <CheckIcon className="size-3" aria-label="Sent" />
+        )}
       </p>
     </article>
   );
+}
+
+function getLatestSeenOutgoingMessageId(conversation: ImporterConversationView) {
+  if (!conversation.currentUserProfileId) {
+    return undefined;
+  }
+
+  const latestOutgoingIndex = conversation.messages.findLastIndex(
+    (message) => message.senderUserProfileId === conversation.currentUserProfileId,
+  );
+
+  if (latestOutgoingIndex < 0) {
+    return undefined;
+  }
+
+  const latestOutgoingMessage = conversation.messages[latestOutgoingIndex];
+  const messageIndexById = new Map(
+    conversation.messages.map((message, index) => [message.id, index]),
+  );
+  const isSeen = conversation.readStates.some((readState) => {
+    if (readState.readerUserProfileId === conversation.currentUserProfileId) {
+      return false;
+    }
+
+    const readIndex = messageIndexById.get(readState.lastReadMessageId);
+
+    return readIndex !== undefined && readIndex >= latestOutgoingIndex;
+  });
+
+  return isSeen ? latestOutgoingMessage.id : undefined;
+}
+
+function mergeReadStatePatch(
+  patches: Record<string, ImporterConversationView["readStates"]>,
+  patch: {
+    conversationId: string;
+    readerUserProfileId: string;
+    lastReadMessageId: string;
+    lastReadAt: string;
+  },
+) {
+  const currentReadStates = patches[patch.conversationId] ?? [];
+  const existing = currentReadStates.find(
+    (readState) => readState.readerUserProfileId === patch.readerUserProfileId,
+  );
+
+  if (
+    existing?.lastReadMessageId === patch.lastReadMessageId &&
+    existing.lastReadAt === patch.lastReadAt
+  ) {
+    return patches;
+  }
+
+  return {
+    ...patches,
+    [patch.conversationId]: [
+      ...currentReadStates.filter(
+        (readState) =>
+          readState.readerUserProfileId !== patch.readerUserProfileId,
+      ),
+      {
+        readerUserProfileId: patch.readerUserProfileId,
+        lastReadMessageId: patch.lastReadMessageId,
+        lastReadAt: patch.lastReadAt,
+      },
+    ],
+  };
 }
 
 function Detail({

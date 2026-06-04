@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   createMessageInConversationForCurrentForwarder,
+  markConversationReadForCurrentForwarder,
   MessagingAccessError,
 } from "@/lib/messages";
 
@@ -32,4 +33,17 @@ export async function sendForwarderMessage(formData: FormData) {
 
     throw error;
   }
+}
+
+export async function markForwarderConversationRead(input: {
+  conversationId: string;
+  lastReadMessageId: string;
+}) {
+  const conversationId = idSchema.parse(input.conversationId);
+  const lastReadMessageId = idSchema.parse(input.lastReadMessageId);
+
+  return markConversationReadForCurrentForwarder({
+    conversationId,
+    lastReadMessageId,
+  });
 }

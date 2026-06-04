@@ -1,8 +1,9 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
 import {
+  conversationReadStates,
   conversations,
   forwarderCompanies,
   messages,
@@ -78,6 +79,12 @@ const messageColumns = {
   senderName: userProfiles.fullName,
   body: messages.body,
   createdAt: messages.createdAt,
+};
+
+const readStateColumns = {
+  readerUserProfileId: conversationReadStates.userProfileId,
+  lastReadMessageId: conversationReadStates.lastReadMessageId,
+  lastReadAt: conversationReadStates.lastReadAt,
 };
 
 async function getQuoteGateForImporter(
@@ -220,23 +227,37 @@ export async function getOrCreateConversationForCurrentForwarder(
 }
 
 export async function getConversationForCurrentImporter(conversationId: string) {
-  const { importerProfile } = await requireImporterProfile();
+  const { profile, importerProfile } = await requireImporterProfile();
 
-  return getConversationForParticipant({
+  const conversation = await getConversationForParticipant({
     conversationId,
     participant: "importer",
     participantId: importerProfile.id,
   });
+
+  return conversation
+    ? {
+        ...conversation,
+        currentUserProfileId: profile.id,
+      }
+    : undefined;
 }
 
 export async function getConversationForCurrentForwarder(conversationId: string) {
-  const { member } = await requireForwarderMember();
+  const { profile, member } = await requireForwarderMember();
 
-  return getConversationForParticipant({
+  const conversation = await getConversationForParticipant({
     conversationId,
     participant: "forwarder",
     participantId: member.companyId,
   });
+
+  return conversation
+    ? {
+        ...conversation,
+        currentUserProfileId: profile.id,
+      }
+    : undefined;
 }
 
 async function getConversationForParticipant(input: {
@@ -277,9 +298,15 @@ async function getConversationForParticipant(input: {
     .where(eq(messages.conversationId, conversation.id))
     .orderBy(messages.createdAt);
 
+  const readStates = await db
+    .select(readStateColumns)
+    .from(conversationReadStates)
+    .where(eq(conversationReadStates.conversationId, conversation.id));
+
   return {
     ...conversation,
     messages: conversationMessages,
+    readStates,
   };
 }
 
@@ -438,6 +465,147 @@ export async function createMessageInConversationForCurrentForwarder(
     senderUserProfileId: profile.id,
     bodyInput,
   });
+}
+
+export async function markConversationReadForCurrentImporter(input: {
+  conversationId: string;
+  lastReadMessageId: string;
+}) {
+  const conversation = await getConversationForCurrentImporter(input.conversationId);
+
+  if (!conversation) {
+    throw new MessagingAccessError("not_found");
+  }
+
+  return markConversationRead({
+    conversationId: conversation.id,
+    userProfileId: conversation.currentUserProfileId,
+    lastReadMessageId: input.lastReadMessageId,
+  });
+}
+
+export async function markConversationReadForCurrentForwarder(input: {
+  conversationId: string;
+  lastReadMessageId: string;
+}) {
+  const conversation = await getConversationForCurrentForwarder(input.conversationId);
+
+  if (!conversation) {
+    throw new MessagingAccessError("not_found");
+  }
+
+  return markConversationRead({
+    conversationId: conversation.id,
+    userProfileId: conversation.currentUserProfileId,
+    lastReadMessageId: input.lastReadMessageId,
+  });
+}
+
+async function markConversationRead(input: {
+  conversationId: string;
+  userProfileId: string;
+  lastReadMessageId: string;
+}) {
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`${input.conversationId}:${input.userProfileId}`}))`,
+    );
+
+    const [targetMessage] = await tx
+      .select({
+        id: messages.id,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.id, input.lastReadMessageId),
+          eq(messages.conversationId, input.conversationId),
+        ),
+      )
+      .limit(1);
+
+    if (!targetMessage) {
+      throw new MessagingAccessError("not_found");
+    }
+
+    const [existing] = await tx
+      .select({
+        lastReadMessageId: conversationReadStates.lastReadMessageId,
+        lastReadAt: conversationReadStates.lastReadAt,
+        lastReadMessageCreatedAt: messages.createdAt,
+      })
+      .from(conversationReadStates)
+      .innerJoin(
+        messages,
+        eq(conversationReadStates.lastReadMessageId, messages.id),
+      )
+      .where(
+        and(
+          eq(conversationReadStates.conversationId, input.conversationId),
+          eq(conversationReadStates.userProfileId, input.userProfileId),
+        ),
+      )
+      .limit(1);
+
+    if (existing && existing.lastReadMessageCreatedAt >= targetMessage.createdAt) {
+      return {
+        advanced: false,
+        readState: {
+          readerUserProfileId: input.userProfileId,
+          lastReadMessageId: existing.lastReadMessageId,
+          lastReadAt: existing.lastReadAt,
+        },
+      };
+    }
+
+    const now = new Date();
+    const [readState] = await tx
+      .insert(conversationReadStates)
+      .values({
+        conversationId: input.conversationId,
+        userProfileId: input.userProfileId,
+        lastReadMessageId: targetMessage.id,
+        lastReadAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [
+          conversationReadStates.conversationId,
+          conversationReadStates.userProfileId,
+        ],
+        set: {
+          lastReadMessageId: targetMessage.id,
+          lastReadAt: now,
+          updatedAt: now,
+        },
+      })
+      .returning(readStateColumns);
+
+    return {
+      advanced: true,
+      readState,
+    };
+  });
+
+  if (result.advanced) {
+    publishRealtimeEvent({
+      type: "conversation.read_state.updated",
+      version: 1,
+      eventId: `conversation:${input.conversationId}:read:${result.readState.readerUserProfileId}:${result.readState.lastReadMessageId}`,
+      occurredAt: new Date().toISOString(),
+      conversationId: input.conversationId,
+      readerUserProfileId: result.readState.readerUserProfileId,
+      lastReadMessageId: result.readState.lastReadMessageId,
+      lastReadAt: result.readState.lastReadAt.toISOString(),
+    });
+  }
+
+  return {
+    readerUserProfileId: result.readState.readerUserProfileId,
+    lastReadMessageId: result.readState.lastReadMessageId,
+    lastReadAt: result.readState.lastReadAt.toISOString(),
+  };
 }
 
 async function createMessageInConversation(input: {

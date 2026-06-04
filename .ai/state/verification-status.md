@@ -1413,12 +1413,15 @@ Commands:
 - `/opt/homebrew/bin/pnpm db:check`: pass.
 - `/opt/homebrew/bin/pnpm db:import-psgc -- --dry-run`: pass; 18 regions, 117 province/province-like parent rows, 1656 cities/municipalities, 42011 barangays.
 - `/opt/homebrew/bin/pnpm db:import-psgc`: pass; imported PSGC `2025-2Q`.
-- `/opt/homebrew/bin/pnpm build` from `/tmp/importing-ph-clean-build` after fresh dependency install: pass.
+- `npm ci && npm run lint && npm run type-check && npm test && npm run build` from `/tmp/importing-ph-clean-build-npm`: pass.
+- `/opt/homebrew/bin/pnpm install --no-frozen-lockfile && /opt/homebrew/bin/pnpm build` from `/tmp/importing-ph-clean-build-pnpm-final`: pass.
+- `/opt/homebrew/bin/pnpm install --frozen-lockfile` from a clean temp copy: blocked before install because `pnpm-lock.yaml` is absent.
 
 Build classification:
 
 - Working-tree `pnpm build` and `pnpm dev` remain blocked by the local macOS `@next/swc-darwin-arm64` code-signature failure.
 - Clean dependency build passes, so the SWC failure is environment-only, not app-code-related.
+- The requested pnpm frozen install cannot be the CI proof until the repo commits a pnpm lockfile or switches the documented frozen install to `npm ci`.
 
 Authenticated browser smoke:
 
@@ -1442,6 +1445,8 @@ Live PSGC endpoint smoke:
 - `/v1/locations/cities-municipalities?provinceCode=0702200000`: pass.
 - `/v1/locations/cities-municipalities?regionCode=1300000000&q=Makati`: pass, returned `City of Makati` with `provinceCode: null`.
 - `/v1/locations/barangays?cityMunicipalityCode=1380300000&q=Bel-Air`: pass, returned `Bel-Air` with `provinceCode: null`.
+- Key city endpoint checks passed for City of Dumaguete, City of Cebu, City of Manila, Quezon City, City of Makati, City of Taguig, City of Davao, City of Puerto Princesa, and City of Zamboanga.
+- Repeat import cleanup removed stale short-code NCR rows such as `80600`, `81300`, and `81500`.
 
 Impact: `/app/requests/new` validation and PSGC destination behavior are proven locally. Staging/production proof still requires target DB import and deployed smoke.
 

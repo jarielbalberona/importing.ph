@@ -267,9 +267,11 @@ Before executing an initiative phase, read relevant `.ai/core` files, this state
   - Final proof report: `.ai/initiatives/request-validation-psgc-hardening/reports/final-proof-report.md`.
   - Final verdict: `PASS WITH ISSUES`.
   - Friendly `/app/requests/new` validation, Step 2 size/weight rules, PSGC destination picker, structured destination storage/display, and legacy fallback are locally proven.
-  - Clean build proof passed from `/tmp/importing-ph-clean-build` with fresh dependencies and `/opt/homebrew/bin/pnpm build`.
+  - Clean build proof passed from temp copies with `npm ci` against the committed `package-lock.json` and with fresh pnpm dependencies plus `/opt/homebrew/bin/pnpm build`.
   - The working-tree macOS SWC failure is environment-only because the same source builds in a clean dependency install.
+  - `pnpm install --frozen-lockfile` is not currently provable because this repo has no `pnpm-lock.yaml`; either commit a pnpm lockfile or make npm the explicit CI package manager.
   - Official local PSGC import passed for `2025-2Q` seed files with row counts: 18 regions, 117 province/province-like parent rows, 1656 cities/municipalities, and 42011 barangays.
+  - PSGC importer now removes stale rows for the same version so obsolete short pseudo-code city rows do not survive repeat imports.
   - Authenticated browser smoke passed on `/app/requests/new` for friendly validation, dimensions-based Step 2, normal PSGC hierarchy, NCR direct city/barangay selection, review behavior, final create-only-on-post behavior, and double-click no-duplicate behavior.
   - Exact browser smoke request `867fc074-ca24-47d3-91bd-8b4a9b22412e` was deleted after proof.
   - Remaining issue: server-side final-post idempotency token is not implemented and remains a production hardening follow-up.

@@ -143,6 +143,8 @@ Risk lifecycle labels:
 - active: `realtime-messaging-v1` deployed realtime smoke is still unproven. Production readiness requires target URL, target DB, Clerk target config, and Render instance count confirmation.
 - resolved: `request-validation-psgc-hardening` proved local `/app/requests/new` friendly validation, Step 2 size/weight validation, PSGC normal hierarchy selection, NCR direct city selection, final create-only-on-post behavior, and double-click no-duplicate behavior.
 - resolved: `request-validation-psgc-hardening` proved local PSGC `2025-2Q` import with 18 regions, 117 province/province-like parent rows, 1656 cities/municipalities, and 42011 barangays.
+- resolved: `request-validation-psgc-hardening` repeat import cleanup now removes stale same-version PSGC rows, preventing obsolete short-code NCR city rows from surviving normalization changes.
 - accepted: The working-tree macOS SWC package remains damaged; clean dependency build passes, so this is environment-only unless it reappears in CI/staging.
+- accepted: `pnpm install --frozen-lockfile` cannot run because the repo has `package-lock.json` but no `pnpm-lock.yaml`. Decide on npm CI or commit a pnpm lockfile; leaving both expectations mixed is weak release hygiene.
 - accepted: Server-side idempotency for final request posting is not implemented. Current UI disabled state passed the double-click smoke, but production-grade idempotency remains a follow-up.
 - active: PSGC data files are local and gitignored. Staging/production must import PSGC seed data into the target database before PSGC picker smoke can pass there.

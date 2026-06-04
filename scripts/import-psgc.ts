@@ -13,8 +13,15 @@ import {
 
 const defaultDataDir = path.join(process.cwd(), "data", "psgc");
 const version = process.env.PSGC_VERSION || "2025-2Q";
+const publishedDate = process.env.PSGC_PUBLISHED_DATE;
 const batchSize = 1000;
 const ncrRegionCode = "1300000000";
+const expectedFiles = [
+  "regions.json",
+  "provinces.json",
+  "muncities.json",
+  "barangays.json",
+] as const;
 
 type RawLocation = Record<string, unknown>;
 
@@ -144,7 +151,12 @@ async function readJsonArray(filePath: string) {
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       throw new Error(
-        `Missing PSGC seed file: ${filePath}. Add regions.json, provinces.json, muncities.json, and barangays.json under data/psgc, or set PSGC_DATA_DIR.`,
+        [
+          `Missing PSGC seed file: ${filePath}.`,
+          `Expected files: ${expectedFiles.join(", ")}.`,
+          `Current PSGC_DATA_DIR: ${process.env.PSGC_DATA_DIR || defaultDataDir}.`,
+          "Provide the files on the server and rerun with PSGC_DATA_DIR=/path/to/psgc-json, or add them under data/psgc for local import.",
+        ].join(" "),
       );
     }
 
@@ -296,6 +308,15 @@ async function importPsgc() {
   }
 
   await db.transaction(async (tx) => {
+    await deleteRowsNotInImport(tx, psgcRegions, normalizedRegions);
+    await deleteRowsNotInImport(tx, psgcProvinces, normalizedProvinces);
+    await deleteRowsNotInImport(
+      tx,
+      psgcCitiesMunicipalities,
+      normalizedCitiesMunicipalities,
+    );
+    await deleteRowsNotInImport(tx, psgcBarangays, normalizedBarangays);
+
     for (const rows of chunks(normalizedRegions)) {
       await tx.insert(psgcRegions).values(rows).onConflictDoUpdate({
         target: psgcRegions.code,
@@ -351,7 +372,22 @@ async function importPsgc() {
     }
   });
 
-  console.log(`Imported PSGC ${version}.`);
+  console.log(
+    JSON.stringify(
+      {
+        imported: true,
+        version,
+        publishedDate: publishedDate || null,
+        dataDir,
+        regions: normalizedRegions.length,
+        provinces: normalizedProvinces.length,
+        citiesMunicipalities: normalizedCitiesMunicipalities.length,
+        barangays: normalizedBarangays.length,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 importPsgc()
@@ -371,4 +407,27 @@ function chunks<T>(items: T[]) {
   }
 
   return result;
+}
+
+async function deleteRowsNotInImport<T extends { code: string }>(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  table:
+    | typeof psgcRegions
+    | typeof psgcProvinces
+    | typeof psgcCitiesMunicipalities
+    | typeof psgcBarangays,
+  rows: T[],
+) {
+  if (rows.length === 0) {
+    return;
+  }
+
+  await tx.execute(sql`
+    delete from ${table}
+    where version = ${version}
+      and code not in (${sql.join(
+        rows.map((row) => sql`${row.code}`),
+        sql`, `,
+      )})
+  `);
 }

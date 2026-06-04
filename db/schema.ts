@@ -507,6 +507,35 @@ export const messages = pgTable(
   ],
 );
 
+export const conversationReadStates = pgTable(
+  "conversation_read_states",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    userProfileId: uuid("user_profile_id")
+      .notNull()
+      .references(() => userProfiles.id, { onDelete: "cascade" }),
+    lastReadMessageId: uuid("last_read_message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("conversation_read_states_conversation_user_idx").on(
+      table.conversationId,
+      table.userProfileId,
+    ),
+    index("conversation_read_states_user_updated_at_idx").on(
+      table.userProfileId,
+      table.updatedAt,
+    ),
+    index("conversation_read_states_message_idx").on(table.lastReadMessageId),
+  ],
+);
+
 export const notifications = pgTable(
   "notifications",
   {

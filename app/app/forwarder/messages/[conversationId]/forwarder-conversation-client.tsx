@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon } from "lucide-react";
+import { CheckCheckIcon, CheckIcon } from "lucide-react";
 
 import { DetailCard, EmptyState, StatusBadge } from "@/components/app-shell";
 import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
@@ -12,19 +12,28 @@ import {
 } from "@/components/realtime-provider";
 import { Textarea } from "@/components/ui/textarea";
 import { titleFromEnum } from "@/lib/format";
-import { sendForwarderMessage } from "./actions";
+import { markForwarderConversationRead, sendForwarderMessage } from "./actions";
 
 type ForwarderMessage = {
   id: string;
+  senderUserProfileId: string;
   senderName: string;
   senderRole: string;
   body: string;
   createdAt: string;
 };
 
+type ReadState = {
+  readerUserProfileId: string;
+  lastReadMessageId: string;
+  lastReadAt: string;
+};
+
 type ForwarderConversationClientProps = {
   conversationId: string;
   messages: ForwarderMessage[];
+  readStates: ReadState[];
+  currentUserProfileId: string;
   query: {
     message?: string;
     messageError?: string;
@@ -34,10 +43,13 @@ type ForwarderConversationClientProps = {
 export function ForwarderConversationClient({
   conversationId,
   messages,
+  readStates,
+  currentUserProfileId,
   query,
 }: ForwarderConversationClientProps) {
   const router = useRouter();
   const [realtimeMessages, setRealtimeMessages] = useState<ForwarderMessage[]>([]);
+  const [readStatePatches, setReadStatePatches] = useState<ReadState[]>([]);
   const displayedMessages = useMemo(() => {
     const canonicalMessageIds = new Set(messages.map((message) => message.id));
 
@@ -48,6 +60,26 @@ export function ForwarderConversationClient({
       ),
     ];
   }, [messages, realtimeMessages]);
+  const displayedReadStates = useMemo(() => {
+    const readStatesByReader = new Map(
+      readStates.map((readState) => [readState.readerUserProfileId, readState]),
+    );
+
+    for (const readState of readStatePatches) {
+      readStatesByReader.set(readState.readerUserProfileId, readState);
+    }
+
+    return Array.from(readStatesByReader.values());
+  }, [readStatePatches, readStates]);
+  const latestSeenOutgoingMessageId = useMemo(
+    () =>
+      getLatestSeenOutgoingMessageId({
+        currentUserProfileId,
+        messages: displayedMessages,
+        readStates: displayedReadStates,
+      }),
+    [currentUserProfileId, displayedMessages, displayedReadStates],
+  );
   const handleRealtimeEvent = useCallback(
     (event: ClientRealtimeEvent) => {
       if (
@@ -70,6 +102,7 @@ export function ForwarderConversationClient({
             ...currentMessages,
             {
               id: event.message.id,
+              senderUserProfileId: event.message.senderUserProfileId,
               senderName: event.message.senderName,
               senderRole: event.message.senderRole,
               body: event.message.body,
@@ -85,10 +118,61 @@ export function ForwarderConversationClient({
       ) {
         router.refresh();
       }
+
+      if (
+        event.type === "conversation.read_state.updated" &&
+        event.conversationId === conversationId
+      ) {
+        setReadStatePatches((currentReadStates) =>
+          mergeReadStatePatch(currentReadStates, {
+            readerUserProfileId: event.readerUserProfileId,
+            lastReadMessageId: event.lastReadMessageId,
+            lastReadAt: event.lastReadAt,
+          }),
+        );
+      }
     },
     [conversationId, messages, router],
   );
   useConversationRealtime(conversationId, handleRealtimeEvent);
+
+  useEffect(() => {
+    const latestMessage = displayedMessages.at(-1);
+
+    if (
+      !latestMessage ||
+      latestMessage.senderUserProfileId === currentUserProfileId
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    markForwarderConversationRead({
+      conversationId,
+      lastReadMessageId: latestMessage.id,
+    })
+      .then((readState) => {
+        if (cancelled) {
+          return;
+        }
+
+        setReadStatePatches((currentReadStates) =>
+          mergeReadStatePatch(currentReadStates, {
+            readerUserProfileId: readState.readerUserProfileId,
+            lastReadMessageId: readState.lastReadMessageId,
+            lastReadAt: readState.lastReadAt,
+          }),
+        );
+      })
+      .catch(() => {
+        // Do not fake seen/read state if the server-side write fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, currentUserProfileId, displayedMessages]);
 
   return (
     <>
@@ -110,7 +194,12 @@ export function ForwarderConversationClient({
         ) : (
           <div className="grid gap-4">
             {displayedMessages.map((message) => (
-              <MessageItem key={message.id} message={message} />
+              <MessageItem
+                key={message.id}
+                message={message}
+                isSeen={message.id === latestSeenOutgoingMessageId}
+                currentUserProfileId={currentUserProfileId}
+              />
             ))}
           </div>
         )}
@@ -146,17 +235,33 @@ export function ForwarderConversationClient({
   );
 }
 
-function MessageItem({ message }: { message: ForwarderMessage }) {
+function MessageItem({
+  message,
+  isSeen,
+  currentUserProfileId,
+}: {
+  message: ForwarderMessage;
+  isSeen: boolean;
+  currentUserProfileId: string;
+}) {
+  const isOwnMessage = message.senderUserProfileId === currentUserProfileId;
+
   return (
     <article className="min-w-0 rounded-md border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="break-words font-medium">{message.senderName}</p>
-          <StatusBadge>{titleFromEnum(message.senderRole)}</StatusBadge>
-        </div>
+        {isOwnMessage ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="break-words font-medium">{message.senderName}</p>
+            <StatusBadge>{titleFromEnum(message.senderRole)}</StatusBadge>
+          </div>
+        ) : null}
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           {message.createdAt}
-          <CheckIcon className="size-3" aria-label="Sent" />
+          {isSeen ? (
+            <CheckCheckIcon className="size-3.5" aria-label="Seen" />
+          ) : (
+            <CheckIcon className="size-3" aria-label="Sent" />
+          )}
         </p>
       </div>
       <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
@@ -164,4 +269,54 @@ function MessageItem({ message }: { message: ForwarderMessage }) {
       </p>
     </article>
   );
+}
+
+function getLatestSeenOutgoingMessageId(input: {
+  currentUserProfileId: string;
+  messages: ForwarderMessage[];
+  readStates: ReadState[];
+}) {
+  const latestOutgoingIndex = input.messages.findLastIndex(
+    (message) => message.senderUserProfileId === input.currentUserProfileId,
+  );
+
+  if (latestOutgoingIndex < 0) {
+    return undefined;
+  }
+
+  const latestOutgoingMessage = input.messages[latestOutgoingIndex];
+  const messageIndexById = new Map(
+    input.messages.map((message, index) => [message.id, index]),
+  );
+  const isSeen = input.readStates.some((readState) => {
+    if (readState.readerUserProfileId === input.currentUserProfileId) {
+      return false;
+    }
+
+    const readIndex = messageIndexById.get(readState.lastReadMessageId);
+
+    return readIndex !== undefined && readIndex >= latestOutgoingIndex;
+  });
+
+  return isSeen ? latestOutgoingMessage.id : undefined;
+}
+
+function mergeReadStatePatch(readStates: ReadState[], patch: ReadState) {
+  const existing = readStates.find(
+    (readState) => readState.readerUserProfileId === patch.readerUserProfileId,
+  );
+
+  if (
+    existing?.lastReadMessageId === patch.lastReadMessageId &&
+    existing.lastReadAt === patch.lastReadAt
+  ) {
+    return readStates;
+  }
+
+  return [
+    ...readStates.filter(
+      (readState) => readState.readerUserProfileId !== patch.readerUserProfileId,
+    ),
+    patch,
+  ];
 }

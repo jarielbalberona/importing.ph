@@ -30,9 +30,21 @@ export type ConversationUpdatedEvent = {
   latestMessagePreview: string;
 };
 
+export type ConversationReadStateUpdatedEvent = {
+  type: "conversation.read_state.updated";
+  version: 1;
+  eventId: string;
+  occurredAt: string;
+  conversationId: string;
+  readerUserProfileId: string;
+  lastReadMessageId: string;
+  lastReadAt: string;
+};
+
 export type ServerRealtimeEvent =
   | ConversationMessageCreatedEvent
-  | ConversationUpdatedEvent;
+  | ConversationUpdatedEvent
+  | ConversationReadStateUpdatedEvent;
 
 type RealtimeBridge = {
   publish: (event: ServerRealtimeEvent) => void;

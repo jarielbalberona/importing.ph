@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   createMessageInConversationForCurrentImporter,
+  markConversationReadForCurrentImporter,
   MessagingAccessError,
 } from "@/lib/messages";
 
@@ -32,4 +33,17 @@ export async function sendImporterMessage(formData: FormData) {
 
     throw error;
   }
+}
+
+export async function markImporterConversationRead(input: {
+  conversationId: string;
+  lastReadMessageId: string;
+}) {
+  const conversationId = idSchema.parse(input.conversationId);
+  const lastReadMessageId = idSchema.parse(input.lastReadMessageId);
+
+  return markConversationReadForCurrentImporter({
+    conversationId,
+    lastReadMessageId,
+  });
 }
