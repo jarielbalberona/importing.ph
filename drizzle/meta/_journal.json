@@ -92,6 +92,13 @@
       "when": 1780596000000,
       "tag": "0012_conversation_read_states",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780688400000,
+      "tag": "0013_delivery_preference_v1_language",
+      "breakpoints": true
     }
   ]
 }

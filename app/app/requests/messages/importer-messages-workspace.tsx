@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/app-shell";
 import {
   formatDate,
   formatDateTime,
+  formatDeliveryPreference,
   formatMeasure,
   formatMoney,
   formatStructuredRoute,
@@ -95,7 +96,7 @@ function toConversationView(
       cargoType: titleFromEnum(conversation.cargoType),
       status: conversation.requestStatus,
       sizeWeight: sizeWeight(conversation),
-      deliveryPreference: titleFromEnum(conversation.deliveryPreference),
+      deliveryPreference: formatDeliveryPreference(conversation.deliveryPreference),
       shippingPreference: titleFromEnum(conversation.shippingPreference),
       notes: conversation.requestNotes,
     },

@@ -39,6 +39,7 @@ import {
 import {
   formatCount,
   formatDate,
+  formatDeliveryPreference,
   formatDimensions,
   formatMeasure,
   formatStructuredRoute,
@@ -114,6 +115,7 @@ export default async function ForwarderRequestsPage({
                 name="deliveryPreference"
                 value={filters.deliveryPreference}
                 options={deliveryPreferenceEnum.enumValues}
+                formatOption={formatDeliveryPreference}
               />
               <SelectFilter
                 label="Shipping preference"
@@ -183,7 +185,7 @@ export default async function ForwarderRequestsPage({
                       {formatStructuredRoute(request)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {titleFromEnum(request.deliveryPreference)} /{" "}
+                      {formatDeliveryPreference(request.deliveryPreference)} /{" "}
                       {titleFromEnum(request.shippingPreference)}
                     </p>
                     <div className="mt-4">
@@ -239,11 +241,13 @@ function SelectFilter({
   name,
   value,
   options,
+  formatOption = titleFromEnum,
 }: {
   label: string;
   name: string;
   value?: string;
   options: readonly string[];
+  formatOption?: (value: string) => string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-medium">
@@ -256,7 +260,7 @@ function SelectFilter({
           <SelectItem value="__any">Any</SelectItem>
           {options.map((option) => (
             <SelectItem key={option} value={option}>
-              {titleFromEnum(option)}
+              {formatOption(option)}
             </SelectItem>
           ))}
         </SelectContent>

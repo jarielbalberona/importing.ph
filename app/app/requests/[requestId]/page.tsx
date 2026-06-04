@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tabs";
 import {
   formatDate,
+  formatDeliveryPreference,
   formatDestination,
   formatDimensions,
   formatMeasure,
@@ -172,7 +173,7 @@ function ShipmentDetails({
           />
           <DefinitionItem
             label="Delivery preference"
-            value={titleFromEnum(request.deliveryPreference)}
+            value={formatDeliveryPreference(request.deliveryPreference)}
           />
           <DefinitionItem
             label="Shipping preference"

@@ -39,8 +39,12 @@ import {
   LocationPicker,
   type DestinationSelection,
 } from "@/features/locations/components/LocationPicker";
-import { titleFromEnum } from "@/lib/format";
-import { createShipmentRequestSchema } from "@/lib/validation";
+import { formatDeliveryPreference, titleFromEnum } from "@/lib/format";
+import {
+  createShipmentRequestSchema,
+  getShipmentSizeStepErrors,
+  otherChinaOriginValue,
+} from "@/lib/validation";
 import { createShipmentRequest } from "@/app/app/requests/new/actions";
 import {
   acceptedFileDescription,
@@ -160,22 +164,52 @@ const cargoTypesRequiringHandlingDetails = new Set([
 const chinaOriginOptions = [
   { value: "Guangzhou, China", label: "Guangzhou" },
   { value: "Shenzhen, China", label: "Shenzhen" },
-  { value: "Yiwu, China", label: "Yiwu" },
-  { value: "Shanghai, China", label: "Shanghai" },
-  { value: "Ningbo, China", label: "Ningbo" },
-  { value: "Xiamen, China", label: "Xiamen" },
-  { value: "Qingdao, China", label: "Qingdao" },
-  { value: "Tianjin, China", label: "Tianjin" },
-  { value: "Foshan, China", label: "Foshan" },
   { value: "Dongguan, China", label: "Dongguan" },
+  { value: "Foshan, China", label: "Foshan" },
+  { value: "Zhongshan, China", label: "Zhongshan" },
+  { value: "Huizhou, China", label: "Huizhou" },
+  { value: "Yiwu, China", label: "Yiwu" },
+  { value: "Hangzhou, China", label: "Hangzhou" },
+  { value: "Ningbo, China", label: "Ningbo" },
+  { value: "Wenzhou, China", label: "Wenzhou" },
+  { value: "Shanghai, China", label: "Shanghai" },
+  { value: "Suzhou, China", label: "Suzhou" },
+  { value: "Nanjing, China", label: "Nanjing" },
+  { value: "Xiamen, China", label: "Xiamen" },
+  { value: "Quanzhou, China", label: "Quanzhou" },
+  { value: "Fuzhou, China", label: "Fuzhou" },
+  { value: "Qingdao, China", label: "Qingdao" },
+  { value: "Jinan, China", label: "Jinan" },
+  { value: "Tianjin, China", label: "Tianjin" },
+  { value: "Beijing, China", label: "Beijing" },
+  { value: otherChinaOriginValue, label: "Other city in China" },
 ] satisfies Option[];
 
+const chinaOriginOptionValues = new Set(
+  chinaOriginOptions.map((option) => option.value),
+);
+
 const deliveryPreferenceOptions = [
-  { value: "door_to_door", label: "Door to door" },
-  { value: "port_to_door", label: "Port / warehouse to door" },
-  { value: "door_to_port", label: "Door to port / warehouse pickup" },
-  { value: "port_to_port", label: "Port / warehouse pickup" },
-  { value: "not_sure", label: "Forwarder recommendation" },
+  {
+    value: "supplier_pickup_to_door",
+    label: "Supplier pickup -> my address",
+  },
+  {
+    value: "china_warehouse_to_door",
+    label: "China warehouse -> my address",
+  },
+  {
+    value: "supplier_pickup_to_ph_warehouse",
+    label: "Supplier pickup -> PH warehouse pickup",
+  },
+  {
+    value: "china_warehouse_to_ph_warehouse",
+    label: "China warehouse -> PH warehouse pickup",
+  },
+  {
+    value: "not_sure",
+    label: "Not sure, recommend for me",
+  },
 ] satisfies Option[];
 
 const shippingPreferenceOptions = [
@@ -195,6 +229,9 @@ export function NewShipmentRequestForm() {
     register,
     handleSubmit,
     trigger,
+    getValues,
+    setError,
+    clearErrors,
     setValue,
     control,
     formState: { errors },
@@ -216,7 +253,7 @@ export function NewShipmentRequestForm() {
   const progressLabel = `Step ${currentStep + 1} of ${steps.length}`;
 
   async function goNext() {
-    const valid = await trigger(step.fields, { shouldFocus: true });
+    const valid = await validateCurrentStep();
 
     if (!valid) {
       setFormError("Complete the required fields before continuing.");
@@ -225,6 +262,31 @@ export function NewShipmentRequestForm() {
 
     setFormError(null);
     setCurrentStep((value) => Math.min(value + 1, steps.length - 1));
+  }
+
+  async function validateCurrentStep() {
+    clearErrors(step.fields);
+    const fieldsValid = await trigger(step.fields, { shouldFocus: true });
+
+    if (currentStep !== 1) {
+      return fieldsValid;
+    }
+
+    const sizeErrors = getShipmentSizeStepErrors(getValues());
+    const sizeErrorEntries = Object.entries(sizeErrors);
+
+    for (const [field, message] of sizeErrorEntries) {
+      setError(
+        field as FieldPath<FormValues>,
+        {
+          type: "manual",
+          message,
+        },
+        { shouldFocus: sizeErrorEntries[0]?.[0] === field },
+      );
+    }
+
+    return fieldsValid && sizeErrorEntries.length === 0;
   }
 
   function goBack() {
@@ -519,6 +581,10 @@ function RouteStep({
       "destinationBarangayName",
     ],
   });
+  const origin = useWatch({ control, name: "origin" });
+  const [originOption, setOriginOption] = useState<string | undefined>(() =>
+    originToOptionValue(origin),
+  );
   const [
     destinationRegionCode,
     destinationRegionName,
@@ -565,6 +631,20 @@ function RouteStep({
     setValue("destination", displayName || undefined, options);
   }
 
+  function updateOrigin(nextValue: string | undefined) {
+    const options = { shouldDirty: true, shouldValidate: true };
+
+    setOriginOption(nextValue);
+    setValue(
+      "origin",
+      nextValue && nextValue !== otherChinaOriginValue ? nextValue : "",
+      options,
+    );
+  }
+
+  const selectedOriginOption = originOption ?? originToOptionValue(origin);
+  const usesCustomOrigin = selectedOriginOption === otherChinaOriginValue;
+
   return (
     <div className="grid gap-4">
       <input type="hidden" {...register("destination")} />
@@ -578,25 +658,35 @@ function RouteStep({
       <input type="hidden" {...register("destinationBarangayName")} />
       <input type="hidden" {...register("destinationDisplayName")} />
       <Field
-        label="China origin"
-        helper="Choose the China city closest to the supplier or consolidation warehouse. Replace this local list with a searchable city data source when coverage becomes a bottleneck."
-        error={errors.origin?.message}
+        label="Pickup city in China"
+        helper="Choose the nearest supplier or consolidation city. You can enter the exact pickup address later."
+        error={!usesCustomOrigin ? errors.origin?.message : undefined}
       >
-        <Controller
-          control={control}
-          name="origin"
-          render={({ field }) => (
-            <OptionCombobox
-              options={chinaOriginOptions}
-              value={field.value}
-              onValueChange={field.onChange}
-              placeholder="Search China origin city"
-              emptyMessage="No China origin found."
-              invalid={Boolean(errors.origin)}
-            />
-          )}
+        {!usesCustomOrigin ? (
+          <input type="hidden" {...register("origin")} />
+        ) : null}
+        <OptionCombobox
+          options={chinaOriginOptions}
+          value={selectedOriginOption}
+          onValueChange={updateOrigin}
+          placeholder="Select a common city or choose Other"
+          emptyMessage="No China origin found."
+          invalid={Boolean(errors.origin) && !usesCustomOrigin}
         />
       </Field>
+      {usesCustomOrigin ? (
+        <Field
+          label="Exact pickup city or location"
+          helper="Enter the supplier city, factory area, or consolidation point in China."
+          error={errors.origin?.message}
+        >
+          <Input
+            {...register("origin")}
+            placeholder="Example: Wuhan, China"
+            autoComplete="off"
+          />
+        </Field>
+      ) : null}
       <LocationPicker
         value={destinationValue}
         onChange={updateDestination}
@@ -618,6 +708,14 @@ function RouteStep({
   );
 }
 
+function originToOptionValue(value: unknown) {
+  if (typeof value !== "string" || value.length === 0) {
+    return undefined;
+  }
+
+  return chinaOriginOptionValues.has(value) ? value : otherChinaOriginValue;
+}
+
 function PreferencesStep({
   control,
   errors,
@@ -626,7 +724,7 @@ function PreferencesStep({
     <div className="grid gap-4 sm:grid-cols-2">
       <Field
         label="Delivery preference"
-        helper="Choose Not sure if you want forwarders to recommend the best route."
+        helper="Choose how the cargo should be picked up in China and received in the Philippines."
         error={errors.deliveryPreference?.message}
       >
         <Controller
@@ -920,7 +1018,7 @@ function ReviewStep({
       {
         title: "Preferences",
         items: [
-          ["Delivery preference", titleFromEnum(values.deliveryPreference)],
+          ["Delivery preference", formatDeliveryPreference(values.deliveryPreference)],
           ["Shipping preference", titleFromEnum(values.shippingPreference)],
         ],
       },

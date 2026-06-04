@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import {
   formatCount,
   formatDate,
+  formatDeliveryPreference,
   formatDestination,
   formatDimensions,
   formatMeasure,
@@ -94,7 +95,7 @@ export default async function ForwarderRequestDetailPage({
             <DetailValue label="Status" value={<RequestStatusBadge status={request.status} />} />
             <DetailValue label="Route" value={formatStructuredRoute(request)} />
             <DetailValue label="Cargo type" value={titleFromEnum(request.cargoType)} />
-            <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
+            <DetailValue label="Delivery preference" value={formatDeliveryPreference(request.deliveryPreference)} />
             <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
             <DetailValue label="Quotes sent" value={formatCount(quoteCount, "quote")} />
           </InfoGrid>
@@ -135,7 +136,7 @@ export default async function ForwarderRequestDetailPage({
 
         <DetailCard title="Shipping preferences">
           <InfoGrid columns={2}>
-            <DetailValue label="Delivery preference" value={titleFromEnum(request.deliveryPreference)} />
+            <DetailValue label="Delivery preference" value={formatDeliveryPreference(request.deliveryPreference)} />
             <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
           </InfoGrid>
         </DetailCard>

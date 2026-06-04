@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCheckIcon, CheckIcon } from "lucide-react";
 
 import { DetailCard, EmptyState, StatusBadge } from "@/components/app-shell";
@@ -47,7 +46,6 @@ export function ForwarderConversationClient({
   currentUserProfileId,
   query,
 }: ForwarderConversationClientProps) {
-  const router = useRouter();
   const [realtimeMessages, setRealtimeMessages] = useState<ForwarderMessage[]>([]);
   const [readStatePatches, setReadStatePatches] = useState<ReadState[]>([]);
   const displayedMessages = useMemo(() => {
@@ -113,13 +111,6 @@ export function ForwarderConversationClient({
       }
 
       if (
-        event.type === "conversation.updated" &&
-        event.conversationId === conversationId
-      ) {
-        router.refresh();
-      }
-
-      if (
         event.type === "conversation.read_state.updated" &&
         event.conversationId === conversationId
       ) {
@@ -132,7 +123,7 @@ export function ForwarderConversationClient({
         );
       }
     },
-    [conversationId, messages, router],
+    [conversationId, messages],
   );
   useConversationRealtime(conversationId, handleRealtimeEvent);
 

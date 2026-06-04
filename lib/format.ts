@@ -9,6 +9,22 @@ export function titleFromEnum(value: string | null | undefined) {
     .join(" ");
 }
 
+const deliveryPreferenceLabels: Record<string, string> = {
+  supplier_pickup_to_door: "Supplier pickup -> my address",
+  china_warehouse_to_door: "China warehouse -> my address",
+  supplier_pickup_to_ph_warehouse: "Supplier pickup -> PH warehouse pickup",
+  china_warehouse_to_ph_warehouse: "China warehouse -> PH warehouse pickup",
+  not_sure: "Not sure, recommend for me",
+};
+
+export function formatDeliveryPreference(value: string | null | undefined) {
+  if (!value) {
+    return "Not provided";
+  }
+
+  return deliveryPreferenceLabels[value] ?? titleFromEnum(value);
+}
+
 export function formatDateTime(value: Date) {
   return new Intl.DateTimeFormat("en-PH", {
     dateStyle: "medium",

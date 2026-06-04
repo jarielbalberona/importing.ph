@@ -32,7 +32,8 @@ export function LocationCombobox({
   return (
     <Combobox
       items={options}
-      itemToStringValue={(option) => option.name}
+      itemToStringLabel={(option) => option.name}
+      itemToStringValue={(option) => option.code}
       value={selectedOption}
       onValueChange={(option) => onValueChange(option ?? null)}
       autoHighlight

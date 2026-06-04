@@ -26,6 +26,25 @@ Shipment request destinations use PSGC-backed database tables. Seed JSON is not
 bundled into the frontend. See [docs/psgc-setup.md](docs/psgc-setup.md) for the
 expected files, import command, source version setting, and NCR handling.
 
+## Render Deployment
+
+`render.yaml` builds with `npm ci && npm run build` and starts with
+`npm run start`. It does not run database migrations or PSGC import during
+deploy.
+
+Before using `/app/requests/new` on a Render environment, run migrations and a
+one-off PSGC import against that environment's database:
+
+```bash
+npm run db:migrate
+PSGC_DATA_DIR=/path/to/psgc-json PSGC_VERSION=2025-2Q npm run db:import-psgc
+```
+
+The PSGC JSON files are intentionally gitignored. Provide them to the Render
+runtime/job filesystem or run the command from a trusted machine with access to
+the target `DATABASE_URL`. See [docs/psgc-setup.md](docs/psgc-setup.md) for
+expected row counts and endpoint checks.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -35,8 +54,8 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project currently targets Render, not Vercel.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

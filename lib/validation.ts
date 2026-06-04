@@ -7,6 +7,8 @@ import {
 } from "@/db/schema";
 import { shipmentAttachmentMaxCount } from "@/lib/file-rules";
 
+export const otherChinaOriginValue = "Other, China";
+
 function optionalPositiveDecimal(message: string) {
   return z
     .string()
@@ -46,6 +48,55 @@ const optionalPositiveInteger = z
       .regex(/^[1-9]\d*$/, "Enter a valid number greater than 0.")
       .optional(),
   );
+
+export type ShipmentSizeField =
+  | "totalCbm"
+  | "totalWeightKg"
+  | "packageCount"
+  | "lengthCm"
+  | "widthCm"
+  | "heightCm";
+
+type ShipmentSizeInput = Partial<Record<ShipmentSizeField, unknown>>;
+
+export function getShipmentSizeStepErrors(input: ShipmentSizeInput) {
+  const errors: Partial<Record<ShipmentSizeField, string>> = {};
+  const hasTotalCbm = Boolean(input.totalCbm);
+  const hasPackageCount = Boolean(input.packageCount);
+  const hasLength = Boolean(input.lengthCm);
+  const hasWidth = Boolean(input.widthCm);
+  const hasHeight = Boolean(input.heightCm);
+  const hasAnyDimension = hasLength || hasWidth || hasHeight;
+  const hasAnyDimensionSignal = hasAnyDimension || hasPackageCount;
+  const hasCompleteDimensions = hasLength && hasWidth && hasHeight;
+
+  if (!input.totalWeightKg) {
+    errors.totalWeightKg = "Enter the total gross weight.";
+  }
+
+  if (hasTotalCbm) {
+    return errors;
+  }
+
+  if (!hasAnyDimensionSignal) {
+    errors.totalCbm =
+      "Provide either total CBM or complete package dimensions with package count.";
+    return errors;
+  }
+
+  if (!hasCompleteDimensions) {
+    const message = "Complete length, width, and height, or use total CBM instead.";
+    errors.lengthCm = message;
+    errors.widthCm = message;
+    errors.heightCm = message;
+  }
+
+  if (!hasPackageCount) {
+    errors.packageCount = "Package/carton count is required when using dimensions.";
+  }
+
+  return errors;
+}
 
 const requiredText = (requiredMessage: string, maxMessage: string) =>
   z
@@ -177,60 +228,22 @@ export const createShipmentRequestSchema = z
     }
   })
   .superRefine((input, context) => {
-    const hasTotalCbm = Boolean(input.totalCbm);
-    const hasPackageCount = Boolean(input.packageCount);
-    const hasLength = Boolean(input.lengthCm);
-    const hasWidth = Boolean(input.widthCm);
-    const hasHeight = Boolean(input.heightCm);
-    const hasAnyDimension = hasLength || hasWidth || hasHeight;
-    const hasAnyDimensionSignal = hasAnyDimension || hasPackageCount;
-    const hasCompleteDimensions = hasLength && hasWidth && hasHeight;
-
-    if (!input.totalWeightKg) {
+    if (input.origin === otherChinaOriginValue) {
       context.addIssue({
         code: "custom",
-        message: "Enter the total gross weight.",
-        path: ["totalWeightKg"],
+        message: "Enter the exact pickup city or location in China.",
+        path: ["origin"],
       });
     }
-
-    if (hasTotalCbm) {
-      return;
-    }
-
-    if (!hasAnyDimensionSignal) {
+  })
+  .superRefine((input, context) => {
+    for (const [field, message] of Object.entries(
+      getShipmentSizeStepErrors(input),
+    )) {
       context.addIssue({
         code: "custom",
-        message:
-          "Provide either total CBM or complete package dimensions with package count.",
-        path: ["totalCbm"],
-      });
-      return;
-    }
-
-    if (!hasCompleteDimensions) {
-      context.addIssue({
-        code: "custom",
-        message: "Complete length, width, and height, or use total CBM instead.",
-        path: ["lengthCm"],
-      });
-      context.addIssue({
-        code: "custom",
-        message: "Complete length, width, and height, or use total CBM instead.",
-        path: ["widthCm"],
-      });
-      context.addIssue({
-        code: "custom",
-        message: "Complete length, width, and height, or use total CBM instead.",
-        path: ["heightCm"],
-      });
-    }
-
-    if (!hasPackageCount) {
-      context.addIssue({
-        code: "custom",
-        message: "Package/carton count is required when using dimensions.",
-        path: ["packageCount"],
+        message,
+        path: [field],
       });
     }
   });

@@ -58,10 +58,10 @@ export const cargoTypeEnum = pgEnum("cargo_type", [
 export type CargoType = (typeof cargoTypeEnum.enumValues)[number];
 
 export const deliveryPreferenceEnum = pgEnum("delivery_preference", [
-  "door_to_door",
-  "port_to_door",
-  "door_to_port",
-  "port_to_port",
+  "supplier_pickup_to_door",
+  "china_warehouse_to_door",
+  "supplier_pickup_to_ph_warehouse",
+  "china_warehouse_to_ph_warehouse",
   "not_sure",
 ]);
 

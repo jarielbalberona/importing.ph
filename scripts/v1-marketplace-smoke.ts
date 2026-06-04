@@ -163,7 +163,7 @@ async function createPostedRequest(importerProfileId: string, label: string) {
     destinationCityMunicipalityCode: "0746100000",
     destinationCityMunicipalityName: "Dumaguete City",
     destinationDisplayName: "Dumaguete City, Negros Oriental",
-    deliveryPreference: "door_to_door",
+    deliveryPreference: "supplier_pickup_to_door",
     shippingPreference: "balanced",
     notes: `Smoke namespace ${smokeId}. Supplier can provide packing list.`,
     attachmentNotes: "Packing list ready. MSDS not required.",

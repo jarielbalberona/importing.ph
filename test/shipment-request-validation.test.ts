@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createShipmentRequestSchema } from "@/lib/validation";
+import {
+  createShipmentRequestSchema,
+  getShipmentSizeStepErrors,
+  otherChinaOriginValue,
+} from "@/lib/validation";
 import { formatDestination } from "@/lib/format";
 
 const validRequest = {
@@ -17,7 +21,7 @@ const validRequest = {
   destinationProvinceName: "Negros Oriental",
   destinationCityMunicipalityCode: "0746100000",
   destinationCityMunicipalityName: "Dumaguete City",
-  deliveryPreference: "door_to_door",
+  deliveryPreference: "supplier_pickup_to_door",
   shippingPreference: "balanced",
 };
 
@@ -109,5 +113,152 @@ describe("shipment request validation", () => {
       result.error.issues[0]?.message,
       "Choose a valid cargo type from the list.",
     );
+  });
+
+  it("accepts a custom China origin city", () => {
+    const result = createShipmentRequestSchema.safeParse({
+      ...validRequest,
+      origin: "Wuhan, China",
+    });
+
+    assert.equal(result.success, true);
+  });
+
+  it("rejects a bare Other China origin without the exact city", () => {
+    const result = createShipmentRequestSchema.safeParse({
+      ...validRequest,
+      origin: otherChinaOriginValue,
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(
+      result.error.issues.some(
+        (issue) =>
+          issue.path.join(".") === "origin" &&
+          issue.message === "Enter the exact pickup city or location in China.",
+      ),
+      true,
+    );
+  });
+
+  it("accepts new importer-facing delivery preferences and rejects old freight terms", () => {
+    const validResult = createShipmentRequestSchema.safeParse({
+      ...validRequest,
+      deliveryPreference: "china_warehouse_to_ph_warehouse",
+    });
+    const oldResult = createShipmentRequestSchema.safeParse({
+      ...validRequest,
+      deliveryPreference: "door_to_door",
+    });
+
+    assert.equal(validResult.success, true);
+    assert.equal(oldResult.success, false);
+    assert.equal(
+      oldResult.error.issues[0]?.message,
+      "Choose a valid delivery preference from the list.",
+    );
+  });
+
+  it("blocks Step 2 when shipment size and weight are missing", () => {
+    assert.deepEqual(getShipmentSizeStepErrors({}), {
+      totalWeightKg: "Enter the total gross weight.",
+      totalCbm:
+        "Provide either total CBM or complete package dimensions with package count.",
+    });
+  });
+
+  it("blocks Step 2 when only weight is provided", () => {
+    assert.deepEqual(getShipmentSizeStepErrors({ totalWeightKg: "50" }), {
+      totalCbm:
+        "Provide either total CBM or complete package dimensions with package count.",
+    });
+  });
+
+  it("blocks Step 2 when CBM is provided without weight", () => {
+    assert.deepEqual(getShipmentSizeStepErrors({ totalCbm: "1.5" }), {
+      totalWeightKg: "Enter the total gross weight.",
+    });
+  });
+
+  it("allows Step 2 when CBM and weight are provided", () => {
+    assert.deepEqual(
+      getShipmentSizeStepErrors({ totalCbm: "1.5", totalWeightKg: "50" }),
+      {},
+    );
+  });
+
+  it("blocks Step 2 when dimensions are partial or missing package count", () => {
+    const dimensionMessage =
+      "Complete length, width, and height, or use total CBM instead.";
+
+    assert.deepEqual(
+      getShipmentSizeStepErrors({
+        lengthCm: "50",
+        widthCm: "40",
+        packageCount: "20",
+        totalWeightKg: "50",
+      }),
+      {
+        lengthCm: dimensionMessage,
+        widthCm: dimensionMessage,
+        heightCm: dimensionMessage,
+      },
+    );
+
+    assert.deepEqual(
+      getShipmentSizeStepErrors({
+        lengthCm: "50",
+        widthCm: "40",
+        heightCm: "30",
+        totalWeightKg: "50",
+      }),
+      {
+        packageCount: "Package/carton count is required when using dimensions.",
+      },
+    );
+  });
+
+  it("allows Step 2 when complete dimensions, package count, and weight are provided", () => {
+    assert.deepEqual(
+      getShipmentSizeStepErrors({
+        lengthCm: "50",
+        widthCm: "40",
+        heightCm: "30",
+        packageCount: "20",
+        totalWeightKg: "50",
+      }),
+      {},
+    );
+  });
+
+  it("rejects zero, negative, and invalid numeric Step 2 values in the schema", () => {
+    for (const invalidValue of ["0", "-1", "abc"]) {
+      const result = createShipmentRequestSchema.safeParse({
+        ...validRequest,
+        totalCbm: invalidValue,
+      });
+
+      assert.equal(result.success, false);
+      assert.equal(
+        result.error.issues.some(
+          (issue) => issue.message === "Enter a valid CBM greater than 0.",
+        ),
+        true,
+      );
+    }
+  });
+
+  it("accepts complete dimensions with package count and weight without CBM", () => {
+    const result = createShipmentRequestSchema.safeParse({
+      ...validRequest,
+      totalCbm: undefined,
+      lengthCm: "50",
+      widthCm: "40",
+      heightCm: "30",
+      packageCount: "20",
+      totalWeightKg: "50",
+    });
+
+    assert.equal(result.success, true);
   });
 });

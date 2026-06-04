@@ -16,6 +16,7 @@ import { requireRole } from "@/lib/authz";
 import {
   formatCount,
   formatDate,
+  formatDeliveryPreference,
   formatDimensions,
   formatMeasure,
   formatStructuredRoute,
@@ -111,7 +112,7 @@ export default async function ImporterRequestsPage() {
                         </span>
                         <span className="mt-1 block text-xs text-muted-foreground">
                           {titleFromEnum(request.cargoType)} /{" "}
-                          {titleFromEnum(request.deliveryPreference)}
+                          {formatDeliveryPreference(request.deliveryPreference)}
                         </span>
                       </Link>
                     </TableCell>
