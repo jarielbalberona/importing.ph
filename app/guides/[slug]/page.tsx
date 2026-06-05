@@ -104,7 +104,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
             {guide.description}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
-            <time dateTime={guide.publishedAt}>{formatGuideDate(guide.publishedAt)}</time>
+            <span>Published {formatGuideDate(guide.publishedAt)}</span>
             {guide.updatedAt ? (
               <>
                 <span aria-hidden="true">•</span>
@@ -184,7 +184,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
       {guide.relatedLinks?.length ? (
         <section className="border-t border-slate-200">
           <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-12">
-            <h2 className="text-2xl font-semibold leading-tight">Related guides and routes</h2>
+            <h2 className="text-2xl font-semibold leading-tight">More guides you may find useful</h2>
             <div className="mt-6 grid gap-4">
               {guide.relatedLinks.map((link) => (
                 <Link
@@ -207,18 +207,18 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
         <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:py-12">
           <div>
             <h2 className="text-2xl font-semibold leading-tight">
-              Ready to request shipment quotes?
+              Ready to post your first shipment request?
             </h2>
             <p className="mt-2 text-base leading-7 text-slate-700">
-              Create a free account and post one shipment request instead of repeating
-              the same cargo details across scattered chats.
+              Create a free account and post a request with one set of cargo details.
+              That lets forwarders compare quotes using the same information.
             </p>
           </div>
           <Link
             href="/sign-up"
             className="inline-flex min-h-11 items-center justify-center rounded-md bg-slate-950 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
           >
-            Create free account
+            Post a shipment request
           </Link>
         </div>
       </section>

@@ -24,18 +24,25 @@ export default function GuidesPage() {
               Guides
             </p>
             <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight sm:text-5xl">
-              Start importing with less confusion and fewer bad assumptions.
+              Beginner Guides for Importing to the Philippines
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-700 sm:text-lg sm:leading-8">
-              These guides explain the usual China-to-Philippines importing workflow,
-              common shipping terms, and what beginners should prepare before asking
-              forwarders for quotes.
+              These guides help you understand China-to-Philippines quote basics,
+              shipping terms like CBM, and how to compare air and sea options before you post.
             </p>
           </div>
         </section>
 
         <section>
           <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-12">
+            {publishedGuides.length === 0 ? (
+              <p className="text-base leading-7 text-slate-700">
+                New beginner guides are being added. Start with our onboarding content
+                and request a shipping quote from one forwarder while we improve this
+                index.
+              </p>
+            ) : null}
+
             <div className="grid gap-5">
               {publishedGuides.map((guide) => (
                 <article

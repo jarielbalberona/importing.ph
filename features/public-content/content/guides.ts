@@ -5,7 +5,7 @@ export const guides: Guide[] = [
     slug: "how-to-import-from-china-to-philippines",
     title: "How to Import from China to the Philippines",
     description:
-      "A practical beginner guide to the usual China-to-Philippines importing flow, from supplier prep and shipment sizing to quote comparison and forwarder selection.",
+      "A practical guide for first-time importers that walks through supplier prep, shipment sizing, and choosing quotes for a China-to-Philippines shipment.",
     category: "Beginner Guides",
     status: "published",
     publishedAt: "2026-06-05",
@@ -20,17 +20,17 @@ export const guides: Guide[] = [
       {
         label: "How to Request a Shipping Quote Properly",
         href: "/guides/how-to-request-a-shipping-quote",
-        description: "Use this before sending your cargo details to multiple forwarders.",
+        description: "A practical checklist to make your request easier for forwarders to quote.",
       },
       {
         label: "What Is CBM in Shipping?",
         href: "/guides/what-is-cbm",
-        description: "Understand the volume estimate many forwarders ask for before quoting.",
+        description: "Learn what to measure so your request is easier to price.",
       },
       {
         label: "Air Cargo vs Sea Cargo",
         href: "/guides/air-cargo-vs-sea-cargo",
-        description: "Compare speed and cost tradeoffs before choosing a shipment mode.",
+        description: "Compare common air-sea tradeoffs before you choose a mode.",
       },
     ],
     sections: [
@@ -52,13 +52,13 @@ export const guides: Guide[] = [
       {
         heading: "Know the usual beginner workflow",
         body: [
-          "The importing flow is usually simple at a high level. You confirm the product and supplier details, ask for shipping quotes, compare forwarders, then choose how the shipment should move into the Philippines.",
+          "The importing flow is usually simple: confirm supplier details, ask for quotes, compare forwarders, then choose how the shipment should move into the Philippines.",
           "What changes from shipment to shipment is the documentation, handling restrictions, timing, and whether the cargo makes more sense by air or sea. Requirements may vary, so do not assume one shipment behaves exactly like the previous one.",
         ],
         steps: [
           "Confirm the product, quantity, and supplier pickup details.",
           "Estimate the shipment size, total weight, and carton count as honestly as you can.",
-          "Request quotes from forwarders that handle China-to-Philippines shipments.",
+          "Request quotes from forwarders that handle China-to-Philippines routes.",
           "Compare pricing, transit ranges, inclusions, exclusions, and delivery scope.",
           "Clarify unclear assumptions before the cargo moves.",
           "Proceed with the forwarder that best fits your budget, timing, and cargo type.",
@@ -105,7 +105,7 @@ export const guides: Guide[] = [
           {
             question: "Do I need exact CBM before requesting a quote?",
             answer:
-              "Not always, but you need a reasonable estimate. Confirm with your supplier or forwarder because volume and weight usually affect pricing.",
+              "Not always, but you should share a reasonable estimate. Confirm with your supplier or forwarder because volume and weight usually affect pricing.",
           },
           {
             question: "Can one quote guarantee final charges?",
@@ -125,7 +125,7 @@ export const guides: Guide[] = [
     slug: "what-is-cbm",
     title: "What Is CBM in Shipping?",
     description:
-      "A practical explanation of CBM, why forwarders ask for it, and how beginner importers can estimate shipment volume before requesting quotes.",
+      "A practical explanation of CBM, why it is usually asked for, and how to estimate shipment volume before quoting.",
     category: "Shipping Basics",
     status: "published",
     publishedAt: "2026-06-04",
@@ -149,7 +149,7 @@ export const guides: Guide[] = [
         heading: "CBM means cubic meter",
         body: [
           "CBM stands for cubic meter. In plain language, it is a way to describe how much space your cargo takes up.",
-          "Forwarders commonly ask for CBM because cargo volume affects planning, consolidation, and quote accuracy. If they do not know the shipment size, they are forced to estimate loosely.",
+          "Forwarders commonly ask for CBM because cargo volume affects planning, consolidation, and quote accuracy. Without it, they must quote off rough estimates.",
         ],
       },
       {
@@ -203,7 +203,7 @@ export const guides: Guide[] = [
           {
             question: "Can I request a quote without exact CBM?",
             answer:
-              "Yes, but the quote may be less precise. Confirm with your forwarder because rates and routing may vary once the shipment is measured.",
+              "Yes. But the quote may be less precise. Confirm with your forwarder because rates and routing may change once the shipment is measured.",
           },
           {
             question: "Is CBM only for sea cargo?",
@@ -223,7 +223,7 @@ export const guides: Guide[] = [
     slug: "air-cargo-vs-sea-cargo",
     title: "Air Cargo vs Sea Cargo: Which One Should You Use?",
     description:
-      "A practical beginner comparison of air and sea cargo based on urgency, shipment size, budget, and the tradeoffs importers commonly face.",
+      "A practical beginner comparison of air and sea cargo based on urgency, size, budget, and common tradeoffs importers face.",
     category: "Shipping Basics",
     status: "published",
     publishedAt: "2026-06-03",
@@ -247,7 +247,7 @@ export const guides: Guide[] = [
         heading: "The short version",
         body: [
           "Air cargo is usually faster and more expensive. Sea cargo is usually slower and more cost-efficient for larger shipments.",
-          "That is the basic tradeoff, but it is still an oversimplification. The right choice depends on urgency, shipment size, weight, cargo type, and how much delay risk you can tolerate.",
+          "That is the basic tradeoff, but it is still a simplification. The right choice also depends on urgency, shipment size, weight, cargo type, and how much delay risk you can tolerate.",
         ],
       },
       {
@@ -265,7 +265,7 @@ export const guides: Guide[] = [
       {
         heading: "When sea cargo commonly makes sense",
         body: [
-          "Sea cargo usually makes sense when the shipment is bulkier, heavier, or less urgent. It often gives better cost efficiency if you can plan ahead.",
+          "Sea cargo usually makes sense when the shipment is bulkier, heavier, or less urgent. It often gives better value if you can plan ahead.",
           "For many beginners, sea becomes more attractive as the order grows and air charges stop looking reasonable.",
         ],
         bullets: [
@@ -320,7 +320,7 @@ export const guides: Guide[] = [
     slug: "how-to-request-a-shipping-quote",
     title: "How to Request a Shipping Quote Properly",
     description:
-      "A practical checklist of the shipment details forwarders usually need so they can respond with clearer pricing, transit estimates, and service coverage.",
+      "A practical checklist of the shipment details forwarders usually need so they can give you clearer pricing, transit windows, and service coverage.",
     category: "Marketplace Tips",
     status: "published",
     publishedAt: "2026-06-02",
@@ -392,7 +392,7 @@ export const guides: Guide[] = [
         heading: "A clean beginner workflow",
         steps: [
           "Collect the shipment details from your supplier first.",
-          "Prepare one complete request instead of sending partial details in different chats.",
+          "Prepare one complete request instead of sharing partial details in different chats.",
           "Send the same core request to multiple forwarders.",
           "Compare pricing, transit range, inclusions, exclusions, and follow-up questions.",
           "Clarify unclear assumptions before choosing a forwarder.",
@@ -401,10 +401,10 @@ export const guides: Guide[] = [
       {
         heading: "Questions beginners usually ask",
         faqs: [
-          {
+      {
             question: "Can I ask for a quote before the supplier finishes packing?",
             answer:
-              "Yes, but say clearly that the dimensions and weight are estimated. Forwarders can usually provide an initial quote based on expected shipment details.",
+              "Yes. Say clearly that dimensions and weight are estimated. Forwarders can usually provide an initial quote from those estimates.",
           },
           {
             question: "Should I send product photos?",
@@ -424,7 +424,7 @@ export const guides: Guide[] = [
     slug: "list-of-forwarders-china-to-philippines",
     title: "List of China to Philippines Forwarders",
     description:
-      "A practical guide to building and comparing a forwarder shortlist instead of blindly chasing the first name or cheapest quote you see.",
+      "A practical guide to building and comparing a forwarder shortlist before you send one request to many candidates.",
     category: "Marketplace Tips",
     status: "published",
     publishedAt: "2026-06-01",
@@ -465,14 +465,14 @@ export const guides: Guide[] = [
       {
         heading: "Do not overread listing status",
         body: [
-          "If a platform has listing states such as verified, claimed, unclaimed, or community-submitted, read those labels carefully. They are not all the same thing.",
-          "Do not assume every listed forwarder is verified or endorsed unless the platform explicitly says so. Requirements, responsiveness, and service quality may vary.",
+          "Some platforms use status labels. Read them closely and take them as a starting point, not a quality promise.",
+          "Do not assume every listed forwarder guarantees your preferred price, communication speed, or delivery outcome. Requirements, responsiveness, and service quality may vary.",
         ],
         callout: {
           tone: "warning",
           title: "A list is not a guarantee",
           body:
-            "A forwarder appearing on a shortlist or directory does not automatically mean the platform guarantees pricing, service quality, or delivery outcome.",
+            "A forwarder on a list is a starting point only. It does not guarantee pricing, service quality, or outcome.",
         },
       },
       {

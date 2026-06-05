@@ -1256,9 +1256,14 @@ function OptionCombobox({
   return (
     <Combobox
       items={options}
-      itemToStringValue={(option) => option.label}
+      itemToStringLabel={(option: Option) => option.label}
+      itemToStringValue={(option: Option) => option.value}
       value={selectedOption}
-      onValueChange={(option) => onValueChange(option?.value)}
+      onValueChange={(nextValue: Option | string | null) =>
+        onValueChange(
+          typeof nextValue === "string" ? nextValue || undefined : nextValue?.value,
+        )
+      }
       autoHighlight
     >
       <ComboboxInput
@@ -1270,11 +1275,11 @@ function OptionCombobox({
       <ComboboxContent>
         <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         <ComboboxList>
-          {(option: Option) => (
+          {options.map((option) => (
             <ComboboxItem key={option.value} value={option}>
               {option.label}
             </ComboboxItem>
-          )}
+          ))}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
