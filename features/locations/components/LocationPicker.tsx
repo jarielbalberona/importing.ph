@@ -19,7 +19,6 @@ export function LocationPicker({
   value,
   onChange,
   errors,
-  inlineFields,
 }: {
   value: DestinationSelection;
   onChange: (value: DestinationSelection) => void;
@@ -29,7 +28,6 @@ export function LocationPicker({
     cityMunicipality?: string;
     barangay?: string;
   };
-  inlineFields?: ReactNode[];
 }) {
   const {
     regions,
@@ -91,16 +89,8 @@ export function LocationPicker({
     });
   }
 
-  const hasInlineFields = (inlineFields?.length ?? 0) > 0;
-
   return (
-    <div
-      className={
-        hasInlineFields
-          ? "grid gap-4 sm:grid-cols-4"
-          : "grid gap-4 sm:grid-cols-2"
-      }
-    >
+    <div className="grid gap-4 sm:grid-cols-2">
       <LocationField
         label="Destination region"
         helper="Select the Philippine region for this shipment destination."
@@ -140,9 +130,6 @@ export function LocationPicker({
           invalid={Boolean(errors?.province)}
         />
       </LocationField>
-      {inlineFields?.map((field, index) => (
-        <div key={`inline-field-${index}`}>{field}</div>
-      ))}
       <LocationField
         label="Destination city or municipality"
         helper="Required for quote matching and delivery scope."
@@ -205,4 +192,3 @@ function LocationField({
     </div>
   );
 }
-import type { ReactNode } from "react";

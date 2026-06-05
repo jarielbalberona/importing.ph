@@ -592,7 +592,7 @@ function SizeFields({
           },
         ]}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4">
         <Field
           label="Total CBM"
           helper="Enter the estimated total shipment volume if you already know it. Use a decimal format like 1.250."
@@ -788,6 +788,61 @@ function RouteAndDeliveryStep({
           />
         </Field>
       ) : null}
+      <div className="grid grid-cols-2 gap-4">
+        <Field
+          label="Pickup and receiving setup"
+          helper="Supplier pickup means the forwarder collects from your supplier. China warehouse means your supplier or agent will send the goods to the forwarder's China warehouse."
+          error={errors.deliveryPreference?.message}
+          required
+        >
+          <Controller
+            control={control}
+            name="deliveryPreference"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full" aria-invalid={Boolean(errors.deliveryPreference) || undefined}>
+                  <SelectValue placeholder="Select pickup and receiving setup" />
+                </SelectTrigger>
+                <SelectContent>
+                  {deliveryPreferenceOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </Field>
+        <Field
+          label="Shipping mode preference"
+          helper="Choose how you prefer this shipment to move. Select open to either if you want forwarders to recommend the best option."
+          error={errors.shippingModePreference?.message}
+          required
+        >
+          <Controller
+            control={control}
+            name="shippingModePreference"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  className="w-full"
+                  aria-invalid={Boolean(errors.shippingModePreference) || undefined}
+                >
+                  <SelectValue placeholder="Select shipping mode preference" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shippingModePreferenceOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </Field>
+      </div>
       <LocationPicker
         value={destinationValue}
         onChange={updateDestination}
@@ -797,62 +852,6 @@ function RouteAndDeliveryStep({
           cityMunicipality: errors.destinationCityMunicipalityCode?.message,
           barangay: errors.destinationBarangayCode?.message,
         }}
-        inlineFields={[
-          <Field
-            label="Pickup and receiving setup"
-            helper="Supplier pickup means the forwarder collects from your supplier. China warehouse means your supplier or agent will send the goods to the forwarder's China warehouse."
-            error={errors.deliveryPreference?.message}
-            required
-            key="delivery-preference"
-          >
-            <Controller
-              control={control}
-              name="deliveryPreference"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger aria-invalid={Boolean(errors.deliveryPreference) || undefined}>
-                    <SelectValue placeholder="Select pickup and receiving setup" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {deliveryPreferenceOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </Field>,
-          <Field
-            label="Shipping mode preference"
-            helper="Choose how you prefer this shipment to move. Select open to either if you want forwarders to recommend the best option."
-            error={errors.shippingModePreference?.message}
-            required
-            key="shipping-mode-preference"
-          >
-            <Controller
-              control={control}
-              name="shippingModePreference"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger
-                    aria-invalid={Boolean(errors.shippingModePreference) || undefined}
-                  >
-                    <SelectValue placeholder="Select shipping mode preference" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shippingModePreferenceOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </Field>,
-        ]}
       />
       {destinationValue.cityMunicipalityName ? (
         <div className="rounded-md border bg-muted/50 p-4 text-sm leading-6 text-muted-foreground">

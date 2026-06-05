@@ -87,15 +87,13 @@ export default function Home() {
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-20">
           <div className="min-w-0">
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl lg:text-6xl">
-              Stop messaging every forwarder just to get a shipping quote.
+              Get China-to-Philippines shipping quotes without chasing every forwarder.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg sm:leading-8">
-              Post your China-to-Philippines shipment once and receive private
-              quotes from cargo forwarders in one place.
+              Post your shipment once, receive private quotes from cargo forwarders, and compare options in one organized workspace.
             </p>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              Create a free account, share your shipment details, and compare
-              quotes without losing the conversation across different chats.
+              No scattered chats. No repeated details. Just one request, multiple quotes, and a clear conversation trail.
             </p>
             <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
               <Button asChild size="lg" className="min-h-11 w-full px-4 text-base sm:w-auto">

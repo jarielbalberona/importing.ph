@@ -61,15 +61,16 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
   const breadcrumbJsonLd = buildGuideBreadcrumbJsonLd(guide);
 
   return (
-    <main className="min-h-screen bg-white text-slate-950">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+    <>
+      <main className="min-h-screen bg-white text-slate-950">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
 
       <section className="border-b border-slate-200">
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-12">
@@ -221,6 +222,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
           </Link>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
