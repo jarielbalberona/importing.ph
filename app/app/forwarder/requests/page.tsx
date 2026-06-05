@@ -25,6 +25,7 @@ import {
   formatDeliveryPreference,
   formatDimensions,
   formatMeasure,
+  formatShippingModePreference,
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
@@ -121,6 +122,10 @@ export default async function ForwarderRequestsPage({
                           {formatStructuredRoute(request)}
                         </span>
                         <span className="mt-1 block text-xs text-muted-foreground">
+                          {formatShippingModePreference(
+                            request.shippingModePreference,
+                          )}{" "}
+                          /{" "}
                           {formatDeliveryPreference(request.deliveryPreference)}{" "}
                           / {titleFromEnum(request.shippingPreference)}
                         </span>

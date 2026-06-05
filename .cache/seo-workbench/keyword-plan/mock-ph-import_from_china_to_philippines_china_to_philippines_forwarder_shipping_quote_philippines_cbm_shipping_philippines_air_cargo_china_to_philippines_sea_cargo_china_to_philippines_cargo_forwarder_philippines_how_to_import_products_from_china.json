@@ -1,0 +1,61 @@
+{
+  "createdAt": "2026-06-05T10:28:37.245Z",
+  "data": [
+    {
+      "keyword": "import from China to Philippines",
+      "market": "ph",
+      "intent": "mixed",
+      "difficulty": "medium",
+      "suggestedRoute": "/guides/how-to-import-from-china-to-philippines"
+    },
+    {
+      "keyword": "China to Philippines forwarder",
+      "market": "ph",
+      "intent": "commercial",
+      "difficulty": "high",
+      "suggestedRoute": "/guides/list-of-forwarders-china-to-philippines"
+    },
+    {
+      "keyword": "shipping quote Philippines",
+      "market": "ph",
+      "intent": "commercial",
+      "difficulty": "medium",
+      "suggestedRoute": "/guides/how-to-request-a-shipping-quote"
+    },
+    {
+      "keyword": "CBM shipping Philippines",
+      "market": "ph",
+      "intent": "mixed",
+      "difficulty": "low",
+      "suggestedRoute": "/guides/what-is-cbm"
+    },
+    {
+      "keyword": "air cargo China to Philippines",
+      "market": "ph",
+      "intent": "mixed",
+      "difficulty": "high",
+      "suggestedRoute": "/guides/air-cargo-vs-sea-cargo"
+    },
+    {
+      "keyword": "sea cargo China to Philippines",
+      "market": "ph",
+      "intent": "mixed",
+      "difficulty": "high",
+      "suggestedRoute": "/guides/air-cargo-vs-sea-cargo"
+    },
+    {
+      "keyword": "cargo forwarder Philippines",
+      "market": "ph",
+      "intent": "commercial",
+      "difficulty": "high",
+      "suggestedRoute": "/guides/list-of-forwarders-china-to-philippines"
+    },
+    {
+      "keyword": "how to import products from China",
+      "market": "ph",
+      "intent": "informational",
+      "difficulty": "medium",
+      "suggestedRoute": "/guides/how-to-import-from-china-to-philippines"
+    }
+  ]
+}

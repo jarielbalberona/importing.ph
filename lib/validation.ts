@@ -3,6 +3,9 @@ import { z } from "zod";
 import {
   cargoTypeEnum,
   deliveryPreferenceEnum,
+  quoteShippingModeEnum,
+  shippingModePreferenceEnum,
+  type ShippingModePreference,
   shippingPreferenceEnum,
 } from "@/db/schema";
 import { shipmentAttachmentMaxCount } from "@/lib/file-rules";
@@ -128,6 +131,23 @@ const shippingPreferenceSchema = z.enum(shippingPreferenceEnum.enumValues, {
       : "Choose a valid shipping preference from the list.",
 });
 
+const shippingModePreferenceSchema = z.enum(
+  shippingModePreferenceEnum.enumValues,
+  {
+    error: (issue) =>
+      issue.input === undefined
+        ? "Choose the preferred shipping mode."
+        : "Choose a valid shipping mode preference from the list.",
+  },
+);
+
+const quoteShippingModeSchema = z.enum(quoteShippingModeEnum.enumValues, {
+  error: (issue) =>
+    issue.input === undefined
+      ? "Choose the shipping mode for this quote."
+      : "Choose a valid shipping mode for this quote.",
+});
+
 export const createShipmentRequestSchema = z
   .object({
     cargoDescription: z
@@ -188,6 +208,7 @@ export const createShipmentRequestSchema = z
       .max(300, "Keep the destination concise.")
       .optional(),
     deliveryPreference: deliveryPreferenceSchema,
+    shippingModePreference: shippingModePreferenceSchema,
     shippingPreference: shippingPreferenceSchema,
     notes: z
       .string()
@@ -291,6 +312,7 @@ export function shipmentRequestInputFromFormData(formData: FormData) {
     ),
     destinationDisplayName: stringFormValue(formData, "destinationDisplayName"),
     deliveryPreference: stringFormValue(formData, "deliveryPreference"),
+    shippingModePreference: stringFormValue(formData, "shippingModePreference"),
     shippingPreference: stringFormValue(formData, "shippingPreference"),
     notes: stringFormValue(formData, "notes"),
     attachmentNotes: stringFormValue(formData, "attachmentNotes"),
@@ -342,44 +364,72 @@ const dateInputString = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date.");
 
-export const quoteSubmissionSchema = z
-  .object({
-    quoteAmount: z
-      .string()
-      .trim()
-      .regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount."),
-    currency: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .default("PHP")
-      .pipe(z.literal("PHP")),
-    serviceOffered: z.string().trim().min(3).max(240),
-    estimatedTransitMinDays: requiredPositiveIntegerNumber(
-      "Enter the starting transit estimate.",
-      "Enter a valid transit time between 1 and 365 days.",
-    ),
-    estimatedTransitMaxDays: requiredPositiveIntegerNumber(
-      "Enter the ending transit estimate.",
-      "Enter a valid transit time between 1 and 365 days.",
-    ),
-    inclusions: optionalLongText,
-    exclusions: optionalLongText,
-    notes: optionalLongText,
-    validUntil: dateInputString,
-  })
-  .refine(
-    (input) =>
-      input.estimatedTransitMaxDays >= input.estimatedTransitMinDays,
-    {
-      message: "Maximum transit days must be greater than or equal to minimum.",
-      path: ["estimatedTransitMaxDays"],
-    },
-  )
-  .refine((input) => dateFromDateInput(input.validUntil).getTime() > Date.now(), {
-    message: "Quote validity must be in the future.",
-    path: ["validUntil"],
-  });
+function createQuoteSubmissionSchema(
+  requestShippingModePreference: ShippingModePreference = "either",
+) {
+  return z
+    .object({
+      quoteAmount: z
+        .string()
+        .trim()
+        .regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount."),
+      currency: z
+        .string()
+        .trim()
+        .toUpperCase()
+        .default("PHP")
+        .pipe(z.literal("PHP")),
+      shippingMode: quoteShippingModeSchema,
+      serviceOffered: z.string().trim().min(3).max(240),
+      estimatedTransitMinDays: requiredPositiveIntegerNumber(
+        "Enter the starting transit estimate.",
+        "Enter a valid transit time between 1 and 365 days.",
+      ),
+      estimatedTransitMaxDays: requiredPositiveIntegerNumber(
+        "Enter the ending transit estimate.",
+        "Enter a valid transit time between 1 and 365 days.",
+      ),
+      inclusions: optionalLongText,
+      exclusions: optionalLongText,
+      notes: optionalLongText,
+      validUntil: dateInputString,
+    })
+    .refine(
+      (input) =>
+        input.estimatedTransitMaxDays >= input.estimatedTransitMinDays,
+      {
+        message: "Maximum transit days must be greater than or equal to minimum.",
+        path: ["estimatedTransitMaxDays"],
+      },
+    )
+    .refine(
+      (input) => dateFromDateInput(input.validUntil).getTime() > Date.now(),
+      {
+        message: "Quote validity must be in the future.",
+        path: ["validUntil"],
+      },
+    )
+    .superRefine((input, context) => {
+      if (
+        requestShippingModePreference !== "either" &&
+        input.shippingMode !== requestShippingModePreference
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: `Quote shipping mode must match the importer request: ${requestShippingModePreference === "sea" ? "Sea cargo" : "Air cargo"}.`,
+          path: ["shippingMode"],
+        });
+      }
+    });
+}
+
+export const quoteSubmissionSchema = createQuoteSubmissionSchema();
+
+export function quoteSubmissionSchemaForRequestMode(
+  requestShippingModePreference: ShippingModePreference,
+) {
+  return createQuoteSubmissionSchema(requestShippingModePreference);
+}
 
 export type QuoteSubmissionInput = z.infer<typeof quoteSubmissionSchema>;
 
@@ -387,6 +437,7 @@ export function quoteSubmissionInputFromFormData(formData: FormData) {
   return {
     quoteAmount: stringFormValue(formData, "quoteAmount"),
     currency: stringFormValue(formData, "currency") || "PHP",
+    shippingMode: stringFormValue(formData, "shippingMode"),
     serviceOffered: stringFormValue(formData, "serviceOffered"),
     estimatedTransitMinDays: stringFormValue(
       formData,

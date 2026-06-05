@@ -99,6 +99,27 @@
       "when": 1780688400000,
       "tag": "0013_delivery_preference_v1_language",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1780731600000,
+      "tag": "0014_shipping_mode_preference",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1780656944483,
+      "tag": "0015_easy_dexter_bennett",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780735200000,
+      "tag": "0016_quotes_shipping_mode_repair",
+      "breakpoints": true
     }
   ]
 }

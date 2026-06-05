@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { acceptQuote } from "@/app/app/requests/[requestId]/actions";
 import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
+import { GuideLinksCard } from "@/components/guides/guide-links-card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,6 +22,7 @@ export type QuoteComparisonItem = {
   companyName: string;
   amount: string;
   status: string;
+  shippingMode: string;
   serviceOffered: string;
   transitRange: string;
   validUntil: string;
@@ -63,6 +65,22 @@ export function QuoteComparisonPanel({ quotes }: QuoteComparisonPanelProps) {
 
   return (
     <div className="grid gap-5">
+      <GuideLinksCard
+        title="Before you choose a quote"
+        description="Use these quick references if you are comparing speed, cost, and what the quote really covers."
+        guides={[
+          {
+            slug: "air-cargo-vs-sea-cargo",
+            title: "Air Cargo vs Sea Cargo",
+            description: "Compare urgency, shipment size, and cost tradeoffs before deciding.",
+          },
+          {
+            slug: "how-to-request-a-shipping-quote",
+            title: "How to Request a Shipping Quote Properly",
+            description: "Review the usual gaps that lead to revised charges or confusing comparisons.",
+          },
+        ]}
+      />
       <div className="rounded-md border bg-background">
         <Table>
           <TableHeader>
@@ -122,6 +140,11 @@ export function QuoteComparisonPanel({ quotes }: QuoteComparisonPanelProps) {
                 valueClassName="font-semibold"
               />
               <ComparisonRow label="Amount" quotes={selectedQuotes} value="amount" />
+              <ComparisonRow
+                label="Shipping mode"
+                quotes={selectedQuotes}
+                value="shippingMode"
+              />
               <ComparisonRow label="Service type" quotes={selectedQuotes} value="serviceOffered" />
               <ComparisonRow label="Transit" quotes={selectedQuotes} value="transitRange" />
               <ComparisonRow label="Valid until" quotes={selectedQuotes} value="validUntil" />

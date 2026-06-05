@@ -1,0 +1,85 @@
+{
+  "createdAt": "2026-06-05T10:29:11.583Z",
+  "data": [
+    {
+      "keyword": "import from China to Philippines",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 1,
+      "url": "/guides/how-to-import-from-china-to-philippines",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "China to Philippines forwarder",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 2,
+      "url": "/guides/list-of-forwarders-china-to-philippines",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "shipping quote Philippines",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 3,
+      "url": "/guides/how-to-request-a-shipping-quote",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "CBM shipping Philippines",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 4,
+      "url": "/guides/what-is-cbm",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "air cargo China to Philippines",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 5,
+      "url": "/guides/air-cargo-vs-sea-cargo",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "sea cargo China to Philippines",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 6,
+      "url": "/guides/air-cargo-vs-sea-cargo",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "cargo forwarder Philippines",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 7,
+      "url": "/guides/list-of-forwarders-china-to-philippines",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    },
+    {
+      "keyword": "how to import products from China",
+      "market": "ph",
+      "domain": "importing.ph",
+      "found": true,
+      "rank": 8,
+      "url": "/guides/how-to-import-from-china-to-philippines",
+      "checkedAt": "2026-06-05T00:00:00.000Z",
+      "provider": "mock"
+    }
+  ]
+}

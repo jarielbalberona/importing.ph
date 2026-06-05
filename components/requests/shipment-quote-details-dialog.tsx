@@ -25,12 +25,14 @@ export type ShipmentQuoteDetails = {
     status: string;
     sizeWeight?: string | null;
     deliveryPreference?: string | null;
+    shippingModePreference?: string | null;
     shippingPreference?: string | null;
     notes?: string | null;
   };
   quote: {
     forwarderCompanyName: string;
     amount: string;
+    shippingMode?: string | null;
     timeline: string;
     service?: string | null;
     inclusions?: string | null;
@@ -73,6 +75,10 @@ export function ShipmentQuoteDetailsDialog({
                 value={context.request.deliveryPreference}
               />
               <Definition
+                label="Shipping mode"
+                value={context.request.shippingModePreference}
+              />
+              <Definition
                 label="Shipping preference"
                 value={context.request.shippingPreference}
               />
@@ -91,6 +97,10 @@ export function ShipmentQuoteDetailsDialog({
                 value={context.quote.forwarderCompanyName}
               />
               <Definition label="Quoted price" value={context.quote.amount} />
+              <Definition
+                label="Shipping mode"
+                value={context.quote.shippingMode}
+              />
               <Definition label="Timeline" value={context.quote.timeline} />
               <Definition label="Service" value={context.quote.service} />
               <Definition label="Valid until" value={context.quote.validUntil} />

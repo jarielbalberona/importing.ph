@@ -17,12 +17,41 @@ const deliveryPreferenceLabels: Record<string, string> = {
   not_sure: "Not sure, recommend for me",
 };
 
+const shippingModePreferenceLabels: Record<string, string> = {
+  sea: "Sea cargo",
+  air: "Air cargo",
+  either: "Open to either",
+};
+
+const quoteShippingModeLabels: Record<string, string> = {
+  sea: "Sea cargo",
+  air: "Air cargo",
+};
+
 export function formatDeliveryPreference(value: string | null | undefined) {
   if (!value) {
     return "Not provided";
   }
 
   return deliveryPreferenceLabels[value] ?? titleFromEnum(value);
+}
+
+export function formatShippingModePreference(
+  value: string | null | undefined,
+) {
+  if (!value) {
+    return "Not provided";
+  }
+
+  return shippingModePreferenceLabels[value] ?? titleFromEnum(value);
+}
+
+export function formatQuoteShippingMode(value: string | null | undefined) {
+  if (!value) {
+    return "Not provided";
+  }
+
+  return quoteShippingModeLabels[value] ?? titleFromEnum(value);
 }
 
 export function formatDateTime(value: Date) {

@@ -20,6 +20,8 @@ import {
   formatDimensions,
   formatMeasure,
   formatMoney,
+  formatQuoteShippingMode,
+  formatShippingModePreference,
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
@@ -170,6 +172,10 @@ function ShipmentDetails({
             value={formatDeliveryPreference(request.deliveryPreference)}
           />
           <DefinitionItem
+            label="Shipping mode"
+            value={formatShippingModePreference(request.shippingModePreference)}
+          />
+          <DefinitionItem
             label="Shipping preference"
             value={titleFromEnum(request.shippingPreference)}
           />
@@ -272,6 +278,10 @@ function OwnQuotePanel({
           <DefinitionItem
             label="Transit range"
             value={`${ownQuote.estimatedTransitMinDays}-${ownQuote.estimatedTransitMaxDays} days`}
+          />
+          <DefinitionItem
+            label="Shipping mode"
+            value={formatQuoteShippingMode(ownQuote.shippingMode)}
           />
           <DefinitionItem
             label="Service offered"

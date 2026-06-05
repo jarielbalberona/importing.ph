@@ -8,6 +8,8 @@ import {
   deliveryPreferenceEnum,
   forwarderCompanies,
   forwarderMembers,
+  type ShippingModePreference,
+  shippingModePreferenceEnum,
   quotes,
   shipmentRequests,
   type ShippingPreference,
@@ -41,6 +43,7 @@ export type ForwarderSafeRequest = {
   destinationAddressDetails: string | null;
   destinationDisplayName: string | null;
   deliveryPreference: string;
+  shippingModePreference: string;
   shippingPreference: string;
   notes: string | null;
   attachmentNotes: string | null;
@@ -54,6 +57,7 @@ export type OpenRequestFilters = {
   destination?: string;
   cargoType?: CargoType;
   deliveryPreference?: DeliveryPreference;
+  shippingModePreference?: ShippingModePreference;
   shippingPreference?: ShippingPreference;
   specialHandling?: "msds";
 };
@@ -84,6 +88,7 @@ function forwarderSafeRequestColumns() {
     destinationAddressDetails: shipmentRequests.destinationAddressDetails,
     destinationDisplayName: shipmentRequests.destinationDisplayName,
     deliveryPreference: shipmentRequests.deliveryPreference,
+    shippingModePreference: shipmentRequests.shippingModePreference,
     shippingPreference: shipmentRequests.shippingPreference,
     notes: shipmentRequests.notes,
     attachmentNotes: shipmentRequests.attachmentNotes,
@@ -168,6 +173,10 @@ export function openRequestFiltersFromSearchParams(
       deliveryPreferenceEnum.enumValues,
       firstValue("deliveryPreference"),
     ),
+    shippingModePreference: parseEnumValue(
+      shippingModePreferenceEnum.enumValues,
+      firstValue("shippingModePreference"),
+    ),
     shippingPreference: parseEnumValue(
       shippingPreferenceEnum.enumValues,
       firstValue("shippingPreference"),
@@ -196,6 +205,15 @@ function whereForOpenRequestFilters(filters: OpenRequestFilters) {
   if (filters.deliveryPreference) {
     conditions.push(
       eq(shipmentRequests.deliveryPreference, filters.deliveryPreference),
+    );
+  }
+
+  if (filters.shippingModePreference) {
+    conditions.push(
+      eq(
+        shipmentRequests.shippingModePreference,
+        filters.shippingModePreference,
+      ),
     );
   }
 

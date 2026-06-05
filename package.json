@@ -18,6 +18,11 @@
     "db:prove-onboarding": "tsx scripts/prove-onboarding.ts",
     "type-check": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
+    "seo:test": "tsx --test scripts/seo/tests/*.test.ts",
+    "seo:audit:mock": "tsx scripts/seo/audit.ts --provider mock",
+    "seo:verify": "tsx scripts/seo/verify-rendered-output.ts",
+    "seo:keyword-plan": "tsx scripts/seo/keyword-plan.ts --provider mock",
+    "seo:serp-rank": "tsx scripts/seo/serp-rank.ts --provider mock",
     "ai:run": "node tools/ai-runner/index.mjs",
     "test:ai-runner": "node --test tools/ai-runner/index.test.mjs"
   },

@@ -7,6 +7,11 @@ import {
   otherChinaOriginValue,
 } from "@/lib/validation";
 import { formatDestination } from "@/lib/format";
+import {
+  buildDestinationDisplayName,
+  calculateEstimatedTotalCbm,
+  getShipmentRequestStepBlockingErrors,
+} from "@/lib/shipment-request-wizard";
 
 const validRequest = {
   cargoDescription: "Phone accessories",
@@ -22,6 +27,7 @@ const validRequest = {
   destinationCityMunicipalityCode: "0746100000",
   destinationCityMunicipalityName: "Dumaguete City",
   deliveryPreference: "supplier_pickup_to_door",
+  shippingModePreference: "sea",
   shippingPreference: "balanced",
 };
 
@@ -260,5 +266,111 @@ describe("shipment request validation", () => {
     });
 
     assert.equal(result.success, true);
+  });
+
+  it("blocks cargo step progression when required fields are missing", () => {
+    assert.deepEqual(getShipmentRequestStepBlockingErrors(0, {}), {
+      cargoDescription: "Add a short description of what you are importing.",
+      cargoType: "Choose the closest cargo type.",
+      totalWeightKg: "Enter the total gross weight.",
+      totalCbm:
+        "Provide either total CBM or complete package dimensions with package count.",
+    });
+  });
+
+  it("blocks route step progression when origin and PSGC destination are incomplete", () => {
+    assert.deepEqual(
+      getShipmentRequestStepBlockingErrors(1, {
+        destinationRegionCode: "0700000000",
+        destinationRegionName: "Region VII (Central Visayas)",
+      }),
+      {
+        origin: "Select the China origin city or area.",
+        deliveryPreference: "Choose how you want the cargo delivered.",
+        shippingModePreference: "Choose the preferred shipping mode.",
+        destinationCityMunicipalityCode:
+          "Select the destination city or municipality.",
+        destinationProvinceCode: "Select the destination province.",
+      },
+    );
+  });
+
+  it("blocks preferences step progression when quote priority is missing", () => {
+    assert.deepEqual(getShipmentRequestStepBlockingErrors(2, {}), {
+      shippingPreference: "Choose what matters most for this shipment.",
+    });
+  });
+
+  it("requires shipping mode preference", () => {
+    const result = createShipmentRequestSchema.safeParse({
+      ...validRequest,
+      shippingModePreference: undefined,
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(
+      result.error.issues.some(
+        (issue) => issue.message === "Choose the preferred shipping mode.",
+      ),
+      true,
+    );
+  });
+
+  it("does not let empty defaults bypass required validation on final submit", () => {
+    const result = createShipmentRequestSchema.safeParse({});
+
+    assert.equal(result.success, false);
+    assert.equal(
+      result.error.issues.some(
+        (issue) =>
+          issue.message === "Add a short description of what you are importing.",
+      ),
+      true,
+    );
+    assert.equal(
+      result.error.issues.some(
+        (issue) => issue.message === "Choose what matters most for this shipment.",
+      ),
+      true,
+    );
+  });
+
+  it("builds readable destination labels from PSGC names", () => {
+    assert.equal(
+      buildDestinationDisplayName({
+        cityMunicipalityName: "Dumaguete City",
+        provinceName: "Negros Oriental",
+      }),
+      "Dumaguete City, Negros Oriental",
+    );
+    assert.equal(
+      buildDestinationDisplayName({
+        barangayName: "Poblacion 1",
+        cityMunicipalityName: "City of Makati",
+        regionName: "National Capital Region (NCR)",
+      }),
+      "Poblacion 1, City of Makati, National Capital Region (NCR)",
+    );
+  });
+
+  it("calculates estimated total CBM from carton dimensions and package count", () => {
+    assert.equal(
+      calculateEstimatedTotalCbm({
+        packageCount: "20",
+        lengthCm: "50",
+        widthCm: "40",
+        heightCm: "30",
+      }),
+      "1.200",
+    );
+    assert.equal(
+      calculateEstimatedTotalCbm({
+        packageCount: "20",
+        lengthCm: "50",
+        widthCm: "",
+        heightCm: "30",
+      }),
+      null,
+    );
   });
 });

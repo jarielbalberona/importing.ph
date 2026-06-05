@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: "Importing PH - A simpler way to find the right shipment quote.",
   description: "A simpler way to find the right shipment quote.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Importing PH - A simpler way to find the right shipment quote.",
     description: "A simpler way to find the right shipment quote.",

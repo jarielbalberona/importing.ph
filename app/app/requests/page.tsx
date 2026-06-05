@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { GuideLinksCard } from "@/components/guides/guide-links-card";
 import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   formatDeliveryPreference,
   formatDimensions,
   formatMeasure,
+  formatShippingModePreference,
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
@@ -59,7 +61,7 @@ export default async function ImporterRequestsPage() {
       </section>
 
       {requests.length === 0 ? (
-        <div className="mt-8">
+        <div className="mt-8 grid gap-4">
           <EmptyState
             title="No shipment requests yet"
             description="Create your first request so forwarders can send quotes."
@@ -68,6 +70,17 @@ export default async function ImporterRequestsPage() {
                 <Link href="/app/requests/new">Create request</Link>
               </Button>
             }
+          />
+          <GuideLinksCard
+            title="Need a quick beginner refresher first?"
+            description="Start here if this is your first China-to-Philippines shipment request."
+            guides={[
+              {
+                slug: "how-to-import-from-china-to-philippines",
+                title: "How to Import from China to the Philippines",
+                description: "See the usual beginner workflow before posting your first request.",
+              },
+            ]}
           />
         </div>
       ) : (
@@ -109,7 +122,10 @@ export default async function ImporterRequestsPage() {
                         </span>
                         <span className="mt-1 block text-xs text-muted-foreground">
                           {titleFromEnum(request.cargoType)} /{" "}
-                          {formatDeliveryPreference(request.deliveryPreference)}
+                          {formatShippingModePreference(
+                            request.shippingModePreference,
+                          )}{" "}
+                          / {formatDeliveryPreference(request.deliveryPreference)}
                         </span>
                       </Link>
                     </TableCell>

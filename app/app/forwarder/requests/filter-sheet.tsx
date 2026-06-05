@@ -25,15 +25,21 @@ import {
 import {
   cargoTypeEnum,
   deliveryPreferenceEnum,
+  shippingModePreferenceEnum,
   shippingPreferenceEnum,
 } from "@/db/schema";
-import { formatDeliveryPreference, titleFromEnum } from "@/lib/format";
+import {
+  formatDeliveryPreference,
+  formatShippingModePreference,
+  titleFromEnum,
+} from "@/lib/format";
 
 export type ForwarderRequestFilters = {
   origin?: string;
   destination?: string;
   cargoType?: string;
   deliveryPreference?: string;
+  shippingModePreference?: string;
   shippingPreference?: string;
   specialHandling?: "msds";
 };
@@ -99,6 +105,14 @@ export function FilterSheet({
               formatOption={formatDeliveryPreference}
             />
             <SelectFilter
+              label="Shipping mode"
+              name="shippingModePreference"
+              value={filters.shippingModePreference}
+              options={shippingModePreferenceEnum.enumValues}
+              formatOption={formatShippingModePreference}
+              anyLabel="All"
+            />
+            <SelectFilter
               label="Shipping preference"
               name="shippingPreference"
               value={filters.shippingPreference}
@@ -141,12 +155,14 @@ function SelectFilter({
   value,
   options,
   formatOption = titleFromEnum,
+  anyLabel,
 }: {
   label: string;
   name: string;
   value?: string;
   options: readonly string[];
   formatOption?: (value: string) => string;
+  anyLabel?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-medium">
@@ -156,7 +172,7 @@ function SelectFilter({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__any">Any</SelectItem>
+          <SelectItem value="__any">{anyLabel ?? "Any"}</SelectItem>
           {options.map((option) => (
             <SelectItem key={option} value={option}>
               {formatOption(option)}

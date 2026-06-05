@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { quoteSubmissionSchema } from "@/lib/validation";
+import {
+  quoteSubmissionSchema,
+  quoteSubmissionSchemaForRequestMode,
+} from "@/lib/validation";
 
 const validQuote = {
   quoteAmount: "25000.00",
   currency: "PHP",
+  shippingMode: "sea",
   serviceOffered: "Door-to-door",
   estimatedTransitMinDays: 9,
   estimatedTransitMaxDays: 15,
@@ -35,6 +39,15 @@ describe("quote submission validation", () => {
     const result = quoteSubmissionSchema.safeParse({
       ...validQuote,
       serviceOffered: "",
+    });
+
+    assert.equal(result.success, false);
+  });
+
+  it("requires a valid quote shipping mode", () => {
+    const result = quoteSubmissionSchema.safeParse({
+      ...validQuote,
+      shippingMode: "truck",
     });
 
     assert.equal(result.success, false);
@@ -91,6 +104,24 @@ describe("quote submission validation", () => {
         (issue) =>
           issue.path.join(".") === "estimatedTransitMaxDays" &&
           issue.message === "Enter the ending transit estimate.",
+      ),
+      true,
+    );
+  });
+
+  it("rejects quote modes that do not match a fixed importer request", () => {
+    const result = quoteSubmissionSchemaForRequestMode("air").safeParse({
+      ...validQuote,
+      shippingMode: "sea",
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(
+      result.error.issues.some(
+        (issue) =>
+          issue.path.join(".") === "shippingMode" &&
+          issue.message ===
+            "Quote shipping mode must match the importer request: Air cargo.",
       ),
       true,
     );

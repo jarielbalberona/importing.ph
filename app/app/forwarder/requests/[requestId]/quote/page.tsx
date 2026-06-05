@@ -9,6 +9,7 @@ import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { Button } from "@/components/ui/button";
 import {
   formatDeliveryPreference,
+  formatShippingModePreference,
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
@@ -97,6 +98,12 @@ export default async function ForwarderQuotePage({
               value={formatDeliveryPreference(request.deliveryPreference)}
             />
             <SummaryItem
+              label="Shipping mode"
+              value={formatShippingModePreference(
+                request.shippingModePreference,
+              )}
+            />
+            <SummaryItem
               label="Shipping preference"
               value={titleFromEnum(request.shippingPreference)}
             />
@@ -105,9 +112,14 @@ export default async function ForwarderQuotePage({
 
         <QuoteSubmissionForm
           requestId={request.id}
+          requestShippingModePreference={request.shippingModePreference}
           cancelHref={`/app/forwarder/requests/${request.id}`}
           defaultValues={{
             currency: quoteDefaults?.currency ?? "PHP",
+            shippingMode:
+              request.shippingModePreference === "either"
+                ? undefined
+                : request.shippingModePreference,
             serviceOffered:
               formatDeliveryPreference(request.deliveryPreference) !==
               "Not provided"
@@ -158,7 +170,7 @@ function errorMessage(error: string) {
     case "forwarder_suspended":
       return "Your company is suspended and cannot submit quotes.";
     case "validation":
-      return "Complete the quote fields with a valid amount, transit range, and future validity date.";
+      return "Complete the quote fields with a valid shipping mode, amount, transit range, and future validity date.";
     default:
       return "The quote was not sent. Try again.";
   }

@@ -18,7 +18,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { quoteSubmissionSchema } from "@/lib/validation";
+import { formatShippingModePreference } from "@/lib/format";
+import {
+  quoteSubmissionSchema,
+  quoteSubmissionSchemaForRequestMode,
+} from "@/lib/validation";
 import { submitQuote } from "@/app/app/forwarder/requests/[requestId]/actions";
 
 type FormValues = z.input<typeof quoteSubmissionSchema>;
@@ -58,10 +62,12 @@ const serviceTypeLabels: Record<ServiceTypeValue, string> = {
 
 export function QuoteSubmissionForm({
   requestId,
+  requestShippingModePreference,
   defaultValues,
   cancelHref,
 }: {
   requestId: string;
+  requestShippingModePreference: "sea" | "air" | "either";
   defaultValues?: Partial<FormValues>;
   cancelHref?: string;
 }) {
@@ -73,15 +79,29 @@ export function QuoteSubmissionForm({
   const [serviceType, setServiceType] = useState<ServiceTypeValue>(
     initialServiceType,
   );
+  const [shippingMode, setShippingMode] = useState<
+    FormValues["shippingMode"] | undefined
+  >(
+    requestShippingModePreference === "either"
+      ? defaultValues?.shippingMode
+      : requestShippingModePreference,
+  );
+  const shippingModeLocked = requestShippingModePreference !== "either";
   const {
     register,
     handleSubmit,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(quoteSubmissionSchema),
+    resolver: zodResolver(
+      quoteSubmissionSchemaForRequestMode(requestShippingModePreference),
+    ),
     defaultValues: {
       currency: "PHP",
+      shippingMode:
+        requestShippingModePreference === "either"
+          ? defaultValues?.shippingMode
+          : requestShippingModePreference,
       ...defaultValues,
     },
   });
@@ -92,7 +112,13 @@ export function QuoteSubmissionForm({
       shouldValidate: true,
     });
     setValue("currency", "PHP", { shouldDirty: true, shouldValidate: false });
-  }, [serviceType, setValue]);
+    if (requestShippingModePreference !== "either") {
+      setValue("shippingMode", requestShippingModePreference, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [requestShippingModePreference, serviceType, setValue]);
 
   function submitQuoteForm(data: FormValues) {
     const formData = new FormData();
@@ -154,6 +180,45 @@ export function QuoteSubmissionForm({
         description="Keep service choice and timing practical."
       >
         <div className="grid gap-4">
+          <Field
+            label="Importer shipping mode preference"
+            helper="This is what the importer asked for on the request."
+          >
+            <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+              {formatShippingModePreference(requestShippingModePreference)}
+            </div>
+          </Field>
+          <Field
+            label="Quote shipping mode"
+            helper={
+              shippingModeLocked
+                ? "Locked to the importer request so quotes stay comparable."
+                : "Choose whether this quote is for sea cargo or air cargo."
+            }
+            error={errors.shippingMode?.message}
+          >
+            <Select
+              name="shippingMode"
+              value={shippingMode}
+              onValueChange={(value) => {
+                setShippingMode(value as FormValues["shippingMode"]);
+                setValue("shippingMode", value as FormValues["shippingMode"], {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+              disabled={shippingModeLocked}
+            >
+              <SelectTrigger aria-invalid={Boolean(errors.shippingMode) || undefined}>
+                <SelectValue placeholder="Select shipping mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sea">Sea cargo</SelectItem>
+                <SelectItem value="air">Air cargo</SelectItem>
+              </SelectContent>
+            </Select>
+            <input type="hidden" {...register("shippingMode")} />
+          </Field>
           <Field
             label="Service type"
             helper="Choose the closest coverage for this quote."

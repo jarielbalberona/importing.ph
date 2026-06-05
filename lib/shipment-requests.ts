@@ -75,6 +75,7 @@ export async function createShipmentRequestForCurrentImporter(
         destinationAddressDetails: parsed.destinationAddressDetails || undefined,
         destinationDisplayName,
         deliveryPreference: parsed.deliveryPreference,
+        shippingModePreference: parsed.shippingModePreference,
         shippingPreference: parsed.shippingPreference,
         notes: parsed.notes || undefined,
         attachmentNotes: parsed.attachmentNotes || undefined,

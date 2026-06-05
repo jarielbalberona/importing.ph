@@ -10,6 +10,7 @@ import type { z } from "zod";
 import { FileText, FileUp, Loader2, X } from "lucide-react";
 
 import { DetailValue, InfoGrid, StatusBadge } from "@/components/app-shell";
+import { GuideLinksCard } from "@/components/guides/guide-links-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,12 +40,21 @@ import {
   LocationPicker,
   type DestinationSelection,
 } from "@/features/locations/components/LocationPicker";
-import { formatDeliveryPreference, titleFromEnum } from "@/lib/format";
+import {
+  formatDeliveryPreference,
+  formatShippingModePreference,
+  titleFromEnum,
+} from "@/lib/format";
 import {
   createShipmentRequestSchema,
-  getShipmentSizeStepErrors,
   otherChinaOriginValue,
 } from "@/lib/validation";
+import {
+  buildDestinationDisplayName,
+  calculateEstimatedTotalCbm,
+  getShipmentRequestStepBlockingErrors,
+  type ShipmentRequestStepIndex,
+} from "@/lib/shipment-request-wizard";
 import { createShipmentRequest } from "@/app/app/requests/new/actions";
 import {
   acceptedFileDescription,
@@ -107,6 +117,7 @@ const steps = [
       "destinationAddressDetails",
       "destinationDisplayName",
       "deliveryPreference",
+      "shippingModePreference",
     ],
   },
   {
@@ -214,6 +225,12 @@ const shippingPreferenceOptions = [
   { value: "not_sure", label: "Forwarder recommendation" },
 ] satisfies Option[];
 
+const shippingModePreferenceOptions = [
+  { value: "sea", label: "Sea cargo" },
+  { value: "air", label: "Air cargo" },
+  { value: "either", label: "Open to either" },
+] satisfies Option[];
+
 export function NewShipmentRequestForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -237,6 +254,7 @@ export function NewShipmentRequestForm() {
     defaultValues: {
       cargoType: undefined,
       deliveryPreference: undefined,
+      shippingModePreference: undefined,
       shippingPreference: undefined,
     },
   });
@@ -262,26 +280,24 @@ export function NewShipmentRequestForm() {
   async function validateCurrentStep() {
     clearErrors(step.fields);
     const fieldsValid = await trigger(step.fields, { shouldFocus: true });
+    const blockingErrors = getShipmentRequestStepBlockingErrors(
+      currentStep as ShipmentRequestStepIndex,
+      getValues(),
+    );
+    const blockingErrorEntries = Object.entries(blockingErrors);
 
-    if (currentStep !== 0) {
-      return fieldsValid;
-    }
-
-    const sizeErrors = getShipmentSizeStepErrors(getValues());
-    const sizeErrorEntries = Object.entries(sizeErrors);
-
-    for (const [field, message] of sizeErrorEntries) {
+    for (const [field, message] of blockingErrorEntries) {
       setError(
         field as FieldPath<FormValues>,
         {
           type: "manual",
           message,
         },
-        { shouldFocus: sizeErrorEntries[0]?.[0] === field },
+        { shouldFocus: blockingErrorEntries[0]?.[0] === field },
       );
     }
 
-    return fieldsValid && sizeErrorEntries.length === 0;
+    return fieldsValid && blockingErrorEntries.length === 0;
   }
 
   function goBack() {
@@ -335,6 +351,7 @@ export function NewShipmentRequestForm() {
   }
 
   const postRequest = handleSubmit(handleValidSubmit, handleInvalidSubmit);
+  const currentStepErrorMessages = getCurrentStepErrorMessages(currentStep, errors);
 
   return (
     <form
@@ -361,8 +378,15 @@ export function NewShipmentRequestForm() {
 
         <CardContent className="py-6">
           {formError ? (
-            <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
-              {formError}
+            <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="font-medium">{formError}</p>
+              {currentStepErrorMessages.length > 0 ? (
+                <ul className="mt-2 grid gap-1 text-sm">
+                  {currentStepErrorMessages.map((message) => (
+                    <li key={message}>- {message}</li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
           {currentStep === 0 ? (
@@ -471,6 +495,7 @@ function CargoDetailsStep({
           label="Shipment title and cargo description"
           helper="Use a short description you will recognize later, such as 'Phone accessories, Guangzhou to Manila'."
           error={errors.cargoDescription?.message}
+          required
         >
           <Input
             {...register("cargoDescription")}
@@ -481,6 +506,7 @@ function CargoDetailsStep({
           label="Cargo type"
           helper="Choose the closest match. Forwarders can ask follow-up questions after they review the request."
           error={errors.cargoType?.message}
+          required
         >
           <Controller
             control={control}
@@ -513,56 +539,122 @@ function CargoDetailsStep({
 
       <section className="grid gap-4">
         <h3 className="text-base font-semibold">Size, weight, and value</h3>
-        <SizeFields register={register} errors={errors} />
+        <SizeFields control={control} register={register} errors={errors} />
       </section>
     </div>
   );
 }
 
-function SizeFields({ register, errors }: Pick<StepComponentProps<FormValues>, "register" | "errors">) {
+function SizeFields({
+  control,
+  register,
+  errors,
+}: Pick<StepComponentProps<FormValues>, "control" | "register" | "errors">) {
+  const sizeValues = useWatch({
+    control,
+    name: ["totalCbm", "totalWeightKg", "packageCount", "lengthCm", "widthCm", "heightCm"],
+  });
+  const [
+    totalCbm,
+    ,
+    packageCount,
+    lengthCm,
+    widthCm,
+    heightCm,
+  ] = sizeValues;
+  const estimatedTotalCbm = calculateEstimatedTotalCbm({
+    packageCount,
+    lengthCm,
+    widthCm,
+    heightCm,
+  });
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field
-        label="Total CBM"
-        helper="Use this if you already know the total shipment volume."
-        error={errors.totalCbm?.message}
-      >
-        <Input {...register("totalCbm")} inputMode="decimal" placeholder="1.250" />
-      </Field>
-      <Field
-        label="Total weight kg"
-        helper="Use gross weight if available. This helps forwarders estimate shipping cost."
-        error={errors.totalWeightKg?.message}
-      >
-        <Input {...register("totalWeightKg")} inputMode="decimal" placeholder="120" />
-      </Field>
-      <Field
-        label="Package or carton count"
-        helper="Required when entering package dimensions."
-        error={errors.packageCount?.message}
-      >
-        <Input {...register("packageCount")} inputMode="numeric" placeholder="20" />
-      </Field>
-      <Field
-        label="Declared value"
-        helper="Optional. Use the invoice value if available."
-        error={errors.declaredValue?.message}
-      >
-        <Input {...register("declaredValue")} inputMode="decimal" placeholder="50000" />
-      </Field>
-      <Field
-        label="Length cm"
-        helper="Enter the size of one package/carton. We'll use this with the package count."
-        error={errors.lengthCm?.message}
-      >
-        <Input {...register("lengthCm")} inputMode="decimal" />
-      </Field>
-      <Field label="Width cm" error={errors.widthCm?.message}>
-        <Input {...register("widthCm")} inputMode="decimal" />
-      </Field>
-      <Field label="Height cm" error={errors.heightCm?.message}>
-        <Input {...register("heightCm")} inputMode="decimal" />
-      </Field>
+    <div className="grid gap-4">
+      <div className="rounded-md border bg-muted/50 p-4 text-sm leading-6 text-muted-foreground">
+        Forwarders usually need <span className="font-medium text-foreground">total gross weight</span> and
+        either <span className="font-medium text-foreground">total CBM</span> or
+        <span className="font-medium text-foreground"> package count plus one-carton dimensions</span>.
+      </div>
+      <GuideLinksCard
+        title="Need help estimating shipment size?"
+        description="Use these before posting if you are unsure about CBM, carton dimensions, or what forwarders usually need."
+        guides={[
+          {
+            slug: "what-is-cbm",
+            title: "What Is CBM in Shipping?",
+            description: "Understand carton volume and when rough estimates are acceptable.",
+          },
+          {
+            slug: "how-to-request-a-shipping-quote",
+            title: "How to Request a Shipping Quote Properly",
+            description: "See the usual details forwarders need before they can quote clearly.",
+          },
+        ]}
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Total CBM"
+          helper="Enter the estimated total shipment volume if you already know it. Use a decimal format like 1.250."
+          error={errors.totalCbm?.message}
+        >
+          <Input {...register("totalCbm")} inputMode="decimal" placeholder="1.250" />
+        </Field>
+        <Field
+          label="Total weight kg"
+          helper="Use gross weight if available. This helps forwarders estimate shipping cost."
+          error={errors.totalWeightKg?.message}
+          required
+        >
+          <Input {...register("totalWeightKg")} inputMode="decimal" placeholder="120" />
+        </Field>
+        <Field
+          label="Package or carton count"
+          helper="Required if you are using dimensions instead of total CBM."
+          error={errors.packageCount?.message}
+        >
+          <Input {...register("packageCount")} inputMode="numeric" placeholder="20" />
+        </Field>
+        <Field
+          label="Declared value"
+          helper="Optional. Use the invoice value if available."
+          error={errors.declaredValue?.message}
+        >
+          <Input {...register("declaredValue")} inputMode="decimal" placeholder="50000" />
+        </Field>
+        <Field
+          label="Length cm per carton"
+          helper="Enter the size of one carton or package, not the whole shipment."
+          error={errors.lengthCm?.message}
+        >
+          <Input {...register("lengthCm")} inputMode="decimal" />
+        </Field>
+        <Field
+          label="Width cm per carton"
+          helper="Use the width of one carton or package."
+          error={errors.widthCm?.message}
+        >
+          <Input {...register("widthCm")} inputMode="decimal" />
+        </Field>
+        <Field
+          label="Height cm per carton"
+          helper="Use the height of one carton or package."
+          error={errors.heightCm?.message}
+        >
+          <Input {...register("heightCm")} inputMode="decimal" />
+        </Field>
+      </div>
+      {estimatedTotalCbm ? (
+        <div className="rounded-md border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-cyan-950">
+          Estimated total CBM from carton dimensions and package count:{" "}
+          <span className="font-semibold">{estimatedTotalCbm} CBM</span>
+          {typeof totalCbm === "string" && totalCbm.trim().length > 0 ? (
+            <span className="block pt-1 text-cyan-900">
+              Keep the manual CBM value if it is based on a more reliable supplier or packing estimate.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -668,6 +760,7 @@ function RouteAndDeliveryStep({
         label="Pickup city in China"
         helper="Choose the nearest supplier or consolidation city. You can enter the exact pickup address later."
         error={!usesCustomOrigin ? errors.origin?.message : undefined}
+        required
       >
         {!usesCustomOrigin ? (
           <input type="hidden" {...register("origin")} />
@@ -686,6 +779,7 @@ function RouteAndDeliveryStep({
           label="Exact pickup city or location"
           helper="Enter the supplier city, factory area, or consolidation point in China."
           error={errors.origin?.message}
+          required
         >
           <Input
             {...register("origin")}
@@ -694,30 +788,6 @@ function RouteAndDeliveryStep({
           />
         </Field>
       ) : null}
-      <Field
-        label="Pickup and receiving setup"
-        helper="Supplier pickup means the forwarder collects from your supplier. China warehouse means your supplier or agent will send the goods to the forwarder's China warehouse."
-        error={errors.deliveryPreference?.message}
-      >
-        <Controller
-          control={control}
-          name="deliveryPreference"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-invalid={Boolean(errors.deliveryPreference) || undefined}>
-                <SelectValue placeholder="Select pickup and receiving setup" />
-              </SelectTrigger>
-              <SelectContent>
-                {deliveryPreferenceOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </Field>
       <LocationPicker
         value={destinationValue}
         onChange={updateDestination}
@@ -727,7 +797,71 @@ function RouteAndDeliveryStep({
           cityMunicipality: errors.destinationCityMunicipalityCode?.message,
           barangay: errors.destinationBarangayCode?.message,
         }}
+        inlineFields={[
+          <Field
+            label="Pickup and receiving setup"
+            helper="Supplier pickup means the forwarder collects from your supplier. China warehouse means your supplier or agent will send the goods to the forwarder's China warehouse."
+            error={errors.deliveryPreference?.message}
+            required
+            key="delivery-preference"
+          >
+            <Controller
+              control={control}
+              name="deliveryPreference"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger aria-invalid={Boolean(errors.deliveryPreference) || undefined}>
+                    <SelectValue placeholder="Select pickup and receiving setup" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deliveryPreferenceOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>,
+          <Field
+            label="Shipping mode preference"
+            helper="Choose how you prefer this shipment to move. Select open to either if you want forwarders to recommend the best option."
+            error={errors.shippingModePreference?.message}
+            required
+            key="shipping-mode-preference"
+          >
+            <Controller
+              control={control}
+              name="shippingModePreference"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    aria-invalid={Boolean(errors.shippingModePreference) || undefined}
+                  >
+                    <SelectValue placeholder="Select shipping mode preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shippingModePreferenceOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>,
+        ]}
       />
+      {destinationValue.cityMunicipalityName ? (
+        <div className="rounded-md border bg-muted/50 p-4 text-sm leading-6 text-muted-foreground">
+          Destination preview:{" "}
+          <span className="font-medium text-foreground">
+            {buildDestinationDisplayName(destinationValue)}
+          </span>
+        </div>
+      ) : null}
       <Field
         label="Address details / landmark"
         helper="Add a landmark, warehouse, barangay, or delivery note if helpful."
@@ -766,6 +900,7 @@ function PreferencesAndDocumentsStep({
           label="Quote priority"
           helper="Choose whether you prefer lower cost, faster delivery, or a balanced recommendation."
           error={errors.shippingPreference?.message}
+          required
         >
           <Controller
             control={control}
@@ -979,7 +1114,7 @@ function NotesStep({
       </div>
       <Field
         label="Notes"
-        helper="Add handling needs and timing concerns. Avoid supplier contact details or private payment information unless you want forwarders to see it."
+        helper="Add handling needs, supplier readiness timing, or document concerns here. Avoid supplier contact details or private payment information unless you want forwarders to see it."
         error={errors.notes?.message}
       >
         <Textarea {...register("notes")} rows={4} />
@@ -1025,6 +1160,10 @@ function ReviewStep({
         items: [
           ["Pickup city in China", values.origin],
           ["Pickup and receiving setup", formatDeliveryPreference(values.deliveryPreference)],
+          [
+            "Shipping mode preference",
+            formatShippingModePreference(values.shippingModePreference),
+          ],
           ["Destination region", values.destinationRegionName],
           ["Destination province", values.destinationProvinceName],
           ["Destination city or municipality", values.destinationCityMunicipalityName],
@@ -1147,11 +1286,13 @@ function Field({
   label,
   helper,
   error,
+  required,
   children,
 }: {
   label: string;
   helper?: string;
   error?: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   const helperId = useId();
@@ -1169,7 +1310,14 @@ function Field({
 
   return (
     <div className="grid min-w-0 gap-2">
-      <Label>{label}</Label>
+      <Label className="flex items-center gap-2">
+        <span>{label}</span>
+        {required ? (
+          <span className="text-xs font-medium uppercase tracking-wide text-primary">
+            Required
+          </span>
+        ) : null}
+      </Label>
       {child}
       {helper ? (
         <p id={helperId} className="text-xs leading-5 text-muted-foreground">
@@ -1217,13 +1365,55 @@ function cargoTypeLabel(value: unknown) {
   return cargoTypeOptions.find((option) => option.value === value)?.label ?? titleFromEnum(value);
 }
 
-function buildDestinationDisplayName(value: DestinationSelection) {
-  return [
-    value.barangayName,
-    value.cityMunicipalityName,
-    value.provinceName,
-    value.provinceName ? undefined : value.regionName,
-  ]
-    .filter(Boolean)
-    .join(", ");
+function getCurrentStepErrorMessages(
+  stepIndex: number,
+  errors: ReturnType<typeof useForm<FormValues>>["formState"]["errors"],
+) {
+  type StepErrorField =
+    | "cargoDescription"
+    | "cargoType"
+    | "totalCbm"
+    | "totalWeightKg"
+    | "packageCount"
+    | "lengthCm"
+    | "widthCm"
+    | "heightCm"
+    | "origin"
+    | "deliveryPreference"
+    | "shippingModePreference"
+    | "destinationRegionCode"
+    | "destinationProvinceCode"
+    | "destinationCityMunicipalityCode"
+    | "destinationBarangayCode"
+    | "shippingPreference"
+    | "notes"
+    | "attachmentNotes";
+
+  const stepFieldsByIndex: Array<Array<StepErrorField>> = [
+    [
+      "cargoDescription",
+      "cargoType",
+      "totalCbm",
+      "totalWeightKg",
+      "packageCount",
+      "lengthCm",
+      "widthCm",
+      "heightCm",
+    ],
+    [
+      "origin",
+      "deliveryPreference",
+      "shippingModePreference",
+      "destinationRegionCode",
+      "destinationProvinceCode",
+      "destinationCityMunicipalityCode",
+      "destinationBarangayCode",
+    ],
+    ["shippingPreference", "notes", "attachmentNotes"],
+    [],
+  ];
+
+  return stepFieldsByIndex[stepIndex]
+    .map((field) => errors[field]?.message)
+    .filter((message): message is string => typeof message === "string");
 }

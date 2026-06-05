@@ -78,6 +78,23 @@ export const shippingPreferenceEnum = pgEnum("shipping_preference", [
 export type ShippingPreference =
   (typeof shippingPreferenceEnum.enumValues)[number];
 
+export const shippingModePreferenceEnum = pgEnum("shipping_mode_preference", [
+  "sea",
+  "air",
+  "either",
+]);
+
+export type ShippingModePreference =
+  (typeof shippingModePreferenceEnum.enumValues)[number];
+
+export const quoteShippingModeEnum = pgEnum("quote_shipping_mode", [
+  "sea",
+  "air",
+]);
+
+export type QuoteShippingMode =
+  (typeof quoteShippingModeEnum.enumValues)[number];
+
 export const quoteStatusEnum = pgEnum("quote_status", [
   "submitted",
   "accepted",
@@ -329,6 +346,9 @@ export const shipmentRequests = pgTable(
     destinationAddressDetails: text("destination_address_details"),
     destinationDisplayName: text("destination_display_name"),
     deliveryPreference: deliveryPreferenceEnum("delivery_preference").notNull(),
+    shippingModePreference: shippingModePreferenceEnum(
+      "shipping_mode_preference",
+    ).notNull(),
     shippingPreference: shippingPreferenceEnum("shipping_preference").notNull(),
     notes: text("notes"),
     attachmentNotes: text("attachment_notes"),
@@ -342,6 +362,9 @@ export const shipmentRequests = pgTable(
     index("shipment_requests_cargo_type_idx").on(table.cargoType),
     index("shipment_requests_delivery_preference_idx").on(
       table.deliveryPreference,
+    ),
+    index("shipment_requests_shipping_mode_preference_idx").on(
+      table.shippingModePreference,
     ),
     index("shipment_requests_shipping_preference_idx").on(
       table.shippingPreference,
@@ -428,6 +451,7 @@ export const quotes = pgTable(
     status: quoteStatusEnum("status").notNull().default("submitted"),
     quoteAmount: numeric("quote_amount", { precision: 12, scale: 2 }).notNull(),
     currency: text("currency").notNull().default("PHP"),
+    shippingMode: quoteShippingModeEnum("shipping_mode").notNull(),
     serviceOffered: text("service_offered").notNull(),
     estimatedTransitMinDays: integer("estimated_transit_min_days").notNull(),
     estimatedTransitMaxDays: integer("estimated_transit_max_days").notNull(),
@@ -444,6 +468,7 @@ export const quotes = pgTable(
     ),
     index("quotes_shipment_request_id_idx").on(table.shipmentRequestId),
     index("quotes_forwarder_company_id_idx").on(table.forwarderCompanyId),
+    index("quotes_shipping_mode_idx").on(table.shippingMode),
     index("quotes_status_idx").on(table.status),
   ],
 );

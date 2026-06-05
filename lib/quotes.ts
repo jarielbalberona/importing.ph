@@ -9,7 +9,10 @@ import {
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyQuoteDecision, notifyQuoteSubmitted } from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
-import { dateFromDateInput, quoteSubmissionSchema } from "@/lib/validation";
+import {
+  dateFromDateInput,
+  quoteSubmissionSchemaForRequestMode,
+} from "@/lib/validation";
 
 export class QuoteSubmissionError extends Error {
   constructor(
@@ -37,6 +40,7 @@ export const importerQuoteColumns = {
   status: quotes.status,
   quoteAmount: quotes.quoteAmount,
   currency: quotes.currency,
+  shippingMode: quotes.shippingMode,
   serviceOffered: quotes.serviceOffered,
   estimatedTransitMinDays: quotes.estimatedTransitMinDays,
   estimatedTransitMaxDays: quotes.estimatedTransitMaxDays,
@@ -55,6 +59,7 @@ export const forwarderOwnQuoteColumns = {
   status: quotes.status,
   quoteAmount: quotes.quoteAmount,
   currency: quotes.currency,
+  shippingMode: quotes.shippingMode,
   serviceOffered: quotes.serviceOffered,
   estimatedTransitMinDays: quotes.estimatedTransitMinDays,
   estimatedTransitMaxDays: quotes.estimatedTransitMaxDays,
@@ -248,14 +253,16 @@ export async function createQuoteForCurrentForwarder(
   input: unknown,
 ) {
   const { profile, member } = await requireForwarderMember();
-  const parsed = quoteSubmissionSchema.parse(input);
 
   if (member.companyIsSuspended) {
     throw new QuoteSubmissionError("forwarder_suspended");
   }
 
   const [request] = await db
-    .select({ id: shipmentRequests.id })
+    .select({
+      id: shipmentRequests.id,
+      shippingModePreference: shipmentRequests.shippingModePreference,
+    })
     .from(shipmentRequests)
     .where(
       and(
@@ -268,6 +275,10 @@ export async function createQuoteForCurrentForwarder(
   if (!request) {
     throw new QuoteSubmissionError("request_unavailable");
   }
+
+  const parsed = quoteSubmissionSchemaForRequestMode(
+    request.shippingModePreference,
+  ).parse(input);
 
   const existingQuote = await getForwarderOwnQuoteForRequest(
     requestId,
@@ -287,6 +298,7 @@ export async function createQuoteForCurrentForwarder(
       status: "submitted",
       quoteAmount: parsed.quoteAmount,
       currency: parsed.currency,
+      shippingMode: parsed.shippingMode,
       serviceOffered: parsed.serviceOffered,
       estimatedTransitMinDays: parsed.estimatedTransitMinDays,
       estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,

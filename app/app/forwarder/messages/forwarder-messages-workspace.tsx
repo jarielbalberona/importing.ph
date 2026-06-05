@@ -5,6 +5,8 @@ import {
   formatDeliveryPreference,
   formatMeasure,
   formatMoney,
+  formatQuoteShippingMode,
+  formatShippingModePreference,
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
@@ -114,12 +116,16 @@ function toConversationView(
       status: conversation.requestStatus,
       sizeWeight: sizeWeight(conversation),
       deliveryPreference: formatDeliveryPreference(conversation.deliveryPreference),
+      shippingModePreference: formatShippingModePreference(
+        conversation.shippingModePreference,
+      ),
       shippingPreference: titleFromEnum(conversation.shippingPreference),
       notes: conversation.requestNotes,
     },
     quote: {
       forwarderCompanyName: conversation.forwarderCompanyName,
       amount: formatMoney(conversation.quoteCurrency, conversation.quoteAmount),
+      shippingMode: formatQuoteShippingMode(conversation.quoteShippingMode),
       timeline: `${conversation.quoteTransitMinDays}-${conversation.quoteTransitMaxDays} days`,
       service: conversation.quoteServiceOffered,
       status: titleFromEnum(conversation.quoteStatus),

@@ -42,6 +42,8 @@ import {
   formatDimensions,
   formatMeasure,
   formatMoney,
+  formatQuoteShippingMode,
+  formatShippingModePreference,
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
@@ -195,6 +197,10 @@ function ShipmentDetails({
             value={formatDeliveryPreference(request.deliveryPreference)}
           />
           <DefinitionItem
+            label="Shipping mode"
+            value={formatShippingModePreference(request.shippingModePreference)}
+          />
+          <DefinitionItem
             label="Shipping preference"
             value={titleFromEnum(request.shippingPreference)}
           />
@@ -304,6 +310,7 @@ function ReceivedQuotes({
                       {quote.forwarderCompanyName}
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
+                      {formatQuoteShippingMode(quote.shippingMode)} /{" "}
                       {quote.serviceOffered}
                     </span>
                   </TableCell>
@@ -355,7 +362,8 @@ function QuoteDialog({
       <DialogHeader>
         <DialogTitle>{quote.forwarderCompanyName}</DialogTitle>
         <DialogDescription>
-          {quote.serviceOffered} / {formatMoney(quote.currency, quote.quoteAmount)}
+          {formatQuoteShippingMode(quote.shippingMode)} / {quote.serviceOffered} /{" "}
+          {formatMoney(quote.currency, quote.quoteAmount)}
         </DialogDescription>
       </DialogHeader>
 
@@ -364,6 +372,10 @@ function QuoteDialog({
           <DefinitionItem
             label="Amount"
             value={formatMoney(quote.currency, quote.quoteAmount)}
+          />
+          <DefinitionItem
+            label="Shipping mode"
+            value={formatQuoteShippingMode(quote.shippingMode)}
           />
           <DefinitionItem label="Transit estimate" value={transitRange(quote)} />
           <DefinitionItem
@@ -518,6 +530,7 @@ function toComparisonQuote(
     companyName: quote.forwarderCompanyName,
     amount: formatMoney(quote.currency, quote.quoteAmount),
     status: titleFromEnum(quote.status),
+    shippingMode: formatQuoteShippingMode(quote.shippingMode),
     serviceOffered: quote.serviceOffered,
     transitRange: transitRange(quote),
     validUntil: formatDate(quote.validUntil),
