@@ -74,14 +74,12 @@ type UploadedAttachment = {
 
 const steps = [
   {
-    title: "Cargo basics",
-    description: "Start with a short, plain description of what you are importing.",
-    fields: ["cargoDescription", "cargoType"],
-  },
-  {
-    title: "Size, weight, and value",
-    description: "Use your best estimate. Forwarders can clarify details after quoting.",
+    title: "Cargo details",
+    description:
+      "Describe what you are importing and provide the best size, weight, and value estimate you have.",
     fields: [
+      "cargoDescription",
+      "cargoType",
       "totalCbm",
       "totalWeightKg",
       "packageCount",
@@ -92,8 +90,9 @@ const steps = [
     ],
   },
   {
-    title: "Pickup and destination",
-    description: "Tell forwarders where the shipment starts and where it needs to go.",
+    title: "Route and delivery",
+    description:
+      "Tell forwarders where the shipment starts, how it should be received, and where it needs to go.",
     fields: [
       "origin",
       "destination",
@@ -107,23 +106,19 @@ const steps = [
       "destinationBarangayName",
       "destinationAddressDetails",
       "destinationDisplayName",
+      "deliveryPreference",
     ],
   },
   {
-    title: "Shipping preferences",
-    description: "Pick the closest option. Choose Not sure if you want forwarders to advise.",
-    fields: ["deliveryPreference", "shippingPreference"],
-  },
-  {
-    title: "Notes and documents",
+    title: "Preferences and documents",
     description:
-      "Add anything forwarders should know before quoting, especially document or handling notes.",
-    fields: ["notes", "attachmentNotes"],
+      "Tell forwarders what matters most and add any files or handling notes.",
+    fields: ["shippingPreference", "notes", "attachmentNotes"],
   },
   {
     title: "Review and post",
     description:
-      "Confirm the details. Posting makes the request visible to forwarders for private quotes.",
+      "Review the shipment request before sending it to forwarders.",
     fields: [],
   },
 ] satisfies Step[];
@@ -268,7 +263,7 @@ export function NewShipmentRequestForm() {
     clearErrors(step.fields);
     const fieldsValid = await trigger(step.fields, { shouldFocus: true });
 
-    if (currentStep !== 1) {
+    if (currentStep !== 0) {
       return fieldsValid;
     }
 
@@ -339,8 +334,15 @@ export function NewShipmentRequestForm() {
     await submitRequest(data);
   }
 
+  const postRequest = handleSubmit(handleValidSubmit, handleInvalidSubmit);
+
   return (
-    <form onSubmit={handleSubmit(handleValidSubmit, handleInvalidSubmit)} className="mt-8">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+      }}
+      className="mt-8"
+    >
       <Card className="gap-0">
         <CardHeader className="border-b pb-4">
           <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -364,32 +366,22 @@ export function NewShipmentRequestForm() {
             </div>
           ) : null}
           {currentStep === 0 ? (
-            <CargoBasicsStep
+            <CargoDetailsStep
               control={control}
               register={register}
               errors={errors}
             />
           ) : null}
           {currentStep === 1 ? (
-            <SizeStep control={control} register={register} errors={errors} />
-          ) : null}
-          {currentStep === 2 ? (
-            <RouteStep
+            <RouteAndDeliveryStep
               control={control}
               register={register}
               setValue={setValue}
               errors={errors}
             />
           ) : null}
-          {currentStep === 3 ? (
-            <PreferencesStep
-              control={control}
-              register={register}
-              errors={errors}
-            />
-          ) : null}
-          {currentStep === 4 ? (
-            <NotesStep
+          {currentStep === 2 ? (
+            <PreferencesAndDocumentsStep
               control={control}
               register={register}
               errors={errors}
@@ -398,7 +390,7 @@ export function NewShipmentRequestForm() {
               disabled={isPending || hasSubmitted}
             />
           ) : null}
-          {currentStep === 5 ? (
+          {currentStep === 3 ? (
             <ReviewStep values={values} attachments={attachments} />
           ) : null}
         </CardContent>
@@ -413,7 +405,14 @@ export function NewShipmentRequestForm() {
             Back
           </Button>
           {isFinalStep ? (
-            <Button type="submit" size="lg" disabled={isPending || hasSubmitted}>
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => {
+                void postRequest();
+              }}
+              disabled={isPending || hasSubmitted}
+            >
               {isPending || hasSubmitted ? "Posting..." : "Post request"}
             </Button>
           ) : (
@@ -429,7 +428,7 @@ export function NewShipmentRequestForm() {
 
 function StepIndicator({ currentStep }: { currentStep: number }) {
   return (
-    <ol className="grid w-full grid-cols-6 gap-2 lg:w-auto">
+    <ol className="grid w-full grid-cols-4 gap-2 lg:w-auto">
       {steps.map((step, index) => (
         <li key={step.title}>
           <button
@@ -453,7 +452,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
   );
 }
 
-function CargoBasicsStep({
+function CargoDetailsStep({
   control,
   register,
   errors,
@@ -465,54 +464,62 @@ function CargoBasicsStep({
   const showOtherNote = selectedCargoType === "other";
 
   return (
-    <div className="grid gap-4">
-      <Field
-        label="Shipment title and cargo description"
-        helper="Use a short description you will recognize later, such as 'Phone accessories, Guangzhou to Manila'."
-        error={errors.cargoDescription?.message}
-      >
-        <Input
-          {...register("cargoDescription")}
-          placeholder="Example: 20 cartons of phone accessories"
-        />
-      </Field>
-      <Field
-        label="Cargo type"
-        helper="Choose the closest match. Forwarders can ask follow-up questions after they review the request."
-        error={errors.cargoType?.message}
-      >
-        <Controller
-          control={control}
-          name="cargoType"
-          render={({ field }) => (
-            <OptionCombobox
-              options={cargoTypeOptions}
-              value={field.value}
-              onValueChange={field.onChange}
-              placeholder="Search cargo type"
-              emptyMessage="No cargo type found."
-              invalid={Boolean(errors.cargoType)}
-            />
-          )}
-        />
-      </Field>
-      {showHandlingNote ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-          Some forwarders may ask for product photos, invoice, or safety
-          documents before quoting.
-        </div>
-      ) : null}
-      {showOtherNote ? (
-        <div className="rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground">
-          Use the required description field above to state the exact cargo type.
-          Do not leave it vague.
-        </div>
-      ) : null}
+    <div className="grid gap-6">
+      <section className="grid gap-4">
+        <h3 className="text-base font-semibold">Cargo description</h3>
+        <Field
+          label="Shipment title and cargo description"
+          helper="Use a short description you will recognize later, such as 'Phone accessories, Guangzhou to Manila'."
+          error={errors.cargoDescription?.message}
+        >
+          <Input
+            {...register("cargoDescription")}
+            placeholder="Example: 20 cartons of phone accessories"
+          />
+        </Field>
+        <Field
+          label="Cargo type"
+          helper="Choose the closest match. Forwarders can ask follow-up questions after they review the request."
+          error={errors.cargoType?.message}
+        >
+          <Controller
+            control={control}
+            name="cargoType"
+            render={({ field }) => (
+              <OptionCombobox
+                options={cargoTypeOptions}
+                value={field.value}
+                onValueChange={field.onChange}
+                placeholder="Search cargo type"
+                emptyMessage="No cargo type found."
+                invalid={Boolean(errors.cargoType)}
+              />
+            )}
+          />
+        </Field>
+        {showHandlingNote ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+            Some forwarders may ask for product photos, invoice, or safety
+            documents before quoting.
+          </div>
+        ) : null}
+        {showOtherNote ? (
+          <div className="rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground">
+            Use the required description field above to state the exact cargo type.
+            Do not leave it vague.
+          </div>
+        ) : null}
+      </section>
+
+      <section className="grid gap-4">
+        <h3 className="text-base font-semibold">Size, weight, and value</h3>
+        <SizeFields register={register} errors={errors} />
+      </section>
     </div>
   );
 }
 
-function SizeStep({ register, errors }: StepComponentProps<FormValues>) {
+function SizeFields({ register, errors }: Pick<StepComponentProps<FormValues>, "register" | "errors">) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field
@@ -560,7 +567,7 @@ function SizeStep({ register, errors }: StepComponentProps<FormValues>) {
   );
 }
 
-function RouteStep({
+function RouteAndDeliveryStep({
   control,
   register,
   setValue,
@@ -687,6 +694,30 @@ function RouteStep({
           />
         </Field>
       ) : null}
+      <Field
+        label="Pickup and receiving setup"
+        helper="Supplier pickup means the forwarder collects from your supplier. China warehouse means your supplier or agent will send the goods to the forwarder's China warehouse."
+        error={errors.deliveryPreference?.message}
+      >
+        <Controller
+          control={control}
+          name="deliveryPreference"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger aria-invalid={Boolean(errors.deliveryPreference) || undefined}>
+                <SelectValue placeholder="Select pickup and receiving setup" />
+              </SelectTrigger>
+              <SelectContent>
+                {deliveryPreferenceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+      </Field>
       <LocationPicker
         value={destinationValue}
         onChange={updateDestination}
@@ -716,64 +747,59 @@ function originToOptionValue(value: unknown) {
   return chinaOriginOptionValues.has(value) ? value : otherChinaOriginValue;
 }
 
-function PreferencesStep({
+function PreferencesAndDocumentsStep({
   control,
+  register,
   errors,
-}: StepComponentProps<FormValues>) {
+  attachments,
+  onAttachmentsChange,
+  disabled,
+}: StepComponentProps<FormValues> & {
+  attachments: UploadedAttachment[];
+  onAttachmentsChange: (attachments: UploadedAttachment[]) => void;
+  disabled: boolean;
+}) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field
-        label="Delivery preference"
-        helper="Choose how the cargo should be picked up in China and received in the Philippines."
-        error={errors.deliveryPreference?.message}
-      >
-        <Controller
-          control={control}
-          name="deliveryPreference"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-invalid={Boolean(errors.deliveryPreference) || undefined}>
-                <SelectValue placeholder="Select delivery preference" />
-              </SelectTrigger>
-              <SelectContent>
-                {deliveryPreferenceOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </Field>
-      <Field
-        label="Shipping preference"
-        helper="Choose what matters most: cost, speed, or a balance of both."
-        error={errors.shippingPreference?.message}
-      >
-        <Controller
-          control={control}
-          name="shippingPreference"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger aria-invalid={Boolean(errors.shippingPreference) || undefined}>
-                <SelectValue placeholder="Select quote priority" />
-              </SelectTrigger>
-              <SelectContent>
-                {shippingPreferenceOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </Field>
-      <div className="rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground sm:col-span-2">
-        If the shipment needs MSDS, permits, special handling, or supplier
-        coordination, add those details in the notes step.
-      </div>
+    <div className="grid gap-6">
+      <section className="grid gap-4">
+        <Field
+          label="Quote priority"
+          helper="Choose whether you prefer lower cost, faster delivery, or a balanced recommendation."
+          error={errors.shippingPreference?.message}
+        >
+          <Controller
+            control={control}
+            name="shippingPreference"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger aria-invalid={Boolean(errors.shippingPreference) || undefined}>
+                  <SelectValue placeholder="Select quote priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shippingPreferenceOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </Field>
+        <div className="rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground">
+          Add MSDS, permits, special handling, supplier coordination, or document
+          requirements here.
+        </div>
+      </section>
+
+      <NotesStep
+        control={control}
+        register={register}
+        errors={errors}
+        attachments={attachments}
+        onAttachmentsChange={onAttachmentsChange}
+        disabled={disabled}
+      />
     </div>
   );
 }
@@ -983,15 +1009,10 @@ function ReviewStep({
   const reviewGroups = useMemo<ReviewGroup[]>(
     () => [
       {
-        title: "Cargo",
+        title: "Cargo details",
         items: [
           ["Shipment title and cargo description", values.cargoDescription],
           ["Cargo type", cargoTypeLabel(values.cargoType)],
-        ],
-      },
-      {
-        title: "Size, weight, and value",
-        items: [
           ["Total CBM", valueWithUnit(values.totalCbm, "CBM")],
           ["Total weight", valueWithUnit(values.totalWeightKg, "kg")],
           ["Package or carton count", values.packageCount],
@@ -1000,9 +1021,14 @@ function ReviewStep({
         ],
       },
       {
-        title: "Pickup and destination",
+        title: "Route and delivery",
         items: [
-          ["Origin", values.origin],
+          ["Pickup city in China", values.origin],
+          ["Pickup and receiving setup", formatDeliveryPreference(values.deliveryPreference)],
+          ["Destination region", values.destinationRegionName],
+          ["Destination province", values.destinationProvinceName],
+          ["Destination city or municipality", values.destinationCityMunicipalityName],
+          ["Barangay", values.destinationBarangayName],
           [
             "Destination",
             values.destinationDisplayName ||
@@ -1016,15 +1042,9 @@ function ReviewStep({
         ],
       },
       {
-        title: "Preferences",
+        title: "Preferences and documents",
         items: [
-          ["Delivery preference", formatDeliveryPreference(values.deliveryPreference)],
-          ["Shipping preference", titleFromEnum(values.shippingPreference)],
-        ],
-      },
-      {
-        title: "Notes and documents",
-        items: [
+          ["Quote priority", titleFromEnum(values.shippingPreference)],
           ["Notes", values.notes],
           ["Supporting document notes", values.attachmentNotes],
           [

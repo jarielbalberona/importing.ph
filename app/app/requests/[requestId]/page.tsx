@@ -212,7 +212,7 @@ function ShipmentDetails({
         </DefinitionGrid>
       </DetailSection>
 
-      <DetailSection title="Pickup and destination">
+      <DetailSection title="Route and delivery">
         <DefinitionGrid>
           <DefinitionItem label="Origin" value={request.origin} />
           <DefinitionItem

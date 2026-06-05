@@ -109,7 +109,7 @@ export default async function ForwarderRequestDetailPage({
             </InfoGrid>
           </DetailCard>
 
-          <DetailCard title="Pickup and destination">
+          <DetailCard title="Route and delivery">
             <InfoGrid columns={2}>
               <DetailValue label="Origin" value={request.origin} />
               <DetailValue label="Destination" value={formatDestination(request)} />
@@ -134,7 +134,7 @@ export default async function ForwarderRequestDetailPage({
           </InfoGrid>
         </DetailCard>
 
-        <DetailCard title="Shipping preferences">
+        <DetailCard title="Preferences">
           <InfoGrid columns={2}>
             <DetailValue label="Delivery preference" value={formatDeliveryPreference(request.deliveryPreference)} />
             <DetailValue label="Shipping preference" value={titleFromEnum(request.shippingPreference)} />
