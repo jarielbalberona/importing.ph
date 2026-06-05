@@ -99,9 +99,6 @@ export default async function ImporterRequestsPage() {
                         </span>
                         <span className="mt-2 flex flex-wrap gap-2">
                           <RequestStatusBadge status={request.status} />
-                          <span className="text-xs text-muted-foreground">
-                            Posted {formatDate(request.createdAt)}
-                          </span>
                         </span>
                       </Link>
                     </TableCell>
@@ -128,9 +125,7 @@ export default async function ImporterRequestsPage() {
                     </TableCell>
                     <TableCell>
                       <Link href={href} className="block py-1">
-                        <Badge variant="outline">
-                          {formatCount(request.quoteCount, "quote")}
-                        </Badge>
+                        <QuoteCountBadge count={request.quoteCount} />
                       </Link>
                     </TableCell>
                     <TableCell>
@@ -166,6 +161,14 @@ function RequestMetric({ label, value }: { label: string; value: number }) {
       </span>
       <span className="text-2xl font-semibold">{value}</span>
     </div>
+  );
+}
+
+function QuoteCountBadge({ count }: { count: number }) {
+  return (
+    <Badge variant="outline" className="border-primary/30 text-primary">
+      {formatCount(count, "quote")}
+    </Badge>
   );
 }
 

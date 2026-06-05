@@ -33,6 +33,7 @@ export class QuoteDecisionError extends Error {
 
 export const importerQuoteColumns = {
   id: quotes.id,
+  shipmentRequestId: quotes.shipmentRequestId,
   status: quotes.status,
   quoteAmount: quotes.quoteAmount,
   currency: quotes.currency,
@@ -289,8 +290,8 @@ export async function createQuoteForCurrentForwarder(
       serviceOffered: parsed.serviceOffered,
       estimatedTransitMinDays: parsed.estimatedTransitMinDays,
       estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
-      inclusions: parsed.inclusions,
-      exclusions: parsed.exclusions,
+      inclusions: parsed.inclusions ?? "",
+      exclusions: parsed.exclusions ?? "",
       notes: parsed.notes,
       validUntil: dateFromDateInput(parsed.validUntil),
     })

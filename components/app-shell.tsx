@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/db/schema";
-import { AppHeader, AppSidebar } from "@/components/app-nav";
+import { AppNavigation } from "@/components/app-nav";
+import type { AppBadgeState } from "@/lib/app-badges";
 import { RealtimeProvider } from "@/components/realtime-provider";
+import { Toaster } from "@/components/ui/sonner";
 import {
   Card,
   CardContent,
@@ -14,18 +16,20 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export function AppShell({
   role,
+  badgeState,
   children,
 }: {
   role: UserRole;
+  badgeState: AppBadgeState | null;
   children: React.ReactNode;
 }) {
   return (
     <RealtimeProvider>
-      <SidebarProvider className="h-screen overflow-hidden bg-muted">
-        <AppSidebar role={role} />
-        <SidebarInset className="h-svh min-w-0 overflow-y-auto bg-muted">
-          <AppHeader role={role} />
-          <div className="w-full px-2 py-4 sm:px-6">
+      <Toaster />
+      <SidebarProvider className="h-screen flex-col overflow-hidden bg-muted lg:flex-row">
+        <AppNavigation role={role} initialBadgeState={badgeState} />
+        <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted">
+          <div className="min-h-0 w-full flex-1 overflow-y-auto px-2 py-4 sm:px-6">
             {children}
           </div>
         </SidebarInset>

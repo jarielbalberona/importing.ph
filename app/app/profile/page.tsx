@@ -3,6 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { ImporterProfileForm } from "@/components/forms/importer-profile-form";
+import { QueryStateToast } from "@/components/query-state-toast";
 import { getImporterSettingsForCurrentUser } from "@/lib/profile-settings";
 
 export const dynamic = "force-dynamic";
@@ -42,17 +43,13 @@ export default async function ImporterProfilePage({
       />
 
       <div className="mt-6 grid gap-6">
-        {query.saved ? (
-          <div className="rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
-            Profile saved.
-          </div>
-        ) : null}
-
-        {query.error ? (
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            Check the highlighted fields and try again.
-          </div>
-        ) : null}
+        <QueryStateToast
+          successMessage={query.saved ? "Profile saved." : null}
+          errorMessage={
+            query.error ? "Check the highlighted fields and try again." : null
+          }
+          clearKeys={["saved", "error"]}
+        />
 
         <section className="overflow-hidden rounded-md border bg-background">
           <ProfileSection

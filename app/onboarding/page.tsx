@@ -52,7 +52,7 @@ export default async function OnboardingPage() {
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-semibold">I import goods</span>
+                  <span className="block font-semibold">I am an Importer</span>
                   <span className="mt-1 block text-sm font-normal leading-6 text-muted-foreground">
                     Post shipment requests and compare quotes from forwarders.
                   </span>
@@ -68,7 +68,7 @@ export default async function OnboardingPage() {
                 />
                 <span>
                   <span className="block font-semibold">
-                    I provide shipping quotes
+                    I am a forwarder
                   </span>
                   <span className="mt-1 block text-sm font-normal leading-6 text-muted-foreground">
                     Browse shipment requests and send quotes as a logistics

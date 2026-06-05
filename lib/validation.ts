@@ -307,6 +307,32 @@ const optionalLongText = z
   .optional()
   .transform((value) => value || undefined);
 
+const requiredPositiveIntegerNumber = (
+  requiredMessage: string,
+  invalidMessage: string,
+) =>
+  z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      if (typeof value === "string") {
+        return Number(value);
+      }
+
+      return value;
+    },
+    z
+      .number({
+        error: (issue) =>
+          issue.input === undefined ? requiredMessage : invalidMessage,
+      })
+      .int(invalidMessage)
+      .min(1, invalidMessage)
+      .max(365, invalidMessage),
+  );
+
 export function dateFromDateInput(value: string) {
   return new Date(`${value}T00:00:00`);
 }
@@ -329,10 +355,16 @@ export const quoteSubmissionSchema = z
       .default("PHP")
       .pipe(z.literal("PHP")),
     serviceOffered: z.string().trim().min(3).max(240),
-    estimatedTransitMinDays: z.coerce.number().int().min(1).max(365),
-    estimatedTransitMaxDays: z.coerce.number().int().min(1).max(365),
-    inclusions: z.string().trim().min(1).max(2000),
-    exclusions: z.string().trim().min(1).max(2000),
+    estimatedTransitMinDays: requiredPositiveIntegerNumber(
+      "Enter the starting transit estimate.",
+      "Enter a valid transit time between 1 and 365 days.",
+    ),
+    estimatedTransitMaxDays: requiredPositiveIntegerNumber(
+      "Enter the ending transit estimate.",
+      "Enter a valid transit time between 1 and 365 days.",
+    ),
+    inclusions: optionalLongText,
+    exclusions: optionalLongText,
     notes: optionalLongText,
     validUntil: dateInputString,
   })

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { siteOrigin } from "@/features/public-content/seo/routes";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,8 +16,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteOrigin),
   title: "Importing PH - A simpler way to find the right shipment quote.",
   description: "A simpler way to find the right shipment quote.",
+  openGraph: {
+    title: "Importing PH - A simpler way to find the right shipment quote.",
+    description: "A simpler way to find the right shipment quote.",
+    type: "website",
+    url: siteOrigin,
+    images: ["/assets/importingph-logo-bg-blue.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Importing PH - A simpler way to find the right shipment quote.",
+    description: "A simpler way to find the right shipment quote.",
+    images: ["/assets/importingph-logo-bg-blue.png"],
+  },
 };
 
 export default function RootLayout({

@@ -6,6 +6,7 @@ import {
   conversationReadStates,
   conversations,
   forwarderCompanies,
+  importerProfiles,
   messages,
   quotes,
   shipmentRequests,
@@ -53,6 +54,9 @@ const conversationColumns = {
   deliveryPreference: shipmentRequests.deliveryPreference,
   shippingPreference: shipmentRequests.shippingPreference,
   requestNotes: shipmentRequests.notes,
+  importerCompanyName: importerProfiles.companyName,
+  importerContactPhone: importerProfiles.contactPhone,
+  importerLocation: importerProfiles.location,
   forwarderCompanyName: forwarderCompanies.name,
   forwarderContactPerson: forwarderCompanies.contactPerson,
   forwarderOriginCities: forwarderCompanies.originCities,
@@ -280,6 +284,10 @@ async function getConversationForParticipant(input: {
       eq(conversations.shipmentRequestId, shipmentRequests.id),
     )
     .innerJoin(
+      importerProfiles,
+      eq(conversations.importerProfileId, importerProfiles.id),
+    )
+    .innerJoin(
       forwarderCompanies,
       eq(conversations.forwarderCompanyId, forwarderCompanies.id),
     )
@@ -311,7 +319,7 @@ async function getConversationForParticipant(input: {
 }
 
 export async function getConversationsForCurrentImporter() {
-  const { importerProfile } = await requireImporterProfile();
+  const { profile, importerProfile } = await requireImporterProfile();
 
   const importerConversations = await db
     .select(conversationColumns)
@@ -321,6 +329,10 @@ export async function getConversationsForCurrentImporter() {
       eq(conversations.shipmentRequestId, shipmentRequests.id),
     )
     .innerJoin(
+      importerProfiles,
+      eq(conversations.importerProfileId, importerProfiles.id),
+    )
+    .innerJoin(
       forwarderCompanies,
       eq(conversations.forwarderCompanyId, forwarderCompanies.id),
     )
@@ -328,18 +340,22 @@ export async function getConversationsForCurrentImporter() {
     .where(eq(conversations.importerProfileId, importerProfile.id))
     .orderBy(desc(conversations.updatedAt));
 
-  return attachLatestMessages(importerConversations);
+  return attachLatestMessages(importerConversations, profile.id);
 }
 
 export async function getConversationsForCurrentForwarder() {
-  const { member } = await requireForwarderMember();
+  const { profile, member } = await requireForwarderMember();
 
-  return db
+  const forwarderConversations = await db
     .select(conversationColumns)
     .from(conversations)
     .innerJoin(
       shipmentRequests,
       eq(conversations.shipmentRequestId, shipmentRequests.id),
+    )
+    .innerJoin(
+      importerProfiles,
+      eq(conversations.importerProfileId, importerProfiles.id),
     )
     .innerJoin(
       forwarderCompanies,
@@ -348,23 +364,29 @@ export async function getConversationsForCurrentForwarder() {
     .innerJoin(quotes, eq(conversations.openedByQuoteId, quotes.id))
     .where(eq(conversations.forwarderCompanyId, member.companyId))
     .orderBy(desc(conversations.updatedAt));
+
+  return attachLatestMessages(forwarderConversations, profile.id);
 }
 
 async function attachLatestMessages<T extends { id: string }>(
   conversationRows: T[],
+  currentUserProfileId: string,
 ) {
   if (conversationRows.length === 0) {
     return conversationRows.map((conversation) => ({
       ...conversation,
       latestMessageBody: null,
       latestMessageAt: null,
+      hasUnread: false,
     }));
   }
 
   const conversationIds = conversationRows.map((conversation) => conversation.id);
   const latestRows = await db
     .select({
+      id: messages.id,
       conversationId: messages.conversationId,
+      senderUserProfileId: messages.senderUserProfileId,
       body: messages.body,
       createdAt: messages.createdAt,
     })
@@ -374,25 +396,59 @@ async function attachLatestMessages<T extends { id: string }>(
 
   const latestByConversationId = new Map<
     string,
-    { body: string; createdAt: Date }
+    {
+      id: string;
+      senderUserProfileId: string;
+      body: string;
+      createdAt: Date;
+    }
   >();
 
   for (const message of latestRows) {
     if (!latestByConversationId.has(message.conversationId)) {
       latestByConversationId.set(message.conversationId, {
+        id: message.id,
+        senderUserProfileId: message.senderUserProfileId,
         body: message.body,
         createdAt: message.createdAt,
       });
     }
   }
 
+  const readStateRows = await db
+    .select({
+      conversationId: conversationReadStates.conversationId,
+      lastReadMessageId: conversationReadStates.lastReadMessageId,
+    })
+    .from(conversationReadStates)
+    .where(
+      and(
+        inArray(conversationReadStates.conversationId, conversationIds),
+        eq(conversationReadStates.userProfileId, currentUserProfileId),
+      ),
+    );
+
+  const lastReadMessageIdByConversationId = new Map(
+    readStateRows.map((readState) => [
+      readState.conversationId,
+      readState.lastReadMessageId,
+    ]),
+  );
+
   return conversationRows.map((conversation) => {
     const latestMessage = latestByConversationId.get(conversation.id);
+    const hasUnread = Boolean(
+      latestMessage &&
+        latestMessage.senderUserProfileId !== currentUserProfileId &&
+        lastReadMessageIdByConversationId.get(conversation.id) !==
+          latestMessage.id,
+    );
 
     return {
       ...conversation,
       latestMessageBody: latestMessage?.body ?? null,
       latestMessageAt: latestMessage?.createdAt ?? null,
+      hasUnread,
     };
   });
 }

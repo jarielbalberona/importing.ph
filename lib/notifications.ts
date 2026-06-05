@@ -1,8 +1,7 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, count, desc, eq, isNull, ne } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
-  conversations,
   forwarderCompanies,
   forwarderMembers,
   importerProfiles,
@@ -150,73 +149,7 @@ export async function notifyMessageCreated(input: {
   messageId: string;
   senderUserProfileId: string;
 }) {
-  const [conversation] = await db
-    .select({
-      importerUserProfileId: importerProfiles.userProfileId,
-      forwarderCompanyId: conversations.forwarderCompanyId,
-      shipmentRequestId: conversations.shipmentRequestId,
-      cargoDescription: shipmentRequests.cargoDescription,
-    })
-    .from(conversations)
-    .innerJoin(
-      importerProfiles,
-      eq(conversations.importerProfileId, importerProfiles.id),
-    )
-    .innerJoin(
-      shipmentRequests,
-      eq(conversations.shipmentRequestId, shipmentRequests.id),
-    )
-    .where(eq(conversations.id, input.conversationId))
-    .limit(1);
-
-  if (!conversation) {
-    return;
-  }
-
-  const recipients =
-    input.senderUserProfileId === conversation.importerUserProfileId
-      ? await getForwarderMemberRecipientIds(
-          conversation.forwarderCompanyId,
-          input.senderUserProfileId,
-        )
-      : [conversation.importerUserProfileId];
-
-  await Promise.all(
-    recipients.map((recipientUserProfileId) =>
-      createNotificationBestEffort({
-        recipientUserProfileId,
-        actorUserProfileId: input.senderUserProfileId,
-        type: "message_received",
-        title: "New message",
-        body: `New message about ${conversation.cargoDescription}.`,
-        linkHref:
-          recipientUserProfileId === conversation.importerUserProfileId
-            ? `/app/requests/messages/${input.conversationId}`
-            : `/app/forwarder/messages/${input.conversationId}`,
-        sourceShipmentRequestId: conversation.shipmentRequestId,
-        sourceConversationId: input.conversationId,
-        sourceMessageId: input.messageId,
-        dedupeKey: `message:${input.messageId}:recipient:${recipientUserProfileId}`,
-      }),
-    ),
-  );
-}
-
-async function getForwarderMemberRecipientIds(
-  forwarderCompanyId: string,
-  senderUserProfileId: string,
-) {
-  const rows = await db
-    .select({ userProfileId: forwarderMembers.userProfileId })
-    .from(forwarderMembers)
-    .where(
-      and(
-        eq(forwarderMembers.forwarderCompanyId, forwarderCompanyId),
-        ne(forwarderMembers.userProfileId, senderUserProfileId),
-      ),
-    );
-
-  return rows.map((row) => row.userProfileId);
+  void input;
 }
 
 export async function getNotificationsForCurrentUser() {
@@ -225,8 +158,30 @@ export async function getNotificationsForCurrentUser() {
   return db
     .select()
     .from(notifications)
-    .where(eq(notifications.recipientUserProfileId, profile.id))
+    .where(
+      and(
+        eq(notifications.recipientUserProfileId, profile.id),
+        ne(notifications.type, "message_received"),
+      ),
+    )
     .orderBy(desc(notifications.createdAt));
+}
+
+export async function getUnreadNotificationCountForCurrentUser() {
+  const profile = await requireProfile();
+
+  const [result] = await db
+    .select({ count: count() })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.recipientUserProfileId, profile.id),
+        ne(notifications.type, "message_received"),
+        isNull(notifications.readAt),
+      ),
+    );
+
+  return result?.count ?? 0;
 }
 
 export async function markNotificationReadForCurrentUser(notificationId: string) {

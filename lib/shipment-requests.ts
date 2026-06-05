@@ -96,13 +96,25 @@ export async function createShipmentRequestForCurrentImporter(
 
 export async function getShipmentRequestsForCurrentImporter() {
   const { importerProfile } = await requireImporterProfile();
+  const quoteCounts = db
+    .select({
+      shipmentRequestId: quotes.shipmentRequestId,
+      quoteCount: sql<number>`cast(count(*) as int)`.as("quote_count"),
+    })
+    .from(quotes)
+    .groupBy(quotes.shipmentRequestId)
+    .as("quote_counts");
 
   return db
     .select({
       ...getTableColumns(shipmentRequests),
-      quoteCount: sql<number>`cast((select count(*) from ${quotes} where ${quotes.shipmentRequestId} = ${shipmentRequests.id}) as int)`,
+      quoteCount: sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`,
     })
     .from(shipmentRequests)
+    .leftJoin(
+      quoteCounts,
+      eq(quoteCounts.shipmentRequestId, shipmentRequests.id),
+    )
     .where(eq(shipmentRequests.importerProfileId, importerProfile.id))
     .orderBy(desc(shipmentRequests.createdAt));
 }

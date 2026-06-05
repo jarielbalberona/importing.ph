@@ -13,7 +13,7 @@ export async function saveForwarderCompanySettings(formData: FormData) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      redirect("/app/forwarder/company?error=validation");
+      redirect("/app/forwarder/company/edit?error=validation");
     }
 
     throw error;

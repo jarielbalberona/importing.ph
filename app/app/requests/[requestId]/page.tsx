@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
+import { QueryStateToast } from "@/components/query-state-toast";
 import {
   QuoteComparisonPanel,
   type QuoteComparisonItem,
@@ -90,7 +91,9 @@ export default async function RequestDetailPage({
     getImporterVisibleQuotesForOwnedRequest(request.id, importerProfile.id),
     listShipmentRequestAttachmentsForViewer(request.id),
   ]);
-  const comparisonQuotes = quotes.map(toComparisonQuote);
+  const comparisonQuotes = quotes.map((quote) =>
+    toComparisonQuote(quote, request.status),
+  );
 
   return (
     <>
@@ -110,13 +113,29 @@ export default async function RequestDetailPage({
       />
 
       <div className="mt-6 grid gap-4">
-        <RequestNotice query={query} />
+        <QueryStateToast
+          successMessage={
+            query.decision
+              ? `Quote ${query.decision === "accept" ? "accepted" : "declined"}.`
+              : null
+          }
+          errorMessage={
+            query.decisionError
+              ? decisionErrorMessage(query.decisionError)
+              : query.messageError
+                ? messageErrorMessage(query.messageError)
+                : null
+          }
+          clearKeys={["decision", "decisionError", "messageError"]}
+        />
 
-        <Tabs defaultValue="details" className="gap-6">
+        <Tabs defaultValue="details" className="min-w-0 gap-6">
           <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="details">Shipment details</TabsTrigger>
-            <TabsTrigger value="quotes">Received quotations</TabsTrigger>
-            <TabsTrigger value="compare">Compare quotations</TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="quotes">
+              Quotations ({quotes.length})
+            </TabsTrigger>
+            <TabsTrigger value="compare">Compare</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details">
@@ -266,9 +285,9 @@ function ReceivedQuotes({
           <TableRow>
             <TableHead>Forwarder</TableHead>
             <TableHead>Amount</TableHead>
-            <TableHead>Transit</TableHead>
-            <TableHead>Valid until</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead className="hidden sm:table-cell">Transit</TableHead>
+            <TableHead className="hidden sm:table-cell">Valid until</TableHead>
+            <TableHead className="hidden sm:table-cell">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -291,9 +310,13 @@ function ReceivedQuotes({
                   <TableCell>
                     {formatMoney(quote.currency, quote.quoteAmount)}
                   </TableCell>
-                  <TableCell>{transitRange(quote)}</TableCell>
-                  <TableCell>{formatDate(quote.validUntil)}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {transitRange(quote)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {formatDate(quote.validUntil)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <span className="flex flex-wrap gap-2">
                       {quote.status === "submitted" && quote.isExpired ? (
                         <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium uppercase text-amber-900">
@@ -342,7 +365,7 @@ function QuoteDialog({
             label="Amount"
             value={formatMoney(quote.currency, quote.quoteAmount)}
           />
-          <DefinitionItem label="Transit range" value={transitRange(quote)} />
+          <DefinitionItem label="Transit estimate" value={transitRange(quote)} />
           <DefinitionItem
             label="Valid until"
             value={formatDate(quote.validUntil)}
@@ -358,8 +381,8 @@ function QuoteDialog({
         </DefinitionGrid>
 
         <div className="grid gap-4 border-t pt-4 lg:grid-cols-3">
-          <DefinitionItem label="Inclusions" value={quote.inclusions} />
-          <DefinitionItem label="Exclusions" value={quote.exclusions} />
+          <DefinitionItem label="Included" value={quote.inclusions} />
+          <DefinitionItem label="Not included" value={quote.exclusions} />
           <DefinitionItem label="Notes" value={quote.notes} />
         </div>
       </div>
@@ -485,45 +508,13 @@ function DefinitionItem({
   );
 }
 
-function RequestNotice({
-  query,
-}: {
-  query: {
-    decision?: string;
-    decisionError?: string;
-    messageError?: string;
-  };
-}) {
-  if (query.decision) {
-    return (
-      <div className="rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
-        Quote {query.decision === "accept" ? "accepted" : "declined"}.
-      </div>
-    );
-  }
-
-  if (query.decisionError) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        {decisionErrorMessage(query.decisionError)}
-      </div>
-    );
-  }
-
-  if (query.messageError) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        {messageErrorMessage(query.messageError)}
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function toComparisonQuote(quote: ImporterVisibleQuote): QuoteComparisonItem {
+function toComparisonQuote(
+  quote: ImporterVisibleQuote,
+  requestStatus: ShipmentRequest["status"],
+): QuoteComparisonItem {
   return {
     id: quote.id,
+    requestId: quote.shipmentRequestId,
     companyName: quote.forwarderCompanyName,
     amount: formatMoney(quote.currency, quote.quoteAmount),
     status: titleFromEnum(quote.status),
@@ -535,6 +526,10 @@ function toComparisonQuote(quote: ImporterVisibleQuote): QuoteComparisonItem {
     notes: quote.notes || "Not provided",
     submittedAt: formatDate(quote.createdAt),
     isExpired: quote.status === "submitted" && quote.isExpired,
+    canAccept:
+      quote.status === "submitted" &&
+      requestStatus !== "quote_selected" &&
+      !quote.isExpired,
   };
 }
 

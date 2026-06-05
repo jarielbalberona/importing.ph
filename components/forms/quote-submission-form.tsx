@@ -1,30 +1,82 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { quoteSubmissionSchema } from "@/lib/validation";
 import { submitQuote } from "@/app/app/forwarder/requests/[requestId]/actions";
 
 type FormValues = z.input<typeof quoteSubmissionSchema>;
 
+const serviceTypeOptions = [
+  {
+    value: "supplier_pickup_to_door",
+    label: "Supplier pickup -> my address",
+  },
+  {
+    value: "china_warehouse_to_door",
+    label: "China warehouse -> my address",
+  },
+  {
+    value: "supplier_pickup_to_ph_warehouse",
+    label: "Supplier pickup -> PH warehouse pickup",
+  },
+  {
+    value: "china_warehouse_to_ph_warehouse",
+    label: "China warehouse -> PH warehouse pickup",
+  },
+  {
+    value: "not_sure",
+    label: "Not sure, recommend for me",
+  },
+] as const;
+
+type ServiceTypeValue = (typeof serviceTypeOptions)[number]["value"];
+
+const serviceTypeLabels: Record<ServiceTypeValue, string> = {
+  supplier_pickup_to_door: "Supplier pickup -> my address",
+  china_warehouse_to_door: "China warehouse -> my address",
+  supplier_pickup_to_ph_warehouse: "Supplier pickup -> PH warehouse pickup",
+  china_warehouse_to_ph_warehouse: "China warehouse -> PH warehouse pickup",
+  not_sure: "Not sure, recommend for me",
+};
+
 export function QuoteSubmissionForm({
   requestId,
   defaultValues,
+  cancelHref,
 }: {
   requestId: string;
   defaultValues?: Partial<FormValues>;
+  cancelHref?: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const initialServiceType = useMemo(
+    () => serviceTypeFromValue(defaultValues?.serviceOffered),
+    [defaultValues?.serviceOffered],
+  );
+  const [serviceType, setServiceType] = useState<ServiceTypeValue>(
+    initialServiceType,
+  );
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(quoteSubmissionSchema),
@@ -33,6 +85,14 @@ export function QuoteSubmissionForm({
       ...defaultValues,
     },
   });
+
+  useEffect(() => {
+    setValue("serviceOffered", serviceTypeLabels[serviceType], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("currency", "PHP", { shouldDirty: true, shouldValidate: false });
+  }, [serviceType, setValue]);
 
   function submitQuoteForm(data: FormValues) {
     const formData = new FormData();
@@ -53,99 +113,208 @@ export function QuoteSubmissionForm({
   return (
     <form
       onSubmit={handleSubmit(submitQuoteForm)}
-      className="mt-6 grid gap-5 rounded-lg border bg-card p-4 shadow-sm sm:p-6"
+      className="grid gap-6 rounded-md border bg-background p-4 sm:p-5"
     >
       <input type="hidden" name="requestId" value={requestId} />
+      <input type="hidden" {...register("currency")} />
+      <input type="hidden" {...register("serviceOffered")} />
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold">Send your quote</h2>
+        <h2 className="text-lg font-semibold">Submit quote</h2>
         <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">
-          Your quote is private. Other forwarders cannot see your price or
-          service details.
+          Private quote. Only the importer can see your pricing and service
+          details.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Amount"
-          helper="Enter the total amount the importer should compare."
-          error={errors.quoteAmount?.message}
-        >
-          <Input {...register("quoteAmount")} inputMode="decimal" placeholder="25000.00" />
-        </Field>
-        <Field
-          label="Currency"
-          helper="Philippine peso is supported for this workflow."
-          error={errors.currency?.message}
-        >
-          <Input {...register("currency")} placeholder="PHP" />
-        </Field>
-        <div className="sm:col-span-2">
+      <Section
+        title="Price"
+        description="Enter the total amount the importer should compare."
+      >
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+          <Field label="Amount" error={errors.quoteAmount?.message}>
+            <div className="flex items-center gap-2">
+              <Input
+                {...register("quoteAmount")}
+                inputMode="decimal"
+                placeholder="25000.00"
+              />
+              <Badge variant="outline" className="shrink-0">
+                PHP
+              </Badge>
+            </div>
+          </Field>
+          <Field label="Valid until" error={errors.validUntil?.message}>
+            <Input {...register("validUntil")} type="date" />
+          </Field>
+        </div>
+      </Section>
+
+      <Section
+        title="Service and timing"
+        description="Keep service choice and timing practical."
+      >
+        <div className="grid gap-4">
           <Field
-            label="Service offered"
-            helper="Summarize what your quote covers, such as door-to-door consolidation."
+            label="Service type"
+            helper="Choose the closest coverage for this quote."
             error={errors.serviceOffered?.message}
           >
-            <Input
-              {...register("serviceOffered")}
-              placeholder="China to Philippines door-to-door consolidation"
+            <Select
+              value={serviceType}
+              onValueChange={(value) => setServiceType(value as ServiceTypeValue)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select service type" />
+              </SelectTrigger>
+              <SelectContent>
+                {serviceTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+            <div className="grid gap-2">
+              <Label>Estimated transit time</Label>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-2">
+                <div className="grid min-w-0 gap-2">
+                  <Input
+                    {...register("estimatedTransitMinDays", { valueAsNumber: true })}
+                    type="number"
+                    min={1}
+                    max={365}
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="9"
+                    aria-label="Transit time from"
+                  />
+                  {errors.estimatedTransitMinDays?.message ? (
+                    <p className="text-xs font-medium text-red-700">
+                      {errors.estimatedTransitMinDays.message}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="text-sm text-muted-foreground">to</span>
+                <div className="grid min-w-0 gap-2">
+                  <Input
+                    {...register("estimatedTransitMaxDays", { valueAsNumber: true })}
+                    type="number"
+                    min={1}
+                    max={365}
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="15"
+                    aria-label="Transit time to"
+                  />
+                  {errors.estimatedTransitMaxDays?.message ? (
+                    <p className="text-xs font-medium text-red-700">
+                      {errors.estimatedTransitMaxDays.message}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="text-sm text-muted-foreground">days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Quote coverage"
+        description="Keep the comparison block short and direct."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Included"
+            helper="Pickup, freight, customs processing, delivery..."
+            error={errors.inclusions?.message}
+          >
+            <Textarea
+              {...register("inclusions")}
+              rows={3}
+              placeholder="Pickup, freight, customs processing, delivery..."
+            />
+          </Field>
+          <Field
+            label="Not included"
+            helper="Duties, storage, special handling..."
+            error={errors.exclusions?.message}
+          >
+            <Textarea
+              {...register("exclusions")}
+              rows={3}
+              placeholder="Duties, storage, special handling..."
             />
           </Field>
         </div>
-        <Field
-          label="Minimum transit days"
-          helper="Use your realistic best-case transit time."
-          error={errors.estimatedTransitMinDays?.message}
-        >
-          <Input {...register("estimatedTransitMinDays")} inputMode="numeric" placeholder="12" />
-        </Field>
-        <Field
-          label="Maximum transit days"
-          helper="Use your realistic worst-case transit time."
-          error={errors.estimatedTransitMaxDays?.message}
-        >
-          <Input {...register("estimatedTransitMaxDays")} inputMode="numeric" placeholder="18" />
-        </Field>
-        <Field
-          label="Valid until"
-          helper="Choose the date this price expires."
-          error={errors.validUntil?.message}
-        >
-          <Input
-            {...register("validUntil")}
-            inputMode="numeric"
-            placeholder="2026-07-01"
-          />
-        </Field>
-      </div>
+      </Section>
 
-      <Field
-        label="Inclusions"
-        helper="List what is included, such as pickup, freight, customs processing, delivery, or documentation support."
-        error={errors.inclusions?.message}
-      >
-        <Textarea {...register("inclusions")} rows={3} placeholder="Example: China pickup, ocean freight, customs assistance, Manila delivery" />
-      </Field>
-      <Field
-        label="Exclusions"
-        helper="List what is not included so the importer can compare quotes fairly."
-        error={errors.exclusions?.message}
-      >
-        <Textarea {...register("exclusions")} rows={3} placeholder="Example: Duties, taxes, storage, special permits" />
-      </Field>
-      <Field
-        label="Notes"
-        helper="Add assumptions, required documents, or questions for the importer."
-        error={errors.notes?.message}
-      >
-        <Textarea {...register("notes")} rows={3} />
-      </Field>
+      <Section title="Notes" description="Optional">
+        <Field
+          label="Notes or assumptions"
+          helper="Add required documents, assumptions, or questions for the importer."
+          error={errors.notes?.message}
+        >
+          <Textarea {...register("notes")} rows={3} />
+        </Field>
+      </Section>
 
-      <div>
+      <div className="grid gap-3 border-t pt-5 sm:flex sm:flex-row-reverse">
         <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-          {isPending ? "Sending..." : "Send quote"}
+          {isPending ? "Submitting..." : "Submit quote"}
         </Button>
+        {cancelHref ? (
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            <Link href={cancelHref}>Cancel</Link>
+          </Button>
+        ) : null}
       </div>
     </form>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="grid gap-4">
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function serviceTypeFromValue(value?: string): ServiceTypeValue {
+  if (!value) {
+    return "supplier_pickup_to_door";
+  }
+
+  const matched = Object.entries(serviceTypeLabels).find(
+    ([, label]) => label.toLowerCase() === value.toLowerCase(),
+  );
+
+  return (
+    (matched?.[0] as ServiceTypeValue | undefined) ??
+    "supplier_pickup_to_door"
   );
 }
 

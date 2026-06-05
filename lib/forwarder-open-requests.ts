@@ -46,6 +46,7 @@ export type ForwarderSafeRequest = {
   attachmentNotes: string | null;
   createdAt: Date;
   quoteCount: number;
+  ownQuoteStatus: string | null;
 };
 
 export type OpenRequestFilters = {
@@ -57,37 +58,60 @@ export type OpenRequestFilters = {
   specialHandling?: "msds";
 };
 
-const forwarderSafeRequestColumns = {
-  id: shipmentRequests.id,
-  status: shipmentRequests.status,
-  cargoDescription: shipmentRequests.cargoDescription,
-  cargoType: shipmentRequests.cargoType,
-  totalCbm: shipmentRequests.totalCbm,
-  totalWeightKg: shipmentRequests.totalWeightKg,
-  packageCount: shipmentRequests.packageCount,
-  lengthCm: shipmentRequests.lengthCm,
-  widthCm: shipmentRequests.widthCm,
-  heightCm: shipmentRequests.heightCm,
-  declaredValue: shipmentRequests.declaredValue,
-  origin: shipmentRequests.origin,
-  destination: shipmentRequests.destination,
-  destinationRegionCode: shipmentRequests.destinationRegionCode,
-  destinationRegionName: shipmentRequests.destinationRegionName,
-  destinationProvinceCode: shipmentRequests.destinationProvinceCode,
-  destinationProvinceName: shipmentRequests.destinationProvinceName,
-  destinationCityMunicipalityCode: shipmentRequests.destinationCityMunicipalityCode,
-  destinationCityMunicipalityName: shipmentRequests.destinationCityMunicipalityName,
-  destinationBarangayCode: shipmentRequests.destinationBarangayCode,
-  destinationBarangayName: shipmentRequests.destinationBarangayName,
-  destinationAddressDetails: shipmentRequests.destinationAddressDetails,
-  destinationDisplayName: shipmentRequests.destinationDisplayName,
-  deliveryPreference: shipmentRequests.deliveryPreference,
-  shippingPreference: shipmentRequests.shippingPreference,
-  notes: shipmentRequests.notes,
-  attachmentNotes: shipmentRequests.attachmentNotes,
-  createdAt: shipmentRequests.createdAt,
-  quoteCount: sql<number>`cast((select count(*) from ${quotes} where ${quotes.shipmentRequestId} = ${shipmentRequests.id}) as int)`,
-};
+function forwarderSafeRequestColumns() {
+  return {
+    id: shipmentRequests.id,
+    status: shipmentRequests.status,
+    cargoDescription: shipmentRequests.cargoDescription,
+    cargoType: shipmentRequests.cargoType,
+    totalCbm: shipmentRequests.totalCbm,
+    totalWeightKg: shipmentRequests.totalWeightKg,
+    packageCount: shipmentRequests.packageCount,
+    lengthCm: shipmentRequests.lengthCm,
+    widthCm: shipmentRequests.widthCm,
+    heightCm: shipmentRequests.heightCm,
+    declaredValue: shipmentRequests.declaredValue,
+    origin: shipmentRequests.origin,
+    destination: shipmentRequests.destination,
+    destinationRegionCode: shipmentRequests.destinationRegionCode,
+    destinationRegionName: shipmentRequests.destinationRegionName,
+    destinationProvinceCode: shipmentRequests.destinationProvinceCode,
+    destinationProvinceName: shipmentRequests.destinationProvinceName,
+    destinationCityMunicipalityCode: shipmentRequests.destinationCityMunicipalityCode,
+    destinationCityMunicipalityName: shipmentRequests.destinationCityMunicipalityName,
+    destinationBarangayCode: shipmentRequests.destinationBarangayCode,
+    destinationBarangayName: shipmentRequests.destinationBarangayName,
+    destinationAddressDetails: shipmentRequests.destinationAddressDetails,
+    destinationDisplayName: shipmentRequests.destinationDisplayName,
+    deliveryPreference: shipmentRequests.deliveryPreference,
+    shippingPreference: shipmentRequests.shippingPreference,
+    notes: shipmentRequests.notes,
+    attachmentNotes: shipmentRequests.attachmentNotes,
+    createdAt: shipmentRequests.createdAt,
+  };
+}
+
+function quoteCountsSubquery() {
+  return db
+    .select({
+      shipmentRequestId: quotes.shipmentRequestId,
+      quoteCount: sql<number>`cast(count(*) as int)`.as("quote_count"),
+    })
+    .from(quotes)
+    .groupBy(quotes.shipmentRequestId)
+    .as("quote_counts");
+}
+
+function ownQuotesSubquery(forwarderCompanyId: string) {
+  return db
+    .select({
+      shipmentRequestId: quotes.shipmentRequestId,
+      ownQuoteStatus: quotes.status,
+    })
+    .from(quotes)
+    .where(eq(quotes.forwarderCompanyId, forwarderCompanyId))
+    .as("own_quotes");
+}
 
 export async function requireForwarderMember() {
   const profile = await requireRole(["forwarder"] satisfies UserRole[]);
@@ -196,21 +220,49 @@ function whereForOpenRequestFilters(filters: OpenRequestFilters) {
 export async function getOpenShipmentRequestsForForwarder(
   filters: OpenRequestFilters = {},
 ) {
-  await requireForwarderMember();
+  const { member } = await requireForwarderMember();
+  const quoteCounts = quoteCountsSubquery();
+  const ownQuotes = ownQuotesSubquery(member.companyId);
 
   return db
-    .select(forwarderSafeRequestColumns)
+    .select({
+      ...forwarderSafeRequestColumns(),
+      quoteCount: sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`,
+      ownQuoteStatus: ownQuotes.ownQuoteStatus,
+    })
     .from(shipmentRequests)
+    .leftJoin(
+      quoteCounts,
+      eq(quoteCounts.shipmentRequestId, shipmentRequests.id),
+    )
+    .leftJoin(
+      ownQuotes,
+      eq(ownQuotes.shipmentRequestId, shipmentRequests.id),
+    )
     .where(whereForOpenRequestFilters(filters))
     .orderBy(desc(shipmentRequests.createdAt));
 }
 
 export async function getOpenShipmentRequestForForwarder(requestId: string) {
-  await requireForwarderMember();
+  const { member } = await requireForwarderMember();
+  const quoteCounts = quoteCountsSubquery();
+  const ownQuotes = ownQuotesSubquery(member.companyId);
 
   const [request] = await db
-    .select(forwarderSafeRequestColumns)
+    .select({
+      ...forwarderSafeRequestColumns(),
+      quoteCount: sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`,
+      ownQuoteStatus: ownQuotes.ownQuoteStatus,
+    })
     .from(shipmentRequests)
+    .leftJoin(
+      quoteCounts,
+      eq(quoteCounts.shipmentRequestId, shipmentRequests.id),
+    )
+    .leftJoin(
+      ownQuotes,
+      eq(ownQuotes.shipmentRequestId, shipmentRequests.id),
+    )
     .where(
       and(
         eq(shipmentRequests.id, requestId),
@@ -226,9 +278,24 @@ export async function getShipmentRequestForForwarderDetail(
   requestId: string,
   forwarderCompanyId: string,
 ) {
+  const quoteCounts = quoteCountsSubquery();
+  const ownQuotes = ownQuotesSubquery(forwarderCompanyId);
+
   const [postedRequest] = await db
-    .select(forwarderSafeRequestColumns)
+    .select({
+      ...forwarderSafeRequestColumns(),
+      quoteCount: sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`,
+      ownQuoteStatus: ownQuotes.ownQuoteStatus,
+    })
     .from(shipmentRequests)
+    .leftJoin(
+      quoteCounts,
+      eq(quoteCounts.shipmentRequestId, shipmentRequests.id),
+    )
+    .leftJoin(
+      ownQuotes,
+      eq(ownQuotes.shipmentRequestId, shipmentRequests.id),
+    )
     .where(
       and(
         eq(shipmentRequests.id, requestId),
@@ -257,8 +324,20 @@ export async function getShipmentRequestForForwarderDetail(
   }
 
   const [request] = await db
-    .select(forwarderSafeRequestColumns)
+    .select({
+      ...forwarderSafeRequestColumns(),
+      quoteCount: sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`,
+      ownQuoteStatus: ownQuotes.ownQuoteStatus,
+    })
     .from(shipmentRequests)
+    .leftJoin(
+      quoteCounts,
+      eq(quoteCounts.shipmentRequestId, shipmentRequests.id),
+    )
+    .leftJoin(
+      ownQuotes,
+      eq(ownQuotes.shipmentRequestId, shipmentRequests.id),
+    )
     .where(eq(shipmentRequests.id, requestId))
     .limit(1);
 

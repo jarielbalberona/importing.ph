@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { EmptyState, PageHeader } from "@/components/app-shell";
+import { QueryStateToast } from "@/components/query-state-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireProfile } from "@/lib/authz";
@@ -31,20 +32,21 @@ export default async function NotificationsPage({
     <>
       <PageHeader
         title="Notifications"
-        description="Quote updates, messages, and decisions appear here."
+        description="Quote updates and marketplace decisions appear here."
       />
 
-      {query.error ? (
-        <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-          Notification was not updated. Try again.
-        </div>
-      ) : null}
+      <QueryStateToast
+        errorMessage={
+          query.error ? "Notification was not updated. Try again." : null
+        }
+        clearKeys={["error"]}
+      />
 
       {notifications.length === 0 ? (
         <div className="mt-8">
           <EmptyState
             title="No notifications yet"
-            description="Notifications will appear here when quotes, messages, or decisions are updated."
+            description="Notifications will appear here when quotes or marketplace decisions are updated."
           />
         </div>
       ) : (

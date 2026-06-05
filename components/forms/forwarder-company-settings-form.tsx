@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import type { z } from "zod";
@@ -23,8 +24,10 @@ type FormValues = z.input<typeof forwarderCompanySettingsSchema>;
 
 export function ForwarderCompanySettingsForm({
   defaultValues,
+  cancelHref,
 }: {
   defaultValues: FormValues;
+  cancelHref?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const {
@@ -209,10 +212,21 @@ export function ForwarderCompanySettingsForm({
         </Field>
       </section>
 
-      <div>
+      <div className="grid gap-3 border-t pt-5 sm:flex sm:flex-row-reverse">
         <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
           {isPending ? "Saving..." : "Save company settings"}
         </Button>
+        {cancelHref ? (
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            disabled={isPending}
+            className="w-full sm:w-auto"
+          >
+            <Link href={cancelHref}>Cancel</Link>
+          </Button>
+        ) : null}
       </div>
     </form>
   );

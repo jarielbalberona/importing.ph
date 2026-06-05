@@ -31,9 +31,9 @@ export async function submitQuote(formData: FormData) {
     );
   } catch (error) {
     if (error instanceof QuoteSubmissionError) {
-      target = `/app/forwarder/requests/${requestId.data}?error=${error.code}`;
+      target = `/app/forwarder/requests/${requestId.data}/quote?error=${error.code}`;
     } else if (error instanceof z.ZodError) {
-      target = `/app/forwarder/requests/${requestId.data}?error=validation`;
+      target = `/app/forwarder/requests/${requestId.data}/quote?error=validation`;
     } else {
       throw error;
     }

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PageHeader } from "@/components/app-shell";
 import { NewShipmentRequestForm } from "@/components/forms/new-shipment-request-form";
+import { QueryStateToast } from "@/components/query-state-toast";
 import { Button } from "@/components/ui/button";
 import { requireImporterProfile } from "@/lib/shipment-requests";
 
@@ -29,12 +30,14 @@ export default async function NewShipmentRequestPage({
         }
       />
 
-      {params.error === "validation" ? (
-        <div className="mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          Complete the required fields and provide total CBM, total weight, or
-          dimensions with package count.
-        </div>
-      ) : null}
+      <QueryStateToast
+        errorMessage={
+          params.error === "validation"
+            ? "Complete the required fields and provide total CBM, total weight, or dimensions with package count."
+            : null
+        }
+        clearKeys={["error"]}
+      />
 
       <NewShipmentRequestForm />
     </>

@@ -8,13 +8,14 @@ import {
   HelpCircleIcon,
   InfoIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
   ShipmentQuoteDetailsDialog,
   type ShipmentQuoteDetails,
 } from "@/components/requests/shipment-quote-details-dialog";
+import { QueryStateToast } from "@/components/query-state-toast";
 import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,11 @@ export type ImporterConversationView = {
   id: string;
   href: string;
   isActive: boolean;
+  counterpartyName: string;
+  counterpartyDetails: Array<{
+    label: string;
+    value: React.ReactNode;
+  }>;
   forwarderCompanyName: string;
   forwarderContactPerson: string | null;
   forwarderOriginCities: string | null;
@@ -57,6 +63,7 @@ export type ImporterConversationView = {
   cargoDescription: string;
   route: string;
   preview: string;
+  hasUnread: boolean;
   updatedAt: string;
   shipment: ShipmentQuoteDetails["request"];
   quote: ShipmentQuoteDetails["quote"];
@@ -76,6 +83,10 @@ export type ImporterConversationView = {
   currentUserProfileId: string | null;
 };
 
+type ConversationListItem = ImporterConversationView & {
+  sortRank?: number;
+};
+
 type ImporterMessagesClientProps = {
   conversations: ImporterConversationView[];
   activeConversation?: ImporterConversationView;
@@ -83,12 +94,24 @@ type ImporterMessagesClientProps = {
     message?: string;
     messageError?: string;
   };
+  baseHref?: string;
+  detailsTitle?: string;
+  detailsSheetDescription?: string;
+  emptyMessageDescription?: string;
+  markConversationReadAction?: typeof markImporterConversationRead;
+  sendMessageAction?: typeof sendImporterMessage;
 };
 
 export function ImporterMessagesClient({
   conversations,
   activeConversation,
   query,
+  baseHref = "/app/requests/messages",
+  detailsTitle = "Conversation details",
+  detailsSheetDescription = "Forwarder details and shipment context.",
+  emptyMessageDescription = "Ask a follow-up question about this shipment.",
+  markConversationReadAction = markImporterConversationRead,
+  sendMessageAction = sendImporterMessage,
 }: ImporterMessagesClientProps) {
   const router = useRouter();
   const realtime = useRealtime();
@@ -135,9 +158,14 @@ export function ImporterMessagesClient({
       ...activeConversation,
       messages: mergedMessages,
       readStates: Array.from(readStatesByReader.values()),
+      hasUnread: getConversationUnreadState({
+        ...activeConversation,
+        messages: mergedMessages,
+        readStates: Array.from(readStatesByReader.values()),
+      }),
     };
   }, [activeConversation, readStatePatches, realtimeMessages]);
-  const conversationList = useMemo(() => {
+  const conversationList = useMemo<ConversationListItem[]>(() => {
     return conversations
       .map((conversation) => {
         const patch = conversationPatches[conversation.id];
@@ -150,16 +178,28 @@ export function ImporterMessagesClient({
           ...conversation,
           preview: patch.preview,
           updatedAt: patch.updatedAt,
+          hasUnread:
+            currentConversation?.id === conversation.id
+              ? currentConversation.hasUnread
+              : conversation.hasUnread,
           sortRank: patch.sortRank,
         };
       })
-      .sort((a, b) => {
-        const aRank = "sortRank" in a ? a.sortRank : 0;
-        const bRank = "sortRank" in b ? b.sortRank : 0;
+      .map((conversation) =>
+        currentConversation?.id === conversation.id
+          ? {
+              ...conversation,
+              hasUnread: currentConversation.hasUnread,
+            }
+          : conversation,
+      )
+      .sort((a: ConversationListItem, b: ConversationListItem) => {
+        const aRank = typeof a.sortRank === "number" ? a.sortRank : 0;
+        const bRank = typeof b.sortRank === "number" ? b.sortRank : 0;
 
         return bRank - aRank;
       });
-  }, [conversationPatches, conversations]);
+  }, [conversationPatches, conversations, currentConversation]);
   const handleRealtimeEvent = useCallback(
     (event: ClientRealtimeEvent) => {
       if (
@@ -264,7 +304,7 @@ export function ImporterMessagesClient({
 
     let cancelled = false;
 
-    markImporterConversationRead({
+    markConversationReadAction({
       conversationId: currentConversation.id,
       lastReadMessageId: latestMessage.id,
     })
@@ -289,12 +329,12 @@ export function ImporterMessagesClient({
     return () => {
       cancelled = true;
     };
-  }, [currentConversation]);
+  }, [currentConversation, markConversationReadAction]);
 
   return (
     <section
       className={cn(
-        "h-[calc(100svh-7rem)] min-h-0 overflow-hidden rounded-lg border bg-background md:h-[calc(100svh-3rem)] lg:grid lg:h-[calc(100svh-5rem)]",
+        "h-full min-h-0 overflow-hidden rounded-lg border bg-background lg:grid",
         activeConversation && detailsOpen
           ? "lg:grid-cols-[13rem_minmax(0,1fr)_12rem] xl:grid-cols-[16rem_minmax(0,1fr)_14rem]"
           : "lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]",
@@ -310,12 +350,18 @@ export function ImporterMessagesClient({
           <MessageWindow
             conversation={currentConversation}
             query={query}
+            baseHref={baseHref}
+            detailsTitle={detailsTitle}
+            detailsSheetDescription={detailsSheetDescription}
+            emptyMessageDescription={emptyMessageDescription}
+            sendMessageAction={sendMessageAction}
             detailsOpen={detailsOpen}
             onToggleDetails={() => setDetailsOpen((value) => !value)}
           />
           {detailsOpen ? (
             <ConversationDetails
               conversation={currentConversation}
+              title={detailsTitle}
               className="hidden lg:block"
             />
           ) : null}
@@ -340,7 +386,7 @@ function ConversationList({
   conversations,
   className,
 }: {
-  conversations: ImporterConversationView[];
+  conversations: ConversationListItem[];
   className?: string;
 }) {
   const [search, setSearch] = useState("");
@@ -353,7 +399,7 @@ function ConversationList({
 
     return conversations.filter((conversation) =>
       [
-        conversation.forwarderCompanyName,
+        conversation.counterpartyName,
         conversation.cargoDescription,
         conversation.route,
         conversation.preview,
@@ -392,27 +438,58 @@ function ConversationList({
               key={conversation.id}
               href={conversation.href}
               aria-current={conversation.isActive ? "page" : undefined}
-              className={
+              className={cn(
+                "block border-l-2 px-4 py-3 transition-colors",
                 conversation.isActive
-                  ? "block border-l-2 border-primary bg-muted px-4 py-3"
-                  : "block border-l-2 border-transparent px-4 py-3 transition-colors hover:bg-muted/60"
-              }
+                  ? "border-primary bg-muted"
+                  : conversation.hasUnread
+                    ? "border-amber-500 bg-amber-50/80 hover:bg-amber-50"
+                    : "border-transparent hover:bg-muted/60",
+              )}
             >
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <p className="min-w-0 truncate font-medium">
-                  {conversation.forwarderCompanyName}
+                <p
+                  className={cn(
+                    "min-w-0 truncate font-medium",
+                    conversation.hasUnread && !conversation.isActive
+                      ? "text-foreground"
+                      : "text-foreground/90",
+                  )}
+                >
+                  {conversation.counterpartyName}
                 </p>
-                <p className="shrink-0 text-xs text-muted-foreground">
+                <p
+                  className={cn(
+                    "shrink-0 text-xs",
+                    conversation.hasUnread && !conversation.isActive
+                      ? "font-medium text-amber-700"
+                      : "text-muted-foreground",
+                  )}
+                >
                   {conversation.updatedAt}
                 </p>
               </div>
-              <p className="mt-1 truncate text-sm text-muted-foreground">
+              <p
+                className={cn(
+                  "mt-1 truncate text-sm",
+                  conversation.hasUnread && !conversation.isActive
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
                 {conversation.cargoDescription}
               </p>
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {conversation.route}
               </p>
-              <p className="mt-2 line-clamp-2 text-sm leading-5">
+              <p
+                className={cn(
+                  "mt-2 line-clamp-2 text-sm leading-5",
+                  conversation.hasUnread && !conversation.isActive
+                    ? "font-medium text-foreground"
+                    : "text-foreground/90",
+                )}
+              >
                 {conversation.preview}
               </p>
             </Link>
@@ -426,6 +503,11 @@ function ConversationList({
 function MessageWindow({
   conversation,
   query,
+  baseHref,
+  detailsTitle,
+  detailsSheetDescription,
+  emptyMessageDescription,
+  sendMessageAction,
   detailsOpen,
   onToggleDetails,
 }: {
@@ -434,10 +516,31 @@ function MessageWindow({
     message?: string;
     messageError?: string;
   };
+  baseHref: string;
+  detailsTitle: string;
+  detailsSheetDescription: string;
+  emptyMessageDescription: string;
+  sendMessageAction: typeof sendImporterMessage;
   detailsOpen: boolean;
   onToggleDetails: () => void;
 }) {
   const latestSeenOutgoingMessageId = getLatestSeenOutgoingMessageId(conversation);
+  const messagesViewportRef = useRef<HTMLDivElement>(null);
+  const latestMessageId = conversation.messages.at(-1)?.id;
+
+  useEffect(() => {
+    const viewport = messagesViewportRef.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight;
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [conversation.id, latestMessageId]);
 
   return (
     <main className="flex h-full min-h-0 min-w-0 flex-col bg-muted/20 lg:border-r">
@@ -450,13 +553,13 @@ function MessageWindow({
               size="icon-sm"
               className="lg:hidden"
             >
-              <Link href="/app/requests/messages" aria-label="Back to messages">
+              <Link href={baseHref} aria-label="Back to messages">
                 <ArrowLeftIcon />
               </Link>
             </Button>
             <div className="min-w-0">
               <h2 className="truncate text-base font-semibold sm:text-lg">
-                {conversation.forwarderCompanyName}
+                {conversation.counterpartyName}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Shipment quote conversation
@@ -489,12 +592,16 @@ function MessageWindow({
               </SheetTrigger>
               <SheetContent className="w-[88vw] overflow-y-auto" side="right">
                 <SheetHeader>
-                  <SheetTitle>Conversation details</SheetTitle>
+                  <SheetTitle>{detailsTitle}</SheetTitle>
                   <SheetDescription>
-                    Forwarder details and shipment context.
+                    {detailsSheetDescription}
                   </SheetDescription>
                 </SheetHeader>
-                <ConversationDetails conversation={conversation} compact />
+                <ConversationDetails
+                  conversation={conversation}
+                  title={detailsTitle}
+                  compact
+                />
               </SheetContent>
             </Sheet>
             <Button
@@ -514,19 +621,20 @@ function MessageWindow({
         </div>
       </div>
 
-      {query?.messageError ? (
-        <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Message was not sent. Try again.
-        </div>
-      ) : null}
+      <QueryStateToast
+        errorMessage={
+          query?.messageError ? "Message was not sent. Try again." : null
+        }
+        clearKeys={["messageError", "message"]}
+      />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div ref={messagesViewportRef} className="min-h-0 flex-1 overflow-y-auto p-4">
         {conversation.messages.length === 0 ? (
           <div className="grid h-full min-h-64 place-items-center text-center">
             <div>
               <h3 className="text-base font-semibold">No messages yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Ask a follow-up question about this shipment.
+                {emptyMessageDescription}
               </p>
             </div>
           </div>
@@ -537,13 +645,14 @@ function MessageWindow({
                 key={message.id}
                 message={message}
                 isSeen={message.id === latestSeenOutgoingMessageId}
+                currentUserProfileId={conversation.currentUserProfileId}
               />
             ))}
           </div>
         )}
       </div>
 
-      <form action={sendImporterMessage} className="border-t bg-background p-3">
+      <form action={sendMessageAction} className="border-t bg-background p-3">
         <input type="hidden" name="conversationId" value={conversation.id} />
         <Textarea
           name="body"
@@ -588,10 +697,12 @@ function MessageWindow({
 
 function ConversationDetails({
   conversation,
+  title,
   className,
   compact = false,
 }: {
   conversation: ImporterConversationView;
+  title: string;
   className?: string;
   compact?: boolean;
 }) {
@@ -600,17 +711,15 @@ function ConversationDetails({
       className={cn("h-full min-h-0 min-w-0 overflow-y-auto bg-background", className)}
     >
       <section className={compact ? "border-b p-4" : "border-b p-5"}>
-        <h2 className="text-base font-semibold">Forwarder details</h2>
+        <h2 className="text-base font-semibold">{title}</h2>
         <dl className="mt-4 grid gap-4 text-sm">
-          <Detail label="Company" value={conversation.forwarderCompanyName} />
-          <Detail label="Contact" value={conversation.forwarderContactPerson} />
-          <Detail label="Shipping modes" value={conversation.forwarderShippingModes} />
-          <Detail label="Profile" value={conversation.forwarderServiceDescription} />
-          <Detail label="Origin cities" value={conversation.forwarderOriginCities} />
-          <Detail
-            label="Destination areas"
-            value={conversation.forwarderDestinationAreas}
-          />
+          {conversation.counterpartyDetails.map((detail) => (
+            <Detail
+              key={detail.label}
+              label={detail.label}
+              value={detail.value}
+            />
+          ))}
         </dl>
       </section>
 
@@ -644,23 +753,25 @@ type Message = ImporterConversationView["messages"][number];
 function MessageBubble({
   message,
   isSeen,
+  currentUserProfileId,
 }: {
   message: Message;
   isSeen: boolean;
+  currentUserProfileId: string | null;
 }) {
-  const isImporter = message.senderRole === "importer";
+  const isOwnMessage = message.senderUserProfileId === currentUserProfileId;
 
   return (
     <article
       className={
-        isImporter
+        isOwnMessage
           ? "ml-auto grid max-w-[82%] justify-items-end gap-1"
           : "mr-auto grid max-w-[82%] justify-items-start gap-1"
       }
     >
       <div
         className={
-          isImporter
+          isOwnMessage
             ? "rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground"
             : "rounded-2xl rounded-bl-sm bg-background px-4 py-3 shadow-sm ring-1 ring-border"
         }
@@ -709,6 +820,28 @@ function getLatestSeenOutgoingMessageId(conversation: ImporterConversationView) 
   });
 
   return isSeen ? latestOutgoingMessage.id : undefined;
+}
+
+function getConversationUnreadState(conversation: ImporterConversationView) {
+  if (!conversation.currentUserProfileId) {
+    return false;
+  }
+
+  const latestMessage = conversation.messages.at(-1);
+
+  if (!latestMessage) {
+    return false;
+  }
+
+  if (latestMessage.senderUserProfileId === conversation.currentUserProfileId) {
+    return false;
+  }
+
+  return !conversation.readStates.some(
+    (readState) =>
+      readState.readerUserProfileId === conversation.currentUserProfileId &&
+      readState.lastReadMessageId === latestMessage.id,
+  );
 }
 
 function mergeReadStatePatch(

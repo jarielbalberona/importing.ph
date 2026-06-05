@@ -218,23 +218,25 @@ async function createSubmittedQuote(input: {
     validUntil: futureDateInput(14),
   });
 
+  const quoteRow: typeof quotes.$inferInsert = {
+    shipmentRequestId: input.requestId,
+    forwarderCompanyId: input.forwarder.companyId,
+    submittedByForwarderMemberId: input.forwarder.memberId,
+    status: "submitted",
+    quoteAmount: parsed.quoteAmount,
+    currency: parsed.currency,
+    serviceOffered: parsed.serviceOffered,
+    estimatedTransitMinDays: parsed.estimatedTransitMinDays,
+    estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
+    inclusions: parsed.inclusions,
+    exclusions: parsed.exclusions,
+    notes: parsed.notes,
+    validUntil: new Date(`${parsed.validUntil}T00:00:00`),
+  };
+
   const [quote] = await db
     .insert(quotes)
-    .values({
-      shipmentRequestId: input.requestId,
-      forwarderCompanyId: input.forwarder.companyId,
-      submittedByForwarderMemberId: input.forwarder.memberId,
-      status: "submitted",
-      quoteAmount: parsed.quoteAmount,
-      currency: parsed.currency,
-      serviceOffered: parsed.serviceOffered,
-      estimatedTransitMinDays: parsed.estimatedTransitMinDays,
-      estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
-      inclusions: parsed.inclusions,
-      exclusions: parsed.exclusions,
-      notes: parsed.notes,
-      validUntil: new Date(`${parsed.validUntil}T00:00:00`),
-    })
+    .values(quoteRow)
     .returning({ id: quotes.id });
 
   assert(quote, "Quote was not created");

@@ -79,6 +79,18 @@ function toConversationView(
     id: conversation.id,
     href: `/app/requests/messages/${conversation.id}`,
     isActive: conversation.id === activeConversationId,
+    counterpartyName: conversation.forwarderCompanyName,
+    counterpartyDetails: [
+      { label: "Company", value: conversation.forwarderCompanyName },
+      { label: "Contact", value: conversation.forwarderContactPerson },
+      { label: "Shipping modes", value: conversation.forwarderShippingModes },
+      { label: "Profile", value: conversation.forwarderServiceDescription },
+      { label: "Origin cities", value: conversation.forwarderOriginCities },
+      {
+        label: "Destination areas",
+        value: conversation.forwarderDestinationAreas,
+      },
+    ],
     forwarderCompanyName: conversation.forwarderCompanyName,
     forwarderContactPerson: conversation.forwarderContactPerson,
     forwarderOriginCities: conversation.forwarderOriginCities,
@@ -88,6 +100,7 @@ function toConversationView(
     cargoDescription: conversation.cargoDescription,
     route,
     preview: latestMessage || "No messages yet",
+    hasUnread: "hasUnread" in conversation ? conversation.hasUnread : false,
     updatedAt: formatDate(latestMessageAt ?? conversation.updatedAt),
     shipment: {
       href: requestHref,

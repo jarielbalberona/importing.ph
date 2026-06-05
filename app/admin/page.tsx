@@ -26,7 +26,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const overview = await getAdminOverview();
 
   return (
-    <AppShell role="admin">
+    <AppShell role="admin" badgeState={null}>
       <PageHeader
         title="Marketplace safety"
         description="Review current marketplace activity and pause forwarder companies when quoting needs to be stopped."

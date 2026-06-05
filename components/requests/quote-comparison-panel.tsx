@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { acceptQuote } from "@/app/app/requests/[requestId]/actions";
+import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -15,6 +17,7 @@ import {
 
 export type QuoteComparisonItem = {
   id: string;
+  requestId: string;
   companyName: string;
   amount: string;
   status: string;
@@ -26,6 +29,7 @@ export type QuoteComparisonItem = {
   notes: string;
   submittedAt: string;
   isExpired: boolean;
+  canAccept: boolean;
 };
 
 type QuoteComparisonPanelProps = {
@@ -108,18 +112,55 @@ export function QuoteComparisonPanel({ quotes }: QuoteComparisonPanelProps) {
           Select at least two quotes to compare side by side.
         </p>
       ) : (
-        <div className="rounded-md border bg-background">
-          <Table>
+        <div className="overflow-x-auto rounded-md border bg-background">
+          <Table className="min-w-max">
             <TableBody>
-              <ComparisonRow label="Forwarder" quotes={selectedQuotes} value="companyName" />
+              <ComparisonRow
+                label="Forwarder"
+                quotes={selectedQuotes}
+                value="companyName"
+                valueClassName="font-semibold"
+              />
               <ComparisonRow label="Amount" quotes={selectedQuotes} value="amount" />
-              <ComparisonRow label="Service" quotes={selectedQuotes} value="serviceOffered" />
+              <ComparisonRow label="Service type" quotes={selectedQuotes} value="serviceOffered" />
               <ComparisonRow label="Transit" quotes={selectedQuotes} value="transitRange" />
               <ComparisonRow label="Valid until" quotes={selectedQuotes} value="validUntil" />
-              <ComparisonRow label="Inclusions" quotes={selectedQuotes} value="inclusions" />
-              <ComparisonRow label="Exclusions" quotes={selectedQuotes} value="exclusions" />
+              <ComparisonRow label="Included" quotes={selectedQuotes} value="inclusions" />
+              <ComparisonRow label="Not included" quotes={selectedQuotes} value="exclusions" />
               <ComparisonRow label="Notes" quotes={selectedQuotes} value="notes" />
               <ComparisonRow label="Submitted" quotes={selectedQuotes} value="submittedAt" />
+              <TableRow>
+                <TableCell className="sticky left-0 z-10 min-w-36 bg-background font-medium">
+                  Accept quote
+                </TableCell>
+                {selectedQuotes.map((quote) => (
+                  <TableCell
+                    key={quote.id}
+                    className="min-w-56 whitespace-normal align-top leading-6"
+                  >
+                    {quote.canAccept ? (
+                      <form action={acceptQuote}>
+                        <input type="hidden" name="requestId" value={quote.requestId} />
+                        <input type="hidden" name="quoteId" value={quote.id} />
+                        <ConfirmSubmitButton
+                          type="submit"
+                          size="sm"
+                          title="Accept this quote?"
+                          message="This will mark the quote as accepted for this shipment request. Other quotes will remain visible for your records."
+                          confirmLabel="Accept quote"
+                          cancelLabel="Cancel"
+                        >
+                          Accept quote
+                        </ConfirmSubmitButton>
+                      </form>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Not available
+                      </span>
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
             </TableBody>
           </Table>
         </div>
@@ -132,10 +173,12 @@ function ComparisonRow({
   label,
   quotes,
   value,
+  valueClassName,
 }: {
   label: string;
   quotes: QuoteComparisonItem[];
   value: keyof QuoteComparisonItem;
+  valueClassName?: string;
 }) {
   return (
     <TableRow>
@@ -145,7 +188,7 @@ function ComparisonRow({
       {quotes.map((quote) => (
         <TableCell
           key={quote.id}
-          className="min-w-56 whitespace-normal align-top leading-6"
+          className={`min-w-56 whitespace-normal align-top leading-6 ${valueClassName ?? ""}`}
         >
           {String(quote[value]) || "Not provided"}
         </TableCell>
