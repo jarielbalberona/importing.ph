@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { getPublishedGuides } from "@/features/public-content/seo/routes";
+import sitemap from "@/app/sitemap";
 import {
   defaultBaseUrl,
   getAuditTargets,
@@ -14,7 +15,7 @@ import {
 } from "@/scripts/seo/config";
 import { requireDataForSeoCredentials, shouldExecuteLiveDataForSeo } from "@/scripts/seo/providers/dataforseo";
 import { createMockSeoProvider } from "@/scripts/seo/providers/mock";
-import { createSeoProvider, getStaticRouteCoverage, withCachedResult } from "@/scripts/seo/lib";
+import { createSeoProvider, getMetadataSnapshotForRoute, getStaticRouteCoverage, withCachedResult } from "@/scripts/seo/lib";
 
 test("default provider is mock", () => {
   const options = resolveSeoOptions("keyword-plan", []);
@@ -95,6 +96,40 @@ test("route coverage includes published guides and excludes drafts", () => {
   }
 
   assert.ok(!coverage.htmlRoutes.includes("/guides/draft-guide-example"));
+});
+
+test("route coverage includes about page", () => {
+  const coverage = getStaticRouteCoverage();
+
+  assert.ok(coverage.htmlRoutes.includes("/about"));
+});
+
+test("about metadata is covered", () => {
+  const metadata = getMetadataSnapshotForRoute("/about");
+
+  assert.equal(metadata?.title, "About Importing Philippines");
+  assert.equal(metadata?.alternates?.canonical, "/about");
+  assert.equal(
+    metadata?.description,
+    "Importing Philippines helps importers organize China-to-Philippines shipment requests, receive private forwarder quotes, and compare options in one place.",
+  );
+});
+
+test("sitemap includes about page", () => {
+  const entries = sitemap().map((entry) => entry.url);
+
+  assert.ok(entries.includes("https://importing.ph/about"));
+});
+
+test("public headers include about link", async () => {
+  const header = await fs.readFile(
+    path.join(process.cwd(), "components/public/site-header.tsx"),
+    "utf8",
+  );
+  const home = await fs.readFile(path.join(process.cwd(), "app/page.tsx"), "utf8");
+
+  assert.match(header, /href="\/about"/);
+  assert.match(home, /href="\/about"/);
 });
 
 test("markdown alternates are covered", () => {

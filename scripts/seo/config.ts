@@ -100,6 +100,11 @@ export const developerCopyPatterns = [
   "dummy content",
   "test only",
   "internal draft",
+  "mvp",
+  "schema",
+  "source of truth",
+  "v1",
+  "workflow engine",
 ] as const;
 
 export function getAuditTargets(): AuditRouteTarget[] {
@@ -140,6 +145,13 @@ export function getAuditTargets(): AuditRouteTarget[] {
       label: "guides",
       path: "/guides",
       canonicalPath: "/guides",
+      expectsH1: true,
+    },
+    {
+      kind: "html",
+      label: "about",
+      path: "/about",
+      canonicalPath: "/about",
       expectsH1: true,
     },
     ...guideTargets,

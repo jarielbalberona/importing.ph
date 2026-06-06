@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { getPublishedGuideMarkdown } from "@/features/public-content/ai-readable/registry";
 import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
-import { buildGuideMetadata, buildGuidesIndexMetadata } from "@/features/public-content/seo/metadata";
+import { buildAboutMetadata, buildGuideMetadata, buildGuidesIndexMetadata } from "@/features/public-content/seo/metadata";
 import {
   buildGuideArticleJsonLd,
   buildGuideBreadcrumbJsonLd,
@@ -325,6 +325,10 @@ function auditSitemap(): RouteAuditResult {
     }
   }
 
+  if (!entries.includes(getSiteUrl("/about"))) {
+    errors.push(`Missing sitemap route ${getSiteUrl("/about")}`);
+  }
+
   if (entries.includes(getSiteUrl("/guides/draft-guide-example"))) {
     errors.push("Draft guide leaked into sitemap");
   }
@@ -349,8 +353,12 @@ function auditRobots(): RouteAuditResult {
       continue;
     }
 
-    if (rule.userAgent === "*" && typeof rule.disallow === "string" && rule.disallow.includes("/guides")) {
-      errors.push("robots.txt blocks guide routes");
+    if (
+      rule.userAgent === "*" &&
+      typeof rule.disallow === "string" &&
+      (rule.disallow.includes("/guides") || rule.disallow.includes("/about"))
+    ) {
+      errors.push("robots.txt blocks public routes");
     }
   }
 
@@ -373,6 +381,10 @@ export function getStaticRouteCoverage() {
 }
 
 export function getMetadataSnapshotForRoute(pathname: string) {
+  if (pathname === "/about") {
+    return buildAboutMetadata();
+  }
+
   if (pathname === "/guides") {
     return buildGuidesIndexMetadata();
   }

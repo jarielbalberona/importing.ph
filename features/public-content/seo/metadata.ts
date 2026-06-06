@@ -32,6 +32,34 @@ export function buildGuidesIndexMetadata(): Metadata {
   };
 }
 
+export function buildAboutMetadata(): Metadata {
+  const title = "About Importing Philippines";
+  const description =
+    "Importing Philippines helps importers organize China-to-Philippines shipment requests, receive private forwarder quotes, and compare options in one place.";
+  const canonical = "/about";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: getSiteUrl(canonical),
+      images: [getSiteUrl(defaultOgImage)],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [getSiteUrl(defaultOgImage)],
+    },
+  };
+}
+
 export function buildGuideMetadata(guide: Guide): Metadata {
   const canonical = getGuidePath(guide.slug);
 

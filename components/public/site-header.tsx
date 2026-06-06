@@ -15,6 +15,9 @@ export function PublicSiteHeader() {
             <Link href="/guides">Guides</Link>
           </Button>
           <Button asChild variant="ghost" className="w-full sm:w-auto">
+            <Link href="/about">About</Link>
+          </Button>
+          <Button asChild variant="ghost" className="w-full sm:w-auto">
             <Link href="/sign-in">Sign in</Link>
           </Button>
           <Button asChild className="w-full sm:w-auto">
