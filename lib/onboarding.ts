@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { db } from "@/db";
 import {
+  type ForwarderMemberRole,
   forwarderCompanies,
   forwarderMembers,
   importerProfiles,
@@ -23,6 +24,8 @@ export const onboardingSchema = z.object({
 });
 
 type OnboardingInput = z.infer<typeof onboardingSchema>;
+
+export const defaultForwarderMemberRole: ForwarderMemberRole = "owner";
 
 export async function createOnboardingProfile(
   clerkUserId: string,
@@ -109,7 +112,7 @@ export async function createOnboardingProfile(
       .values({
         userProfileId: profile.id,
         forwarderCompanyId: forwarderCompany.id,
-        memberRole: "owner",
+        memberRole: defaultForwarderMemberRole,
       })
       .returning();
 

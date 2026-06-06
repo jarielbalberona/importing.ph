@@ -19,6 +19,15 @@ export const userRoleEnum = pgEnum("user_role", [
 
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
 
+export const forwarderMemberRoleEnum = pgEnum("forwarder_member_role", [
+  "owner",
+  "admin",
+  "member",
+]);
+
+export type ForwarderMemberRole =
+  (typeof forwarderMemberRoleEnum.enumValues)[number];
+
 export const shipmentRequestStatusEnum = pgEnum("shipment_request_status", [
   "draft",
   "posted",
@@ -309,7 +318,9 @@ export const forwarderMembers = pgTable(
     forwarderCompanyId: uuid("forwarder_company_id")
       .notNull()
       .references(() => forwarderCompanies.id, { onDelete: "cascade" }),
-    memberRole: text("member_role").notNull().default("owner"),
+    memberRole: forwarderMemberRoleEnum("member_role")
+      .notNull()
+      .default("owner"),
     ...timestamps,
   },
   (table) => [

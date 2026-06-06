@@ -113,6 +113,12 @@ async function main() {
     throw new Error("forwarder company slug was not created");
   }
 
+  if (forwarderMember.memberRole !== "owner") {
+    throw new Error(
+      `forwarder member role expected owner, received ${forwarderMember.memberRole}`,
+    );
+  }
+
   const forwarderRetryResult = await createOnboardingProfile(
     forwarderClerkUserId,
     {

@@ -1,3 +1,4 @@
+import type { ForwarderMemberRole } from "@/db/schema";
 import { getForwarderCompanyProfilePath } from "@/lib/forwarder-profile-page";
 
 type ForwarderCompanyProfileFields = {
@@ -77,6 +78,8 @@ export function getForwarderCompanyPublicProfileUrl(slug: string | null) {
   return getForwarderCompanyProfilePath(slug);
 }
 
-export function canEditForwarderCompanySettings(memberRole: string) {
+export function canEditForwarderCompanySettings(
+  memberRole: ForwarderMemberRole | string,
+) {
   return memberRole === "owner" || memberRole === "admin";
 }
