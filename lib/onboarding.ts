@@ -8,6 +8,13 @@ import {
   importerProfiles,
   userProfiles,
 } from "@/db/schema";
+import {
+  defaultForwarderSlugFallback,
+  defaultImporterSlugFallback,
+  generateUniqueSlug,
+  getForwarderCompanySlugSource,
+  getImporterProfileSlugSource,
+} from "@/lib/slug";
 
 export const onboardingSchema = z.object({
   role: z.enum(["importer", "forwarder"]),
@@ -32,6 +39,22 @@ export async function createOnboardingProfile(
   }
 
   const result = await db.transaction(async (tx) => {
+    const isForwarderSlugUnique = async (slug: string) => {
+      const existing = await tx.query.forwarderCompanies.findFirst({
+        where: eq(forwarderCompanies.slug, slug),
+      });
+
+      return !existing;
+    };
+
+    const isImporterSlugUnique = async (slug: string) => {
+      const existing = await tx.query.importerProfiles.findFirst({
+        where: eq(importerProfiles.slug, slug),
+      });
+
+      return !existing;
+    };
+
     const [profile] = await tx
       .insert(userProfiles)
       .values({
@@ -42,10 +65,22 @@ export async function createOnboardingProfile(
       .returning();
 
     if (parsed.role === "importer") {
+      const importerSlug = await generateUniqueSlug(
+        getImporterProfileSlugSource({
+          companyName: parsed.companyName,
+          fullName: parsed.fullName,
+        }),
+        {
+          fallback: defaultImporterSlugFallback,
+          isUnique: isImporterSlugUnique,
+        },
+      );
+
       const [importerProfile] = await tx
         .insert(importerProfiles)
         .values({
           userProfileId: profile.id,
+          slug: importerSlug,
           companyName: parsed.companyName,
         })
         .returning();
@@ -53,10 +88,19 @@ export async function createOnboardingProfile(
       return { profile, importerProfile };
     }
 
+    const forwarderSlug = await generateUniqueSlug(
+      getForwarderCompanySlugSource(parsed.companyName),
+      {
+        fallback: defaultForwarderSlugFallback,
+        isUnique: isForwarderSlugUnique,
+      },
+    );
+
     const [forwarderCompany] = await tx
       .insert(forwarderCompanies)
       .values({
         name: parsed.companyName,
+        slug: forwarderSlug,
       })
       .returning();
 

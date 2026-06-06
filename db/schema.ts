@@ -241,12 +241,14 @@ export const importerProfiles = pgTable(
     userProfileId: uuid("user_profile_id")
       .notNull()
       .references(() => userProfiles.id, { onDelete: "cascade" }),
+    slug: text("slug"),
     companyName: text("company_name").notNull(),
     location: text("location"),
     contactPhone: text("contact_phone"),
     ...timestamps,
   },
   (table) => [
+    uniqueIndex("importer_profiles_slug_idx").on(table.slug),
     uniqueIndex("importer_profiles_user_profile_id_idx").on(
       table.userProfileId,
     ),
@@ -256,6 +258,7 @@ export const importerProfiles = pgTable(
 export const forwarderCompanies = pgTable("forwarder_companies", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  slug: text("slug"),
   contactPerson: text("contact_person"),
   contactEmail: text("contact_email"),
   originCities: text("origin_cities"),
@@ -270,7 +273,7 @@ export const forwarderCompanies = pgTable("forwarder_companies", {
     { onDelete: "set null" },
   ),
   ...timestamps,
-});
+}, (table) => [uniqueIndex("forwarder_companies_slug_idx").on(table.slug)]);
 
 export const forwarderQuoteDefaults = pgTable(
   "forwarder_quote_defaults",

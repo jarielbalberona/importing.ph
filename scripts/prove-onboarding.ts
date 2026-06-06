@@ -60,6 +60,10 @@ async function main() {
     throw new Error("importer retry unexpectedly switched role");
   }
 
+  if (!importerProfile.slug) {
+    throw new Error("importer profile slug was not created");
+  }
+
   const importerProfileRows = await db.query.importerProfiles.findMany({
     where: eq(importerProfiles.userProfileId, importerResult.profile.id),
   });
@@ -97,6 +101,17 @@ async function main() {
     }),
     "forwarder_company",
   );
+
+  const forwarderCompany = await requireRow(
+    await db.query.forwarderCompanies.findFirst({
+      where: eq(forwarderCompanies.id, forwarderMember.forwarderCompanyId),
+    }),
+    "forwarder_company",
+  );
+
+  if (!forwarderCompany.slug) {
+    throw new Error("forwarder company slug was not created");
+  }
 
   const forwarderRetryResult = await createOnboardingProfile(
     forwarderClerkUserId,
@@ -140,6 +155,7 @@ async function main() {
         importer: {
           userProfileId: importerResult.profile.id,
           importerProfileId: importerProfile.id,
+          slug: importerProfile.slug,
           retryCreated: importerRetryResult.created,
           retryRole: importerRetryResult.profile.role,
           importerProfileCount: importerProfileRows.length,
@@ -148,6 +164,7 @@ async function main() {
           userProfileId: forwarderResult.profile.id,
           forwarderCompanyId: forwarderMember.forwarderCompanyId,
           forwarderMemberId: forwarderMember.id,
+          slug: forwarderCompany.slug,
           retryCreated: forwarderRetryResult.created,
           retryRole: forwarderRetryResult.profile.role,
           forwarderMemberCount: forwarderMemberRows.length,

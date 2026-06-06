@@ -3,7 +3,19 @@
 import { useAuth } from "@clerk/nextjs";
 import { useEffect } from "react";
 
-export function AfterAuthResolver() {
+import {
+  appendAuthRedirectParams,
+  normalizeAppRedirectPath,
+  normalizeAuthRedirectIntent,
+} from "@/lib/auth-redirect";
+
+export function AfterAuthResolver({
+  redirectUrl,
+  intent,
+}: {
+  redirectUrl?: string;
+  intent?: string;
+}) {
   const { isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
@@ -16,8 +28,17 @@ export function AfterAuthResolver() {
       return;
     }
 
-    window.location.replace(`/after-auth/resolve?t=${Date.now()}`);
-  }, [isLoaded, isSignedIn]);
+    const normalizedRedirectUrl = normalizeAppRedirectPath(redirectUrl);
+    const normalizedIntent = normalizeAuthRedirectIntent(intent);
+    const target = appendAuthRedirectParams("/after-auth/resolve", {
+      redirectPath: normalizedRedirectUrl,
+      intent: normalizedIntent,
+    });
+
+    window.location.replace(
+      `${target}${target.includes("?") ? "&" : "?"}t=${Date.now()}`,
+    );
+  }, [intent, isLoaded, isSignedIn, redirectUrl]);
 
   return (
     <main className="grid min-h-screen place-items-center bg-muted px-6">

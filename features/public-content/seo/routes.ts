@@ -31,6 +31,10 @@ export function getGuideMarkdownPath(slug: string) {
   return `/guides/${slug}/markdown`;
 }
 
+export function getForwarderCompanyProfilePath(companySlug: string) {
+  return `/forwarder/${companySlug}`;
+}
+
 export function getPublishedGuidePaths() {
   return getPublishedGuides().map((guide) => getGuidePath(guide.slug));
 }

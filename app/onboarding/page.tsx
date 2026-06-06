@@ -4,16 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getProfileForCurrentUser } from "@/lib/authz";
-import { destinationForRole } from "@/lib/routes";
+import { resolveAuthenticatedDestination } from "@/lib/auth-redirect";
 import { completeOnboarding } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string; intent?: string }>;
+}) {
   const { profile } = await getProfileForCurrentUser();
+  const params = await searchParams;
 
   if (profile) {
-    redirect(destinationForRole(profile.role));
+    redirect(
+      resolveAuthenticatedDestination({
+        role: profile.role,
+        redirectPath: params.redirect_url,
+        intent: params.intent,
+      }),
+    );
   }
 
   return (
@@ -32,6 +43,8 @@ export default async function OnboardingPage() {
           </p>
         </div>
         <form action={completeOnboarding} className="mt-8 grid gap-6">
+          <input type="hidden" name="redirectUrl" value={params.redirect_url} />
+          <input type="hidden" name="intent" value={params.intent} />
           <div className="grid gap-2">
             <Label htmlFor="fullName">Full name</Label>
             <Input id="fullName" name="fullName" required minLength={2} />

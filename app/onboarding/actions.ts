@@ -3,8 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
+import { resolveAuthenticatedDestination } from "@/lib/auth-redirect";
 import { createOnboardingProfile, onboardingSchema } from "@/lib/onboarding";
-import { destinationForRole } from "@/lib/routes";
 
 export async function completeOnboarding(formData: FormData) {
   const { userId, redirectToSignIn } = await auth();
@@ -18,8 +18,22 @@ export async function completeOnboarding(formData: FormData) {
     fullName: formData.get("fullName"),
     companyName: formData.get("companyName"),
   });
+  const redirectUrl =
+    typeof formData.get("redirectUrl") === "string"
+      ? (formData.get("redirectUrl") as string)
+      : undefined;
+  const intent =
+    typeof formData.get("intent") === "string"
+      ? (formData.get("intent") as string)
+      : undefined;
 
   const result = await createOnboardingProfile(userId, parsed);
 
-  redirect(destinationForRole(result.profile.role));
+  redirect(
+    resolveAuthenticatedDestination({
+      role: result.profile.role,
+      redirectPath: redirectUrl,
+      intent,
+    }),
+  );
 }

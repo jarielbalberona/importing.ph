@@ -1,7 +1,22 @@
 import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 
-export default function Page() {
+import {
+  appendAuthRedirectParams,
+  buildAfterAuthRedirectUrl,
+} from "@/lib/auth-redirect";
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string; intent?: string }>;
+}) {
+  const params = await searchParams;
+  const afterAuthUrl = buildAfterAuthRedirectUrl({
+    redirectPath: params.redirect_url,
+    intent: params.intent,
+  });
+
   return (
     <main className="grid min-h-screen overflow-x-hidden bg-muted px-4 py-8 sm:place-items-center sm:px-6 sm:py-12">
       <div className="mx-auto grid w-full max-w-md gap-6">
@@ -16,9 +31,12 @@ export default function Page() {
         </div>
         <div className="w-full overflow-hidden">
           <SignUp
-            fallbackRedirectUrl="/after-auth"
-            forceRedirectUrl="/after-auth"
-            signInUrl="/sign-in"
+            fallbackRedirectUrl={afterAuthUrl}
+            forceRedirectUrl={afterAuthUrl}
+            signInUrl={appendAuthRedirectParams("/sign-in", {
+              redirectPath: params.redirect_url,
+              intent: params.intent,
+            })}
           />
         </div>
       </div>
