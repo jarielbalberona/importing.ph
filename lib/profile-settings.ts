@@ -14,6 +14,12 @@ import {
   importerProfileSettingsSchema,
 } from "@/lib/validation";
 
+export class ForwarderCompanySettingsAccessError extends Error {
+  constructor(readonly code: "forbidden" | "suspended") {
+    super(code === "forbidden" ? "Forbidden" : "Suspended");
+  }
+}
+
 export async function getImporterSettingsForCurrentUser() {
   const { profile, importerProfile } = await requireImporterProfile();
 
@@ -73,6 +79,14 @@ export async function updateForwarderSettingsForCurrentUser(
   const { member } = await requireForwarderMember();
   const parsed = forwarderCompanySettingsSchema.parse(input);
   const now = new Date();
+
+  if (member.memberRole !== "owner" && member.memberRole !== "admin") {
+    throw new ForwarderCompanySettingsAccessError("forbidden");
+  }
+
+  if (member.companyIsSuspended) {
+    throw new ForwarderCompanySettingsAccessError("suspended");
+  }
 
   await db.transaction(async (tx) => {
     await tx

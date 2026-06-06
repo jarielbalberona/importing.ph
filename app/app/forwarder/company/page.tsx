@@ -4,6 +4,12 @@ import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { QueryStateToast } from "@/components/query-state-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  canEditForwarderCompanySettings,
+  getForwarderCompanyPublicProfileCompleteness,
+  getForwarderCompanyPublicProfileStatusText,
+  getForwarderCompanyPublicProfileUrl,
+} from "@/lib/forwarder-company-profile";
 import { getForwarderSettingsForCurrentUser } from "@/lib/profile-settings";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +25,10 @@ export default async function ForwarderCompanyPage({
     getForwarderSettingsForCurrentUser(),
     searchParams,
   ]);
+  const publicProfileUrl = getForwarderCompanyPublicProfileUrl(company.slug);
+  const publicProfileCompleteness =
+    getForwarderCompanyPublicProfileCompleteness(company);
+  const canEdit = canEditForwarderCompanySettings(member.memberRole);
 
   return (
     <>
@@ -26,9 +36,11 @@ export default async function ForwarderCompanyPage({
         title="Company profile"
         description="Review the company details importers see and the defaults used when preparing quotes."
         actions={
-          <Button asChild variant="outline">
-            <Link href="/app/forwarder/company/edit">Edit company</Link>
-          </Button>
+          canEdit && !company.isSuspended ? (
+            <Button asChild variant="outline">
+              <Link href="/app/forwarder/company/edit">Edit company</Link>
+            </Button>
+          ) : null
         }
       />
 
@@ -38,14 +50,51 @@ export default async function ForwarderCompanyPage({
           clearKeys={["saved"]}
         />
 
+        <section className="rounded-md border bg-background p-4 sm:p-5">
+          <div className="grid gap-4 sm:flex sm:items-start sm:justify-between">
+            <div className="grid gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-semibold">Public company profile</h2>
+                <Badge
+                  variant={
+                    publicProfileCompleteness.isComplete ? "default" : "secondary"
+                  }
+                >
+                  {publicProfileCompleteness.isComplete ? "Complete" : "Incomplete"}
+                </Badge>
+              </div>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {getForwarderCompanyPublicProfileStatusText(company)}
+              </p>
+              <div className="grid gap-1 text-sm">
+                <p>
+                  <span className="font-medium">Public URL:</span>{" "}
+                  {publicProfileUrl ?? "Not available"}
+                </p>
+                <p>
+                  <span className="font-medium">Slug:</span>{" "}
+                  {company.slug ?? "Not available"}
+                </p>
+                <p className="text-muted-foreground">
+                  Contact person and contact email stay internal and are not shown on the
+                  public profile.
+                </p>
+              </div>
+            </div>
+            {publicProfileUrl ? (
+              <Button asChild variant="outline">
+                <Link href={publicProfileUrl}>View public profile</Link>
+              </Button>
+            ) : null}
+          </div>
+        </section>
+
         <section className="overflow-hidden rounded-md border bg-background">
           <ProfileSection
-            title="Basic information"
-            description="Details importers use to understand who is quoting."
+            title="Public company profile"
+            description="These fields appear on the public forwarder company profile."
           >
             <ProfileRow label="Company name" value={company.name} />
-            <ProfileRow label="Contact person" value={company.contactPerson} />
-            <ProfileRow label="Contact email" value={company.contactEmail} />
             <ProfileRow
               label="Supported shipping modes"
               value={shippingModesLabel(company.shippingModes)}
@@ -68,6 +117,14 @@ export default async function ForwarderCompanyPage({
               label="Service description"
               value={company.serviceDescription}
             />
+          </ProfileSection>
+
+          <ProfileSection
+            title="Internal contact details"
+            description="These fields help with internal operations and are not shown on the public company profile."
+          >
+            <ProfileRow label="Contact person" value={company.contactPerson} />
+            <ProfileRow label="Contact email" value={company.contactEmail} />
           </ProfileSection>
 
           <ProfileSection
@@ -132,6 +189,12 @@ export default async function ForwarderCompanyPage({
               label="Member role"
               value={<Badge variant="secondary">{member.memberRole}</Badge>}
             />
+            {!canEdit ? (
+              <ProfileRow
+                label="Editing access"
+                value="Only owner or admin company members can edit company settings."
+              />
+            ) : null}
           </ProfileSection>
         </section>
       </div>

@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { updateForwarderSettingsForCurrentUser } from "@/lib/profile-settings";
+import {
+  ForwarderCompanySettingsAccessError,
+  updateForwarderSettingsForCurrentUser,
+} from "@/lib/profile-settings";
 import { forwarderCompanySettingsInputFromFormData } from "@/lib/validation";
 
 export async function saveForwarderCompanySettings(formData: FormData) {
@@ -14,6 +17,10 @@ export async function saveForwarderCompanySettings(formData: FormData) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       redirect("/app/forwarder/company/edit?error=validation");
+    }
+
+    if (error instanceof ForwarderCompanySettingsAccessError) {
+      redirect(`/app/forwarder/company/edit?error=${error.code}`);
     }
 
     throw error;

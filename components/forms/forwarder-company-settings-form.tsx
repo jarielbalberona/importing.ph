@@ -25,9 +25,11 @@ type FormValues = z.input<typeof forwarderCompanySettingsSchema>;
 export function ForwarderCompanySettingsForm({
   defaultValues,
   cancelHref,
+  canEdit = true,
 }: {
   defaultValues: FormValues;
   cancelHref?: string;
+  canEdit?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const {
@@ -56,22 +58,17 @@ export function ForwarderCompanySettingsForm({
 
   return (
     <form onSubmit={handleSubmit(submitSettings)} className="grid gap-6">
+      <fieldset disabled={!canEdit || isPending} className="grid gap-6">
       <section className="grid gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Basic information</h2>
+          <h2 className="text-lg font-semibold">Public company profile</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Keep your company details and service coverage updated.
+            These details appear on your public forwarder company profile.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company name" error={errors.companyName?.message}>
             <Input {...register("companyName")} />
-          </Field>
-          <Field label="Contact person" error={errors.contactPerson?.message}>
-            <Input {...register("contactPerson")} />
-          </Field>
-          <Field label="Contact email" error={errors.contactEmail?.message}>
-            <Input {...register("contactEmail")} inputMode="email" />
           </Field>
           <Field
             label="Supported shipping modes"
@@ -102,8 +99,8 @@ export function ForwarderCompanySettingsForm({
         <div>
           <h2 className="text-lg font-semibold">Service coverage</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Describe the China origins and Philippines destinations you usually
-            serve.
+            Describe the China origins and Philippines destinations importers should
+            expect to see on your public profile.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -132,6 +129,23 @@ export function ForwarderCompanySettingsForm({
         >
           <Textarea {...register("serviceDescription")} rows={4} />
         </Field>
+      </section>
+
+      <section className="grid gap-4 border-t pt-6">
+        <div>
+          <h2 className="text-lg font-semibold">Internal contact details</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            These details are not shown on your public company profile.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Contact person" error={errors.contactPerson?.message}>
+            <Input {...register("contactPerson")} />
+          </Field>
+          <Field label="Contact email" error={errors.contactEmail?.message}>
+            <Input {...register("contactEmail")} inputMode="email" />
+          </Field>
+        </div>
       </section>
 
       <section className="grid gap-4 border-t pt-6">
@@ -213,7 +227,11 @@ export function ForwarderCompanySettingsForm({
       </section>
 
       <div className="grid gap-3 border-t pt-5 sm:flex sm:flex-row-reverse">
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          disabled={!canEdit || isPending}
+          className="w-full sm:w-auto"
+        >
           {isPending ? "Saving..." : "Save company settings"}
         </Button>
         {cancelHref ? (
@@ -228,6 +246,7 @@ export function ForwarderCompanySettingsForm({
           </Button>
         ) : null}
       </div>
+      </fieldset>
     </form>
   );
 }
