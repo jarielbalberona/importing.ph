@@ -2,6 +2,20 @@
 
 # importing.ph Engineering Agent Guide
 
+## Workspace Contract
+
+This project is onboarded into the parent `ai-development` workspace.
+
+- Read parent `.ai/core/` workflow rules when available.
+- Read `.ai-project.md` before task work.
+- Use `.ai-local/core-snapshot.md` only as generated fallback when parent `.ai/` is unavailable.
+- `project-canon/` is the authoritative durable project truth.
+- root `docs/` is legacy by workspace policy and should not be treated as a normal source-of-truth surface.
+- Do not create project-local `.ai/`, `.agent/`, or `.codex/`.
+- Final task reports belong in chat/ticket/PR, not random repo markdown.
+- Appropriate verification is default. E2E is escalation, not default.
+- Future task work must follow `project-canon/operations/agent-guardrails.md` and `project-canon/operations/verification-profile.md`.
+
 ## Mission
 
 importing.ph is a Philippines-first shipment quotation marketplace.

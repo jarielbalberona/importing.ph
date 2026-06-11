@@ -22,9 +22,7 @@
     "seo:audit:mock": "tsx scripts/seo/audit.ts --provider mock",
     "seo:verify": "tsx scripts/seo/verify-rendered-output.ts",
     "seo:keyword-plan": "tsx scripts/seo/keyword-plan.ts --provider mock",
-    "seo:serp-rank": "tsx scripts/seo/serp-rank.ts --provider mock",
-    "ai:run": "node tools/ai-runner/index.mjs",
-    "test:ai-runner": "node --test tools/ai-runner/index.test.mjs"
+    "seo:serp-rank": "tsx scripts/seo/serp-rank.ts --provider mock"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

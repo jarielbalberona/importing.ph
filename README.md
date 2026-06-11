@@ -23,8 +23,13 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## PSGC Location Data
 
 Shipment request destinations use PSGC-backed database tables. Seed JSON is not
-bundled into the frontend. See [docs/psgc-setup.md](docs/psgc-setup.md) for the
-expected files, import command, source version setting, and NCR handling.
+bundled into the frontend. See:
+
+- `project-canon/operations/environments.md`
+- `project-canon/operations/deployment.md`
+- `project-canon/operations/troubleshooting.md`
+
+for the current canonical PSGC import and environment notes.
 
 ## Render Deployment
 
@@ -42,8 +47,8 @@ PSGC_DATA_DIR=/path/to/psgc-json PSGC_VERSION=2025-2Q npm run db:import-psgc
 
 The PSGC JSON files are intentionally gitignored. Provide them to the Render
 runtime/job filesystem or run the command from a trusted machine with access to
-the target `DATABASE_URL`. See [docs/psgc-setup.md](docs/psgc-setup.md) for
-expected row counts and endpoint checks.
+the target `DATABASE_URL`. See the project-canon operations files above for the
+current canonical deployment and troubleshooting notes.
 
 ## Learn More
 
