@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, CircleAlert, MessageSquareText } from "lucide-react";
 
+import { PublicSiteFooter } from "@/components/public/site-footer";
 import { PublicSiteHeader } from "@/components/public/site-header";
 import { Button } from "@/components/ui/button";
 import { buildAboutMetadata } from "@/features/public-content/seo/metadata";
@@ -40,14 +41,14 @@ const limits = [
 export default function AboutPage() {
   return (
     <>
-      <PublicSiteHeader />
-      <main className="min-h-screen bg-white text-slate-950">
-        <section className="border-b border-slate-200">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-18">
+      <main className="min-h-screen bg-[#f7f7f4] text-[#202020]">
+        <PublicSiteHeader />
+        <section className="border-b border-[#e7e2dd]">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:py-18">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
               About Importing Philippines
             </p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl lg:text-6xl">
+            <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight sm:text-5xl">
               Built from real importing experience.
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-700 sm:text-lg sm:leading-8">
@@ -74,8 +75,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-16">
+        <section className="border-b border-[#e7e2dd]">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-16">
             <div>
               <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
                 Why this exists
@@ -91,7 +92,7 @@ export default function AboutPage() {
                 options, and continue with the forwarder you choose.
               </p>
             </div>
-            <ul className="grid gap-4 border-t border-slate-200 pt-6 lg:border-t-0 lg:pt-0">
+            <ul className="grid gap-4 border-t border-[#e7e2dd] pt-6 lg:border-t-0 lg:pt-0">
               {scatteredChats.map((point) => (
                 <ListItem key={point}>{point}</ListItem>
               ))}
@@ -99,8 +100,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200 bg-slate-50">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:py-16">
+        <section className="border-b border-[#e7e2dd] bg-white">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:py-16">
             <div>
               <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
                 Real importing background
@@ -115,7 +116,7 @@ export default function AboutPage() {
             </div>
             <div className="grid gap-x-8 sm:grid-cols-2">
               {backgroundPoints.map((point) => (
-                <div key={point} className="border-t border-slate-200 py-5">
+                <div key={point} className="border-t border-[#e7e2dd] py-5">
                   <p className="text-sm leading-6 text-slate-700">{point}</p>
                 </div>
               ))}
@@ -123,8 +124,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-16">
+        <section className="border-b border-[#e7e2dd]">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-16">
             <div>
               <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
                 What it helps with
@@ -135,7 +136,7 @@ export default function AboutPage() {
                 conversation again and again.
               </p>
             </div>
-            <ol className="grid gap-4 border-t border-slate-200 pt-6 lg:border-t-0 lg:pt-0">
+            <ol className="grid gap-4 border-t border-[#e7e2dd] pt-6 lg:border-t-0 lg:pt-0">
               {productHelps.map((point, index) => (
                 <li key={point} className="grid grid-cols-[2.5rem_1fr] gap-4">
                   <span className="text-sm font-semibold text-cyan-700">
@@ -148,8 +149,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200 bg-cyan-50">
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
+        <section className="border-b border-[#e7e2dd] bg-white">
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
             <div className="max-w-3xl">
               <MessageSquareText aria-hidden="true" className="size-8 text-cyan-700" />
               <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">
@@ -167,8 +168,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:py-16">
+        <section className="border-b border-[#e7e2dd]">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:py-16">
             <div>
               <CircleAlert aria-hidden="true" className="size-8 text-slate-500" />
               <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">
@@ -180,7 +181,7 @@ export default function AboutPage() {
                 the forwarder you choose.
               </p>
             </div>
-            <ul className="grid gap-4 border-t border-slate-200 pt-6 lg:border-t-0 lg:pt-0">
+            <ul className="grid gap-4 border-t border-[#e7e2dd] pt-6 lg:border-t-0 lg:pt-0">
               {limits.map((point) => (
                 <ListItem key={point}>{point}</ListItem>
               ))}
@@ -189,7 +190,7 @@ export default function AboutPage() {
         </section>
 
         <section>
-          <div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-[1fr_auto] md:items-center lg:py-16">
+          <div className="mx-auto grid max-w-7xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-[1fr_auto] md:items-center lg:py-16">
             <div>
               <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
                 Start with one shipment request.
@@ -214,6 +215,7 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
+        <PublicSiteFooter />
       </main>
     </>
   );

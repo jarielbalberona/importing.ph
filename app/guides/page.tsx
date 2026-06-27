@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PublicSiteFooter } from "@/components/public/site-footer";
+import { PublicSiteHeader } from "@/components/public/site-header";
 import { buildGuidesIndexMetadata } from "@/features/public-content/seo/metadata";
 import { getGuidePath, getPublishedGuides } from "@/features/public-content/seo/routes";
 
@@ -17,9 +19,10 @@ export default function GuidesPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-white text-slate-950">
-        <section className="border-b border-slate-200">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-18">
+      <main className="min-h-screen bg-[#f7f7f4] text-[#202020]">
+        <PublicSiteHeader />
+        <section className="border-b border-[#e7e2dd]">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:py-18">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
               Guides
             </p>
@@ -34,7 +37,7 @@ export default function GuidesPage() {
         </section>
 
         <section>
-          <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-12">
+          <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:py-12">
             {publishedGuides.length === 0 ? (
               <p className="text-base leading-7 text-slate-700">
                 New beginner guides are being added. Start with our onboarding content
@@ -47,7 +50,7 @@ export default function GuidesPage() {
               {publishedGuides.map((guide) => (
                 <article
                   key={guide.slug}
-                  className="border-t border-slate-200 py-5 first:border-t-0 first:pt-0"
+                  className="border-t border-[#e7e2dd] py-5 first:border-t-0 first:pt-0"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
@@ -77,6 +80,7 @@ export default function GuidesPage() {
             </div>
           </div>
         </section>
+        <PublicSiteFooter />
       </main>
     </>
   );

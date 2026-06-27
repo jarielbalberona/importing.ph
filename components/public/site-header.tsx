@@ -2,90 +2,58 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 export function PublicSiteHeader() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   return (
-    <header className="relative z-30 border-b border-slate-200 bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
-        <div className="flex min-h-10 items-center justify-between gap-4">
-          <Link href="/" className="shrink-0" aria-label="importing.ph home">
-            <Image
-              src="/assets/importingph.png"
-              alt="importing.ph"
-              width={173}
-              height={50}
-              priority
-              className="h-10 w-auto"
-            />
-          </Link>
+    <header className="relative z-30 mx-auto flex min-h-16 max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+      <Link href="/" className="flex items-center gap-2" aria-label="importing.ph home">
+        <Image
+          src="/assets/importingph.png"
+          alt="importing.ph"
+          width={173}
+          height={50}
+          priority
+          className="h-8 w-auto"
+        />
+      </Link>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="sm:hidden"
-            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={isMenuOpen}
-            aria-controls="public-site-navigation"
-            onClick={() => setIsMenuOpen((value) => !value)}
-          >
-            {isMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-          </Button>
+      <PublicNavigation className="hidden items-center gap-4 text-xs font-medium text-[#202020] sm:flex" />
 
-          <PublicNavigation className="hidden sm:flex sm:items-center" />
-        </div>
-
-        <div
-          id="public-site-navigation"
-          className={
-            isMenuOpen
-              ? "absolute inset-x-4 top-full mt-2 rounded-md border border-slate-200 bg-white p-3 shadow-lg sm:hidden"
-              : "hidden"
-          }
-        >
-          <PublicNavigation
-            className="grid gap-3"
-            onNavigate={() => setIsMenuOpen(false)}
-          />
-        </div>
-      </div>
+      <details className="group relative sm:hidden">
+        <summary className="flex size-9 cursor-pointer list-none items-center justify-center rounded-full bg-white text-[#202020] shadow-sm ring-1 ring-black/10 [&::-webkit-details-marker]:hidden">
+          <Menu aria-hidden="true" className="size-4" />
+          <span className="sr-only">Open menu</span>
+        </summary>
+        <PublicNavigation className="absolute right-0 top-12 grid w-56 gap-2 rounded-md border border-[#e7e2dd] bg-white p-3 text-sm font-medium shadow-xl" />
+      </details>
     </header>
   );
 }
 
 function PublicNavigation({
   className,
-  onNavigate,
 }: {
   className?: string;
-  onNavigate?: () => void;
 }) {
   return (
     <nav aria-label="Account links" className={className}>
-      <Button asChild variant="ghost" className="w-full sm:w-auto">
-        <Link href="/guides" onClick={onNavigate}>
-          Guides
-        </Link>
-      </Button>
-      <Button asChild variant="ghost" className="w-full sm:w-auto">
-        <Link href="/about" onClick={onNavigate}>
-          About
-        </Link>
-      </Button>
-      <Button asChild variant="ghost" className="w-full sm:w-auto">
-        <Link href="/sign-in" onClick={onNavigate}>
+      <Link href="/guides" className="rounded-md px-3 py-1 hover:bg-white/70 sm:p-0 sm:hover:bg-transparent sm:hover:text-cyan-700">
+        Guides
+      </Link>
+      <Link href="/about" className="rounded-md px-3 py-1 hover:bg-white/70 sm:p-0 sm:hover:bg-transparent sm:hover:text-cyan-700">
+        About
+      </Link>
+      <Button asChild variant="outline" className="rounded-full border-[#202020] bg-transparent px-4">
+        <Link href="/sign-in">
           Sign in
         </Link>
       </Button>
-      <Button asChild className="w-full sm:w-auto">
-        <Link href="/sign-up" onClick={onNavigate}>
-          Create free account
+      <Button asChild className="rounded-full bg-[#202020] px-4 text-white hover:bg-[#343434]">
+        <Link href="/sign-up">
+          Create account
         </Link>
       </Button>
     </nav>

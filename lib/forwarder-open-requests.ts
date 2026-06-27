@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -60,7 +60,22 @@ export type OpenRequestFilters = {
   shippingModePreference?: ShippingModePreference;
   shippingPreference?: ShippingPreference;
   specialHandling?: "msds";
+  hideQuoted?: boolean;
+  sort?: OpenRequestSort;
 };
+
+export type OpenRequestSort =
+  | "newest"
+  | "oldest"
+  | "most_quotes"
+  | "fewest_quotes";
+
+export const openRequestSortOptions = [
+  "newest",
+  "oldest",
+  "most_quotes",
+  "fewest_quotes",
+] as const satisfies readonly OpenRequestSort[];
 
 function forwarderSafeRequestColumns() {
   return {
@@ -182,6 +197,9 @@ export function openRequestFiltersFromSearchParams(
       firstValue("shippingPreference"),
     ),
     specialHandling: specialHandling === "msds" ? "msds" : undefined,
+    hideQuoted: firstValue("hideQuoted") === "1",
+    sort:
+      parseEnumValue(openRequestSortOptions, firstValue("sort")) ?? "newest",
   };
 }
 
@@ -241,11 +259,26 @@ export async function getOpenShipmentRequestsForForwarder(
   const { member } = await requireForwarderMember();
   const quoteCounts = quoteCountsSubquery();
   const ownQuotes = ownQuotesSubquery(member.companyId);
+  const quoteCountExpression = sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`;
+  const whereConditions = [whereForOpenRequestFilters(filters)];
+
+  if (filters.hideQuoted) {
+    whereConditions.push(isNull(ownQuotes.ownQuoteStatus));
+  }
+
+  const orderBy =
+    filters.sort === "oldest"
+      ? [asc(shipmentRequests.createdAt)]
+      : filters.sort === "most_quotes"
+        ? [desc(quoteCountExpression), desc(shipmentRequests.createdAt)]
+        : filters.sort === "fewest_quotes"
+          ? [asc(quoteCountExpression), desc(shipmentRequests.createdAt)]
+          : [desc(shipmentRequests.createdAt)];
 
   return db
     .select({
       ...forwarderSafeRequestColumns(),
-      quoteCount: sql<number>`coalesce(${quoteCounts.quoteCount}, 0)`,
+      quoteCount: quoteCountExpression,
       ownQuoteStatus: ownQuotes.ownQuoteStatus,
     })
     .from(shipmentRequests)
@@ -257,8 +290,8 @@ export async function getOpenShipmentRequestsForForwarder(
       ownQuotes,
       eq(ownQuotes.shipmentRequestId, shipmentRequests.id),
     )
-    .where(whereForOpenRequestFilters(filters))
-    .orderBy(desc(shipmentRequests.createdAt));
+    .where(and(...whereConditions))
+    .orderBy(...orderBy);
 }
 
 export async function getOpenShipmentRequestForForwarder(requestId: string) {

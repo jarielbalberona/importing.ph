@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import {
   getOpenShipmentRequestsForForwarder,
+  type OpenRequestFilters,
   openRequestFiltersFromSearchParams,
 } from "@/lib/forwarder-open-requests";
 import {
@@ -54,8 +55,8 @@ export default async function ForwarderRequestsPage({
   );
   const withQuotes = requests.filter((request) => request.quoteCount > 0).length;
   const ownQuotes = requests.filter((request) => request.ownQuoteStatus).length;
-  const hasFilters = Object.values(filters).some(Boolean);
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount = countActiveFilters(filters);
+  const hasFilters = activeFilterCount > 0;
   const publicProfileFields = [
     settings.company.contactPerson,
     settings.company.contactEmail,
@@ -220,6 +221,20 @@ function RequestMetric({ label, value }: { label: string; value: number }) {
       <span className="text-2xl font-semibold">{value}</span>
     </div>
   );
+}
+
+function countActiveFilters(filters: OpenRequestFilters) {
+  return [
+    filters.origin,
+    filters.destination,
+    filters.cargoType,
+    filters.deliveryPreference,
+    filters.shippingModePreference,
+    filters.shippingPreference,
+    filters.specialHandling,
+    filters.hideQuoted ? "hideQuoted" : undefined,
+    filters.sort && filters.sort !== "newest" ? filters.sort : undefined,
+  ].filter(Boolean).length;
 }
 
 function OwnQuoteBadge({ status }: { status: string | null }) {

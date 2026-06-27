@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PublicSiteFooter } from "@/components/public/site-footer";
+import { PublicSiteHeader } from "@/components/public/site-header";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -62,7 +64,8 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
 
   return (
     <>
-      <main className="min-h-screen bg-white text-slate-950">
+      <main className="min-h-screen bg-[#f7f7f4] text-[#202020]">
+        <PublicSiteHeader />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
@@ -72,7 +75,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
 
-      <section className="border-b border-slate-200">
+      <section className="border-b border-[#e7e2dd]">
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-12">
           <Breadcrumb>
             <BreadcrumbList>
@@ -137,7 +140,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
                 <ul className="mt-4 grid gap-3 text-base leading-7 text-slate-700">
                   {section.bullets.map((bullet) => (
                     <li key={bullet} className="flex gap-3">
-                      <span aria-hidden="true" className="mt-2 h-2 w-2 rounded-full bg-cyan-700" />
+                <span aria-hidden="true" className="mt-2 h-2 w-2 rounded-full bg-cyan-700" />
                       <span>{bullet}</span>
                     </li>
                   ))}
@@ -156,7 +159,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               ) : null}
 
               {section.callout ? (
-                <div className="mt-5 border-l-4 border-cyan-700 bg-cyan-50 px-5 py-4">
+                <div className="mt-5 border-l-4 border-cyan-700 bg-white px-5 py-4">
                   <p className="font-semibold text-slate-950">
                     {section.callout.title ?? "Take note"}
                   </p>
@@ -169,7 +172,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
               {section.faqs?.length ? (
                 <div className="mt-6 grid gap-5">
                   {section.faqs.map((faq) => (
-                    <div key={faq.question} className="border-t border-slate-200 pt-5">
+                    <div key={faq.question} className="border-t border-[#e7e2dd] pt-5">
                       <h3 className="text-lg font-semibold">{faq.question}</h3>
                       <p className="mt-2 text-base leading-7 text-slate-700">{faq.answer}</p>
                     </div>
@@ -182,7 +185,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
       </article>
 
       {guide.relatedLinks?.length ? (
-        <section className="border-t border-slate-200">
+        <section className="border-t border-[#e7e2dd]">
           <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:py-12">
             <h2 className="text-2xl font-semibold leading-tight">More guides you may find useful</h2>
             <div className="mt-6 grid gap-4">
@@ -190,7 +193,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
                 <Link
                   key={`${guide.slug}:${link.href}`}
                   href={link.href}
-                  className="border-t border-slate-200 pt-4 transition-colors hover:text-cyan-700"
+                  className="border-t border-[#e7e2dd] pt-4 transition-colors hover:text-cyan-700"
                 >
                   <p className="text-lg font-semibold">{link.label}</p>
                   {link.description ? (
@@ -203,7 +206,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
         </section>
       ) : null}
 
-      <section className="border-t border-slate-200 bg-cyan-50">
+      <section className="border-t border-[#e7e2dd] bg-white">
         <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:py-12">
           <div>
             <h2 className="text-2xl font-semibold leading-tight">
@@ -222,6 +225,7 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
           </Link>
         </div>
       </section>
+      <PublicSiteFooter />
       </main>
     </>
   );

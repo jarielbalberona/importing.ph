@@ -42,6 +42,8 @@ export type ForwarderRequestFilters = {
   shippingModePreference?: string;
   shippingPreference?: string;
   specialHandling?: "msds";
+  hideQuoted?: boolean;
+  sort?: string;
 };
 
 export function FilterSheet({
@@ -75,6 +77,30 @@ export function FilterSheet({
 
         <form className="flex min-h-0 flex-1 flex-col">
           <div className="grid gap-4 px-4">
+            <label className="grid gap-2 text-sm font-medium">
+              Sort
+              <Select name="sort" defaultValue={filters.sort ?? "newest"}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest first</SelectItem>
+                  <SelectItem value="oldest">Oldest first</SelectItem>
+                  <SelectItem value="most_quotes">Most quotes</SelectItem>
+                  <SelectItem value="fewest_quotes">Fewest quotes</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="flex items-center justify-between gap-4 rounded-md border px-3 py-2 text-sm font-medium">
+              <span>Hide quoted</span>
+              <input
+                type="checkbox"
+                name="hideQuoted"
+                value="1"
+                defaultChecked={filters.hideQuoted}
+                className="size-4 accent-primary"
+              />
+            </label>
             <label className="grid gap-2 text-sm font-medium">
               Origin city or area
               <Input
