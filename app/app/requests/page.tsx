@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { EmptyState, PageHeader } from "@/components/app-shell";
 import { GuideLinksCard } from "@/components/guides/guide-links-card";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
+import { QueryStateToast } from "@/components/query-state-toast";
 import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,9 +30,18 @@ import { getShipmentRequestsForCurrentImporter } from "@/lib/shipment-requests";
 
 export const dynamic = "force-dynamic";
 
-export default async function ImporterRequestsPage() {
+type ImporterRequestsPageProps = {
+  searchParams: Promise<{ request?: string }>;
+};
+
+export default async function ImporterRequestsPage({
+  searchParams,
+}: ImporterRequestsPageProps) {
   await requireRole(["importer"]);
-  const requests = await getShipmentRequestsForCurrentImporter();
+  const [requests, query] = await Promise.all([
+    getShipmentRequestsForCurrentImporter(),
+    searchParams,
+  ]);
   const totalQuotes = requests.reduce(
     (sum, request) => sum + request.quoteCount,
     0,
@@ -40,6 +51,9 @@ export default async function ImporterRequestsPage() {
   ).length;
   const selectedRequests = requests.filter(
     (request) => request.status === "quote_selected",
+  ).length;
+  const draftRequests = requests.filter(
+    (request) => request.status === "draft",
   ).length;
 
   return (
@@ -56,9 +70,36 @@ export default async function ImporterRequestsPage() {
 
       <section className="mt-6 flex flex-wrap gap-x-10 gap-y-4 border-y py-4 text-sm">
         <RequestMetric label="Active" value={activeRequests} />
+        <RequestMetric label="Drafts" value={draftRequests} />
         <RequestMetric label="Quotes" value={totalQuotes} />
         <RequestMetric label="Selected" value={selectedRequests} />
       </section>
+
+      <QueryStateToast
+        successMessage={
+          query.request === "draft"
+            ? "Draft request saved."
+            : query.request === "posted"
+              ? "Shipment request posted."
+              : null
+        }
+        clearKeys={["request"]}
+      />
+
+      <OnboardingChecklist
+        title="Importer launch checklist"
+        description="Finish the minimum marketplace loop before relying on live forwarder responses."
+        items={[
+          { label: "Importer profile created", complete: true },
+          {
+            label: "First request drafted or posted",
+            complete: requests.length > 0,
+          },
+          { label: "At least one request posted", complete: activeRequests > 0 },
+          { label: "First quote received", complete: totalQuotes > 0 },
+          { label: "Quote accepted", complete: selectedRequests > 0 },
+        ]}
+      />
 
       {requests.length === 0 ? (
         <div className="mt-8 grid gap-4">

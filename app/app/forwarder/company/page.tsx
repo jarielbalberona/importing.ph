@@ -4,6 +4,7 @@ import { PageHeader, StatusBadge } from "@/components/app-shell";
 import { QueryStateToast } from "@/components/query-state-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   canEditForwarderCompanySettings,
   getForwarderCompanyPublicProfileCompleteness,
@@ -28,6 +29,11 @@ export default async function ForwarderCompanyPage({
   const publicProfileUrl = getForwarderCompanyPublicProfileUrl(company.slug);
   const publicProfileCompleteness =
     getForwarderCompanyPublicProfileCompleteness(company);
+  const completenessPercent = Math.round(
+    (publicProfileCompleteness.completedCount /
+      publicProfileCompleteness.totalCount) *
+      100,
+  );
   const canEdit = canEditForwarderCompanySettings(member.memberRole);
 
   return (
@@ -66,6 +72,22 @@ export default async function ForwarderCompanyPage({
               <p className="text-sm leading-6 text-muted-foreground">
                 {getForwarderCompanyPublicProfileStatusText(company)}
               </p>
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
+                  <span>Profile completeness</span>
+                  <span>{completenessPercent}%</span>
+                </div>
+                <Progress value={completenessPercent} />
+                {publicProfileCompleteness.missingFields.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {publicProfileCompleteness.missingFields.map((field) => (
+                      <Badge key={field} variant="outline">
+                        Add {field}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               <div className="grid gap-1 text-sm">
                 <p>
                   <span className="font-medium">Public URL:</span>{" "}

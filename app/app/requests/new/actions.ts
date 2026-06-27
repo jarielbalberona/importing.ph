@@ -11,6 +11,17 @@ import {
 } from "@/lib/validation";
 
 export async function createShipmentRequest(formData: FormData) {
+  await createShipmentRequestWithStatus(formData, "posted");
+}
+
+export async function saveDraftShipmentRequest(formData: FormData) {
+  await createShipmentRequestWithStatus(formData, "draft");
+}
+
+async function createShipmentRequestWithStatus(
+  formData: FormData,
+  status: "draft" | "posted",
+) {
   const input = shipmentRequestInputFromFormData(formData);
   const parsed = createShipmentRequestSchema.safeParse(input);
 
@@ -18,7 +29,7 @@ export async function createShipmentRequest(formData: FormData) {
     redirect("/app/requests/new?error=validation");
   }
 
-  await createShipmentRequestForCurrentImporter(parsed.data);
+  await createShipmentRequestForCurrentImporter(parsed.data, { status });
 
-  redirect("/app/requests");
+  redirect(`/app/requests?request=${status}`);
 }

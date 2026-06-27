@@ -34,14 +34,19 @@ import {
   getQuoteCountForRequest,
 } from "@/lib/quotes";
 import { listShipmentRequestAttachmentsForViewer } from "@/lib/media";
-import { startForwarderConversation } from "./actions";
+import { startForwarderConversation, withdrawQuote } from "./actions";
+import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
 import { RequestDetailToast } from "./request-detail-toast";
 
 export const dynamic = "force-dynamic";
 
 type ForwarderRequestDetailPageProps = {
   params: Promise<{ requestId: string }>;
-  searchParams: Promise<{ quote?: string; messageError?: string }>;
+  searchParams: Promise<{
+    quote?: string;
+    quoteError?: string;
+    messageError?: string;
+  }>;
 };
 
 const requestIdSchema = z.string().uuid();
@@ -106,8 +111,13 @@ export default async function ForwarderRequestDetailPage({
       <div className="mt-6 grid gap-4">
         <RequestDetailToast
           quoteSubmitted={query.quote === "submitted"}
+          quoteStatus={query.quote}
           messageError={
-            query.messageError ? messageErrorMessage(query.messageError) : null
+            query.messageError
+              ? messageErrorMessage(query.messageError)
+              : query.quoteError
+                ? quoteErrorMessage(query.quoteError)
+                : null
           }
         />
 
@@ -260,6 +270,7 @@ function OwnQuotePanel({
       </div>
     );
   }
+  const canEdit = ownQuote.status === "submitted";
 
   return (
     <div className="rounded-md border bg-background">
@@ -303,15 +314,50 @@ function OwnQuotePanel({
       </DetailSection>
 
       <section className="border-t p-4 sm:p-5">
-        <form action={startForwarderConversation}>
-          <input type="hidden" name="requestId" value={requestId} />
-          <Button type="submit" variant="outline" className="w-full sm:w-auto">
-            Message importer
-          </Button>
-        </form>
+        <div className="grid gap-3 sm:flex sm:flex-wrap">
+          <form action={startForwarderConversation}>
+            <input type="hidden" name="requestId" value={requestId} />
+            <Button type="submit" variant="outline" className="w-full sm:w-auto">
+              Message importer
+            </Button>
+          </form>
+          {canEdit ? (
+            <>
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={`/app/forwarder/requests/${requestId}/quote?mode=edit`}>
+                  Edit quote
+                </Link>
+              </Button>
+              <form action={withdrawQuote}>
+                <input type="hidden" name="requestId" value={requestId} />
+                <input type="hidden" name="quoteId" value={ownQuote.id} />
+                <ConfirmSubmitButton
+                  type="submit"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  title="Withdraw this quote?"
+                  message="The importer will no longer be able to accept this quote. You can submit another quote only if the request remains open."
+                  confirmLabel="Withdraw quote"
+                  cancelLabel="Cancel"
+                >
+                  Withdraw quote
+                </ConfirmSubmitButton>
+              </form>
+            </>
+          ) : null}
+        </div>
       </section>
     </div>
   );
+}
+
+function quoteErrorMessage(error: string) {
+  switch (error) {
+    case "withdraw-unavailable":
+      return "This quote can no longer be withdrawn.";
+    default:
+      return "The quote change was not saved. Try again.";
+  }
 }
 
 function DetailSection({

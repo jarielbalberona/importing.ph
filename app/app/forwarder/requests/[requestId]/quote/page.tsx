@@ -22,12 +22,13 @@ import {
   defaultValidUntilFromDays,
   getForwarderQuoteDefaultsForCurrentCompany,
 } from "@/lib/profile-settings";
+import { updateQuote } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 type ForwarderQuotePageProps = {
   params: Promise<{ requestId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; mode?: string }>;
 };
 
 const requestIdSchema = z.string().uuid();
@@ -59,14 +60,23 @@ export default async function ForwarderQuotePage({
     getForwarderQuoteDefaultsForCurrentCompany(member.companyId),
   ]);
 
-  if (ownQuote) {
+  const isEditing = query.mode === "edit";
+
+  if (isEditing && !ownQuote) {
+    redirect(`/app/forwarder/requests/${request.id}`);
+  }
+
+  if (
+    ownQuote &&
+    (!isEditing || ownQuote.status !== "submitted" || request.status !== "posted")
+  ) {
     redirect(`/app/forwarder/requests/${request.id}`);
   }
 
   return (
     <>
       <PageHeader
-        title="Send a quote"
+        title={isEditing ? "Edit quote" : "Send a quote"}
         description={`${request.cargoDescription} / ${formatStructuredRoute(request)}`}
         actions={
           <Button asChild variant="outline">
@@ -112,27 +122,39 @@ export default async function ForwarderQuotePage({
 
         <QuoteSubmissionForm
           requestId={request.id}
+          quoteId={ownQuote?.id}
           requestShippingModePreference={request.shippingModePreference}
           cancelHref={`/app/forwarder/requests/${request.id}`}
+          action={isEditing ? updateQuote : undefined}
+          submitLabel={isEditing ? "Save quote changes" : "Submit quote"}
+          pendingLabel={isEditing ? "Saving..." : "Submitting..."}
           defaultValues={{
-            currency: quoteDefaults?.currency ?? "PHP",
+            quoteAmount: ownQuote?.quoteAmount ?? undefined,
+            currency: ownQuote?.currency ?? quoteDefaults?.currency ?? "PHP",
             shippingMode:
-              request.shippingModePreference === "either"
+              ownQuote?.shippingMode ??
+              (request.shippingModePreference === "either"
                 ? undefined
-                : request.shippingModePreference,
+                : request.shippingModePreference),
             serviceOffered:
-              formatDeliveryPreference(request.deliveryPreference) !==
-              "Not provided"
+              ownQuote?.serviceOffered ??
+              (formatDeliveryPreference(request.deliveryPreference) !==
+                "Not provided"
                 ? formatDeliveryPreference(request.deliveryPreference)
-                : (quoteDefaults?.serviceOffered ?? ""),
+                : (quoteDefaults?.serviceOffered ?? "")),
             estimatedTransitMinDays:
-              quoteDefaults?.transitMinDays?.toString() ?? "",
+              ownQuote?.estimatedTransitMinDays?.toString() ??
+              quoteDefaults?.transitMinDays?.toString() ??
+              "",
             estimatedTransitMaxDays:
-              quoteDefaults?.transitMaxDays?.toString() ?? "",
-            inclusions: quoteDefaults?.inclusions ?? "",
-            exclusions: quoteDefaults?.exclusions ?? "",
-            notes: quoteDefaults?.notes ?? "",
+              ownQuote?.estimatedTransitMaxDays?.toString() ??
+              quoteDefaults?.transitMaxDays?.toString() ??
+              "",
+            inclusions: ownQuote?.inclusions ?? quoteDefaults?.inclusions ?? "",
+            exclusions: ownQuote?.exclusions ?? quoteDefaults?.exclusions ?? "",
+            notes: ownQuote?.notes ?? quoteDefaults?.notes ?? "",
             validUntil:
+              ownQuote?.validUntil.toISOString().slice(0, 10) ??
               defaultValidUntilFromDays(quoteDefaults?.validForDays ?? 14) ??
               "",
           }}
@@ -169,6 +191,8 @@ function errorMessage(error: string) {
       return "This request is no longer available for quoting.";
     case "forwarder_suspended":
       return "Your company is suspended and cannot submit quotes.";
+    case "invalid_status":
+      return "This quote can no longer be edited.";
     case "validation":
       return "Complete the quote fields with a valid shipping mode, amount, transit range, and future validity date.";
     default:

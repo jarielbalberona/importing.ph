@@ -62,14 +62,22 @@ const serviceTypeLabels: Record<ServiceTypeValue, string> = {
 
 export function QuoteSubmissionForm({
   requestId,
+  quoteId,
   requestShippingModePreference,
   defaultValues,
   cancelHref,
+  action = submitQuote,
+  submitLabel = "Submit quote",
+  pendingLabel = "Submitting...",
 }: {
   requestId: string;
+  quoteId?: string;
   requestShippingModePreference: "sea" | "air" | "either";
   defaultValues?: Partial<FormValues>;
   cancelHref?: string;
+  action?: (formData: FormData) => void | Promise<void>;
+  submitLabel?: string;
+  pendingLabel?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const initialServiceType = useMemo(
@@ -124,6 +132,9 @@ export function QuoteSubmissionForm({
     const formData = new FormData();
 
     formData.append("requestId", requestId);
+    if (quoteId) {
+      formData.append("quoteId", quoteId);
+    }
 
     for (const [key, value] of Object.entries(data)) {
       if (value !== undefined && value !== null && value !== "") {
@@ -132,7 +143,7 @@ export function QuoteSubmissionForm({
     }
 
     startTransition(() => {
-      void submitQuote(formData);
+      void action(formData);
     });
   }
 
@@ -145,7 +156,7 @@ export function QuoteSubmissionForm({
       <input type="hidden" {...register("currency")} />
       <input type="hidden" {...register("serviceOffered")} />
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold">Submit quote</h2>
+        <h2 className="text-lg font-semibold">{submitLabel}</h2>
         <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">
           Private quote. Only the importer can see your pricing and service
           details.
@@ -329,7 +340,7 @@ export function QuoteSubmissionForm({
 
       <div className="grid gap-3 border-t pt-5 sm:flex sm:flex-row-reverse">
         <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-          {isPending ? "Submitting..." : "Submit quote"}
+          {isPending ? pendingLabel : submitLabel}
         </Button>
         {cancelHref ? (
           <Button

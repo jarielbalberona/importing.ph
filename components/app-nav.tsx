@@ -95,6 +95,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ],
   admin: [
     { href: "/admin", label: "Overview", icon: Home },
+    { href: "/admin#activity", label: "Activity", icon: ClipboardList },
     { href: "/admin#users", label: "Users", icon: UsersRound },
     { href: "/admin#requests", label: "Requests", icon: ClipboardList },
     { href: "/admin#quotes", label: "Quotes", icon: MessageSquare },

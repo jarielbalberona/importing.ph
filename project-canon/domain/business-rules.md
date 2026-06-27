@@ -9,12 +9,17 @@ Source: current repo inspection, plus bounded migrated reference from legacy roo
 - supported top-level user roles are `importer`, `forwarder`, and `admin`
 - importer request destinations use PSGC-backed data tables
 - quote uniqueness is constrained per request and forwarder company
+- importer requests can be saved as `draft`; drafts are not broadcast to forwarders until posted
+- submitted quotes can be edited or withdrawn only while the request remains `posted`
+- quote acceptance closes the request for marketplace quoting by moving it to `quote_selected`
 - messaging is gated by quote-linked conversation access
 - forwarder companies can be suspended for marketplace safety
 - unread badge state is conversation-based, not raw-message-count based
 - posting a shipment request creates in-app request notifications for active forwarder members
 - quote submission creates in-app quote notifications for the importer
 - quote decisions create in-app quote notifications for the submitting forwarder
+- request-posted, quote-decision, and importer-to-forwarder message events also send best-effort email when the recipient email exists
+- admin marketplace activity is a read model over request, quote, and safety events; it is not a separate audit-ledger table
 
 ## Bounded Migrated Rules From Legacy/Reference Docs
 

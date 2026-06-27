@@ -390,6 +390,9 @@ function ConversationList({
   className?: string;
 }) {
   const [search, setSearch] = useState("");
+  const unreadCount = conversations.filter(
+    (conversation) => conversation.hasUnread,
+  ).length;
   const filteredConversations = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -417,7 +420,22 @@ function ConversationList({
         className,
       )}
     >
-      <div className="border-b p-4">
+      <div className="grid gap-3 border-b p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Inbox</h2>
+            <p className="text-xs text-muted-foreground">
+              {conversations.length} conversations
+            </p>
+          </div>
+          {unreadCount > 0 ? (
+            <Badge className="shrink-0">{unreadCount} unread</Badge>
+          ) : (
+            <Badge variant="outline" className="shrink-0">
+              All read
+            </Badge>
+          )}
+        </div>
         <Input
           type="search"
           placeholder="Search conversations"
@@ -448,16 +466,30 @@ function ConversationList({
               )}
             >
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <p
-                  className={cn(
-                    "min-w-0 truncate font-medium",
-                    conversation.hasUnread && !conversation.isActive
-                      ? "text-foreground"
-                      : "text-foreground/90",
-                  )}
-                >
-                  {conversation.counterpartyName}
-                </p>
+                <div className="min-w-0">
+                  <p
+                    className={cn(
+                      "min-w-0 truncate font-medium",
+                      conversation.hasUnread && !conversation.isActive
+                        ? "text-foreground"
+                        : "text-foreground/90",
+                    )}
+                  >
+                    {conversation.counterpartyName}
+                  </p>
+                  <Badge
+                    variant={
+                      conversation.hasUnread && !conversation.isActive
+                        ? "default"
+                        : "outline"
+                    }
+                    className="mt-1 h-5 px-1.5 text-[0.68rem]"
+                  >
+                    {conversation.hasUnread && !conversation.isActive
+                      ? "Unread"
+                      : "Read"}
+                  </Badge>
+                </div>
                 <p
                   className={cn(
                     "shrink-0 text-xs",

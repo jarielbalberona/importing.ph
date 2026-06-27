@@ -62,6 +62,37 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       ) : null}
 
+        <AdminSection
+          id="activity"
+          title="Marketplace activity"
+          description="Recent request, quote, and safety events."
+        >
+          {overview.activity.length === 0 ? (
+            <EmptyState
+              title="No marketplace activity found"
+              description="Activity appears here after importers, forwarders, and admins use the marketplace."
+            />
+          ) : (
+            <div className="grid divide-y">
+              {overview.activity.map((activity) => (
+                <article key={activity.id} className="grid gap-2 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">{activity.title}</h3>
+                    <StatusBadge>{titleFromEnum(activity.kind)}</StatusBadge>
+                    <StatusBadge>{titleFromEnum(activity.status)}</StatusBadge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {activity.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(activity.occurredAt)}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
+        </AdminSection>
+
         <AdminSection id="users" title="Users">
           {overview.users.length === 0 ? (
             <EmptyState title="No users found" description="New users will appear here after they create an account." />

@@ -5,6 +5,7 @@ import {
   importerProfiles,
   quotes,
   shipmentRequests,
+  type ShipmentRequestStatus,
   type UserRole,
 } from "@/db/schema";
 import { attachFilesToShipmentRequest } from "@/lib/media";
@@ -32,9 +33,11 @@ export async function requireImporterProfile() {
 
 export async function createShipmentRequestForCurrentImporter(
   input: CreateShipmentRequestInput,
+  options: { status?: Extract<ShipmentRequestStatus, "draft" | "posted"> } = {},
 ) {
   const { profile, importerProfile } = await requireImporterProfile();
   const parsed = createShipmentRequestSchema.parse(input);
+  const status = options.status ?? "posted";
   const destinationDisplayName =
     parsed.destinationDisplayName ||
     formatDestination({
@@ -51,7 +54,7 @@ export async function createShipmentRequestForCurrentImporter(
       .insert(shipmentRequests)
       .values({
         importerProfileId: importerProfile.id,
-        status: "posted",
+        status,
         cargoDescription: parsed.cargoDescription,
         cargoType: parsed.cargoType,
         totalCbm: parsed.totalCbm,
@@ -93,10 +96,38 @@ export async function createShipmentRequestForCurrentImporter(
     return created;
   });
 
-  await notifyShipmentRequestPosted({
-    requestId: request.id,
-    actorUserProfileId: profile.id,
-  });
+  if (status === "posted") {
+    await notifyShipmentRequestPosted({
+      requestId: request.id,
+      actorUserProfileId: profile.id,
+    });
+  }
+
+  return request;
+}
+
+export async function publishShipmentRequestForCurrentImporter(requestId: string) {
+  const { profile, importerProfile } = await requireImporterProfile();
+  const now = new Date();
+
+  const [request] = await db
+    .update(shipmentRequests)
+    .set({ status: "posted", updatedAt: now })
+    .where(
+      and(
+        eq(shipmentRequests.id, requestId),
+        eq(shipmentRequests.importerProfileId, importerProfile.id),
+        eq(shipmentRequests.status, "draft"),
+      ),
+    )
+    .returning({ id: shipmentRequests.id });
+
+  if (request) {
+    await notifyShipmentRequestPosted({
+      requestId: request.id,
+      actorUserProfileId: profile.id,
+    });
+  }
 
   return request;
 }

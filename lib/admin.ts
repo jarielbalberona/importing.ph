@@ -25,8 +25,9 @@ export async function getAdminOverview() {
     getAdminQuotes(),
     getAdminForwarders(),
   ]);
+  const activity = buildAdminActivityLog({ requests, quotes: quoteRows, forwarders });
 
-  return { users, requests, quotes: quoteRows, forwarders };
+  return { users, requests, quotes: quoteRows, forwarders, activity };
 }
 
 async function getAdminUsers() {
@@ -157,4 +158,45 @@ async function getAdminQuotes() {
       eq(quotes.forwarderCompanyId, forwarderCompanies.id),
     )
     .orderBy(desc(quotes.createdAt));
+}
+
+function buildAdminActivityLog({
+  requests,
+  quotes: quoteRows,
+  forwarders,
+}: {
+  requests: Awaited<ReturnType<typeof getAdminRequests>>;
+  quotes: Awaited<ReturnType<typeof getAdminQuotes>>;
+  forwarders: Awaited<ReturnType<typeof getAdminForwarders>>;
+}) {
+  return [
+    ...requests.map((request) => ({
+      id: `request:${request.id}`,
+      kind: "request",
+      title: "Shipment request",
+      status: request.status,
+      description: `${request.importerCompanyName} posted ${request.cargoDescription}`,
+      occurredAt: request.createdAt,
+    })),
+    ...quoteRows.map((quote) => ({
+      id: `quote:${quote.id}`,
+      kind: "quote",
+      title: "Quote activity",
+      status: quote.status,
+      description: `${quote.forwarderCompanyName} quoted ${quote.cargoDescription}`,
+      occurredAt: quote.createdAt,
+    })),
+    ...forwarders
+      .filter((forwarder) => forwarder.suspendedAt)
+      .map((forwarder) => ({
+        id: `forwarder:${forwarder.id}:suspended`,
+        kind: "safety",
+        title: "Forwarder safety",
+        status: "suspended",
+        description: `${forwarder.name} was suspended`,
+        occurredAt: forwarder.suspendedAt ?? forwarder.updatedAt,
+      })),
+  ]
+    .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+    .slice(0, 20);
 }

@@ -24,10 +24,11 @@ Observed backend responsibility areas:
 
 - onboarding profile creation
 - role checks and redirects
-- request, quote, messaging, notification, and admin queries/actions
+- request draft/post, quote edit/withdraw/decision, messaging, notification, and admin queries/actions
 - PSGC import and lookup
 - attachment validation/storage orchestration
 - realtime token handling and conversation subscription checks
+- best-effort Resend-backed marketplace email for events where local recipient email exists
 
 Status note:
 

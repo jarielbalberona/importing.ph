@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PublicSiteHeader } from "@/components/public/site-header";
 
 const painPoints = [
   "Repeating cargo details",
@@ -54,37 +54,7 @@ const trustPoints = [
 export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-white text-slate-950">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex min-h-16 max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <Link href="/" className="shrink-0" aria-label="importing.ph home">
-            <Image
-              src="/assets/importingph.png"
-              alt="importing.ph"
-              width={173}
-              height={50}
-              priority
-              className="h-10 w-auto"
-            />
-          </Link>
-          <nav
-            aria-label="Account links"
-            className="grid grid-cols-2 gap-3 sm:flex sm:items-center"
-          >
-            <Button asChild variant="ghost" className="w-full sm:w-auto">
-              <Link href="/guides">Guides</Link>
-            </Button>
-            <Button asChild variant="ghost" className="w-full sm:w-auto">
-              <Link href="/about">About</Link>
-            </Button>
-            <Button asChild variant="ghost" className="w-full sm:w-auto">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild className="w-full sm:w-auto">
-              <Link href="/sign-up">Create free account</Link>
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <PublicSiteHeader />
 
       <section className="border-b border-slate-200">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-20">

@@ -8,6 +8,7 @@ import {
   QuoteDecisionError,
   rejectQuoteForCurrentImporter,
 } from "@/lib/quotes";
+import { publishShipmentRequestForCurrentImporter } from "@/lib/shipment-requests";
 import {
   getOrCreateConversationForCurrentImporter,
   MessagingAccessError,
@@ -21,6 +22,22 @@ export async function acceptQuote(formData: FormData) {
 
 export async function rejectQuote(formData: FormData) {
   await decideQuote(formData, "reject");
+}
+
+export async function publishDraftRequest(formData: FormData) {
+  const requestId = idSchema.safeParse(formData.get("requestId"));
+
+  if (!requestId.success) {
+    redirect("/app/requests?error=invalid-request");
+  }
+
+  const request = await publishShipmentRequestForCurrentImporter(requestId.data);
+
+  redirect(
+    request
+      ? `/app/requests/${requestId.data}?request=posted`
+      : `/app/requests/${requestId.data}?requestError=publish-unavailable`,
+  );
 }
 
 export async function startImporterConversation(formData: FormData) {

@@ -53,7 +53,12 @@ import {
   requireImporterProfile,
 } from "@/lib/shipment-requests";
 import { listShipmentRequestAttachmentsForViewer } from "@/lib/media";
-import { acceptQuote, rejectQuote, startImporterConversation } from "./actions";
+import {
+  acceptQuote,
+  publishDraftRequest,
+  rejectQuote,
+  startImporterConversation,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +68,8 @@ type RequestDetailPageProps = {
     decision?: string;
     decisionError?: string;
     messageError?: string;
+    request?: string;
+    requestError?: string;
   }>;
 };
 
@@ -119,17 +126,55 @@ export default async function RequestDetailPage({
           successMessage={
             query.decision
               ? `Quote ${query.decision === "accept" ? "accepted" : "declined"}.`
+              : query.request === "posted"
+                ? "Draft request posted. Forwarders can now quote it."
               : null
           }
           errorMessage={
             query.decisionError
               ? decisionErrorMessage(query.decisionError)
+              : query.requestError
+                ? requestErrorMessage(query.requestError)
               : query.messageError
                 ? messageErrorMessage(query.messageError)
                 : null
           }
-          clearKeys={["decision", "decisionError", "messageError"]}
+          clearKeys={[
+            "decision",
+            "decisionError",
+            "messageError",
+            "request",
+            "requestError",
+          ]}
         />
+
+        {request.status === "quote_selected" ? (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+            This request is closed to new quotes because a quote has been accepted.
+            Existing quotes and conversations remain available for records and
+            follow-up.
+          </div>
+        ) : null}
+
+        {request.status === "draft" ? (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-900">
+            This request is saved as a draft. Forwarders cannot see it until you
+            post it.
+            <form action={publishDraftRequest} className="mt-3">
+              <input type="hidden" name="requestId" value={request.id} />
+              <ConfirmSubmitButton
+                type="submit"
+                size="sm"
+                title="Post this draft?"
+                message="Forwarders will be able to see and quote this request."
+                confirmLabel="Post request"
+                cancelLabel="Cancel"
+              >
+                Post request
+              </ConfirmSubmitButton>
+            </form>
+          </div>
+        ) : null}
 
         <Tabs defaultValue="details" className="min-w-0 gap-6">
           <TabsList variant="line" className="w-full justify-start overflow-x-auto">
@@ -573,5 +618,14 @@ function messageErrorMessage(error: string) {
       return "That conversation is not available.";
     default:
       return "Messages are not available right now.";
+  }
+}
+
+function requestErrorMessage(error: string) {
+  switch (error) {
+    case "publish-unavailable":
+      return "This draft can no longer be posted.";
+    default:
+      return "The request change was not saved. Try again.";
   }
 }

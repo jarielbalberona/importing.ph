@@ -55,7 +55,10 @@ import {
   getShipmentRequestStepBlockingErrors,
   type ShipmentRequestStepIndex,
 } from "@/lib/shipment-request-wizard";
-import { createShipmentRequest } from "@/app/app/requests/new/actions";
+import {
+  createShipmentRequest,
+  saveDraftShipmentRequest,
+} from "@/app/app/requests/new/actions";
 import {
   acceptedFileDescription,
   formatBytes,
@@ -305,7 +308,7 @@ export function NewShipmentRequestForm() {
     setCurrentStep((value) => Math.max(value - 1, 0));
   }
 
-  async function submitRequest(data: FormValues) {
+  async function submitRequest(data: FormValues, intent: "draft" | "posted") {
     if (!isFinalStep || hasSubmitted) {
       return;
     }
@@ -338,7 +341,9 @@ export function NewShipmentRequestForm() {
     }
 
     startTransition(() => {
-      void createShipmentRequest(formData);
+      void (intent === "draft"
+        ? saveDraftShipmentRequest(formData)
+        : createShipmentRequest(formData));
     });
   }
 
@@ -347,10 +352,16 @@ export function NewShipmentRequestForm() {
   }
 
   async function handleValidSubmit(data: FormValues) {
-    await submitRequest(data);
+    await submitRequest(data, "posted");
   }
 
   const postRequest = handleSubmit(handleValidSubmit, handleInvalidSubmit);
+  const saveDraft = handleSubmit(
+    async (data) => {
+      await submitRequest(data, "draft");
+    },
+    handleInvalidSubmit,
+  );
   const currentStepErrorMessages = getCurrentStepErrorMessages(currentStep, errors);
 
   return (
@@ -429,16 +440,29 @@ export function NewShipmentRequestForm() {
             Back
           </Button>
           {isFinalStep ? (
-            <Button
-              type="button"
-              size="lg"
-              onClick={() => {
-                void postRequest();
-              }}
-              disabled={isPending || hasSubmitted}
-            >
-              {isPending || hasSubmitted ? "Posting..." : "Post request"}
-            </Button>
+            <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-row-reverse">
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => {
+                  void postRequest();
+                }}
+                disabled={isPending || hasSubmitted}
+              >
+                {isPending || hasSubmitted ? "Posting..." : "Post request"}
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  void saveDraft();
+                }}
+                disabled={isPending || hasSubmitted}
+              >
+                {isPending || hasSubmitted ? "Saving..." : "Save draft"}
+              </Button>
+            </div>
           ) : (
             <Button type="button" size="lg" onClick={goNext} disabled={isPending || hasSubmitted}>
               Continue

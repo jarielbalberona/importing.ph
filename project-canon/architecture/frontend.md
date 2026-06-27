@@ -22,6 +22,14 @@ Observed route groups include:
 
 Frontend behavior depends on server-side role enforcement through shared auth helpers rather than a separate SPA state architecture.
 
+Current V1 product surfaces include:
+
+- importer shipment request list with draft/post success state and launch checklist
+- forwarder open-request list with launch checklist
+- forwarder company profile screen with public-profile completeness meter
+- shared importer/forwarder inbox client with conversation-level read/unread labels
+- admin marketplace page with activity, users, requests, quotes, and forwarder safety controls
+
 Status note:
 
 - richer frontend state-management rules are not asserted here yet

@@ -5,6 +5,7 @@ import {
   PageHeader,
   StatusBadge,
 } from "@/components/app-shell";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ import {
   formatStructuredRoute,
   titleFromEnum,
 } from "@/lib/format";
+import { getForwarderSettingsForCurrentUser } from "@/lib/profile-settings";
 import { FilterSheet } from "./filter-sheet";
 
 export const dynamic = "force-dynamic";
@@ -42,14 +44,35 @@ export default async function ForwarderRequestsPage({
 }: ForwarderRequestsPageProps) {
   const rawSearchParams = await searchParams;
   const filters = openRequestFiltersFromSearchParams(rawSearchParams);
-  const requests = await getOpenShipmentRequestsForForwarder(filters);
+  const [requests, settings] = await Promise.all([
+    getOpenShipmentRequestsForForwarder(filters),
+    getForwarderSettingsForCurrentUser(),
+  ]);
   const totalQuotes = requests.reduce(
     (sum, request) => sum + request.quoteCount,
     0,
   );
   const withQuotes = requests.filter((request) => request.quoteCount > 0).length;
+  const ownQuotes = requests.filter((request) => request.ownQuoteStatus).length;
   const hasFilters = Object.values(filters).some(Boolean);
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const publicProfileFields = [
+    settings.company.contactPerson,
+    settings.company.contactEmail,
+    settings.company.originCities,
+    settings.company.destinationAreas,
+    settings.company.shippingModes,
+    settings.company.serviceDescription,
+  ];
+  const publicProfileComplete = publicProfileFields.every(
+    (value) => Boolean(value?.trim()),
+  );
+  const quoteDefaultsComplete = Boolean(
+    settings.quoteDefaults?.currency &&
+      settings.quoteDefaults.serviceOffered &&
+      settings.quoteDefaults.transitMinDays &&
+      settings.quoteDefaults.transitMaxDays,
+  );
 
   return (
     <>
@@ -69,6 +92,23 @@ export default async function ForwarderRequestsPage({
         <RequestMetric label="With quotes" value={withQuotes} />
         <RequestMetric label="Quote activity" value={totalQuotes} />
       </section>
+
+      <OnboardingChecklist
+        title="Forwarder launch checklist"
+        description="Complete the public profile and quote defaults before quoting live importer requests."
+        items={[
+          { label: "Company profile created", complete: true },
+          {
+            label: "Public profile complete",
+            complete: publicProfileComplete,
+          },
+          {
+            label: "Quote defaults configured",
+            complete: quoteDefaultsComplete,
+          },
+          { label: "First quote sent", complete: ownQuotes > 0 },
+        ]}
+      />
 
       {requests.length === 0 ? (
         <div className="mt-6">

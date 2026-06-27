@@ -16,7 +16,12 @@ import {
 
 export class QuoteSubmissionError extends Error {
   constructor(
-    readonly code: "duplicate" | "request_unavailable" | "forwarder_suspended",
+    readonly code:
+      | "duplicate"
+      | "request_unavailable"
+      | "forwarder_suspended"
+      | "not_found"
+      | "invalid_status",
   ) {
     super(code);
   }
@@ -246,6 +251,109 @@ export async function rejectQuoteForCurrentImporter(quoteId: string) {
   });
 
   return result;
+}
+
+export async function updateQuoteForCurrentForwarder(
+  quoteId: string,
+  input: unknown,
+) {
+  const { member } = await requireForwarderMember();
+
+  if (member.companyIsSuspended) {
+    throw new QuoteSubmissionError("forwarder_suspended");
+  }
+
+  const [target] = await db
+    .select({
+      id: quotes.id,
+      requestId: shipmentRequests.id,
+      requestStatus: shipmentRequests.status,
+      quoteStatus: quotes.status,
+      shippingModePreference: shipmentRequests.shippingModePreference,
+    })
+    .from(quotes)
+    .innerJoin(
+      shipmentRequests,
+      eq(quotes.shipmentRequestId, shipmentRequests.id),
+    )
+    .where(
+      and(
+        eq(quotes.id, quoteId),
+        eq(quotes.forwarderCompanyId, member.companyId),
+      ),
+    )
+    .limit(1);
+
+  if (!target) {
+    throw new QuoteSubmissionError("not_found");
+  }
+
+  if (target.quoteStatus !== "submitted" || target.requestStatus !== "posted") {
+    throw new QuoteSubmissionError("invalid_status");
+  }
+
+  const parsed = quoteSubmissionSchemaForRequestMode(
+    target.shippingModePreference,
+  ).parse(input);
+
+  const [quote] = await db
+    .update(quotes)
+    .set({
+      quoteAmount: parsed.quoteAmount,
+      currency: parsed.currency,
+      shippingMode: parsed.shippingMode,
+      serviceOffered: parsed.serviceOffered,
+      estimatedTransitMinDays: parsed.estimatedTransitMinDays,
+      estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
+      inclusions: parsed.inclusions ?? "",
+      exclusions: parsed.exclusions ?? "",
+      notes: parsed.notes,
+      validUntil: dateFromDateInput(parsed.validUntil),
+      updatedAt: new Date(),
+    })
+    .where(eq(quotes.id, target.id))
+    .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
+
+  return quote;
+}
+
+export async function withdrawQuoteForCurrentForwarder(quoteId: string) {
+  const { member } = await requireForwarderMember();
+
+  const [target] = await db
+    .select({
+      id: quotes.id,
+      requestStatus: shipmentRequests.status,
+      quoteStatus: quotes.status,
+    })
+    .from(quotes)
+    .innerJoin(
+      shipmentRequests,
+      eq(quotes.shipmentRequestId, shipmentRequests.id),
+    )
+    .where(
+      and(
+        eq(quotes.id, quoteId),
+        eq(quotes.forwarderCompanyId, member.companyId),
+      ),
+    )
+    .limit(1);
+
+  if (
+    !target ||
+    target.quoteStatus !== "submitted" ||
+    target.requestStatus !== "posted"
+  ) {
+    return undefined;
+  }
+
+  const [quote] = await db
+    .update(quotes)
+    .set({ status: "withdrawn", updatedAt: new Date() })
+    .where(eq(quotes.id, target.id))
+    .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
+
+  return quote;
 }
 
 export async function createQuoteForCurrentForwarder(
