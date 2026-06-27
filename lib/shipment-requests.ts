@@ -8,6 +8,7 @@ import {
   type UserRole,
 } from "@/db/schema";
 import { attachFilesToShipmentRequest } from "@/lib/media";
+import { notifyShipmentRequestPosted } from "@/lib/notifications";
 import { requireRole } from "@/lib/authz";
 import { formatDestination } from "@/lib/format";
 import {
@@ -90,6 +91,11 @@ export async function createShipmentRequestForCurrentImporter(
     });
 
     return created;
+  });
+
+  await notifyShipmentRequestPosted({
+    requestId: request.id,
+    actorUserProfileId: profile.id,
   });
 
   return request;

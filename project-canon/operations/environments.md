@@ -1,12 +1,16 @@
 # Environments
 
-Status: baseline / to be confirmed
+Status: baseline plus local port map / needs runtime confirmation
 
-Source: current repo inspection and bounded migrated reference from legacy root docs.
+Source: current repo inspection, workspace local port block decision, and bounded migrated reference from legacy root docs.
 
-Observed local/development signals:
+Current environment/runtime signals:
 
-- local dev server runs on port `3001`
+- local web defaults to `http://localhost:5001`
+- local PostgreSQL is exposed on host port `5032` and container port `5432`
+- SEO rendered-page tooling targets `http://localhost:5001` by default
+- importing.ph is web-only in this repo; no local mobile/Metro port is assigned
+- no separate local Go API port is assigned
 - `.env` and `.env.local` are used
 - Next.js app uses a custom Node server process for production start
 

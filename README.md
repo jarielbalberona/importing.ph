@@ -14,7 +14,18 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
+Open [http://localhost:5001](http://localhost:5001) with your browser to see the result.
+
+## Local Port Map
+
+importing.ph uses the workspace `50**` local port block:
+
+- web app: [http://localhost:5001](http://localhost:5001)
+- rendered SEO verification: `http://localhost:5001`
+- PostgreSQL host port: `5032`
+- PostgreSQL container port: `5432`
+
+Do not use `5000` for this project. On macOS it is commonly occupied by Control Center/AirTunes.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

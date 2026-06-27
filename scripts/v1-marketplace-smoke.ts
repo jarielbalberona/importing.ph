@@ -11,6 +11,7 @@ import {
   notifications,
   quotes,
   shipmentRequests,
+  type NotificationType,
   userProfiles,
 } from "@/db/schema";
 import { getShipmentRequestForForwarderDetail } from "@/lib/forwarder-open-requests";
@@ -22,6 +23,7 @@ import {
 import { createOnboardingProfile } from "@/lib/onboarding";
 import {
   notifyMessageCreated,
+  notifyShipmentRequestPosted,
   notifyQuoteDecision,
   notifyQuoteSubmitted,
 } from "@/lib/notifications";
@@ -371,11 +373,21 @@ async function hasQualifyingQuote(requestId: string, forwarderCompanyId: string)
   return Boolean(quote);
 }
 
-async function countNotificationsForProfile(profileId: string) {
+async function countNotificationsForProfile(
+  profileId: string,
+  type?: NotificationType,
+) {
   const rows = await db
     .select()
     .from(notifications)
-    .where(eq(notifications.recipientUserProfileId, profileId));
+    .where(
+      type
+        ? and(
+            eq(notifications.recipientUserProfileId, profileId),
+            eq(notifications.type, type),
+          )
+        : eq(notifications.recipientUserProfileId, profileId),
+    );
 
   return rows.length;
 }
@@ -424,6 +436,11 @@ async function main(): Promise<SmokeResult> {
     unrelatedImporter.importerProfileId,
     "Smoke V1 unrelated request",
   );
+
+  await notifyShipmentRequestPosted({
+    requestId,
+    actorUserProfileId: importer.profileId,
+  });
 
   const forwarderVisibleRequest = await getShipmentRequestForForwarderDetail(
     requestId,
@@ -585,9 +602,41 @@ async function main(): Promise<SmokeResult> {
 
   const notificationCounts = {
     importer: await countNotificationsForProfile(importer.profileId),
+    importerQuoteReceived: await countNotificationsForProfile(
+      importer.profileId,
+      "new_quote_received",
+    ),
+    importerMessageReceived: await countNotificationsForProfile(
+      importer.profileId,
+      "message_received",
+    ),
     forwarderA: await countNotificationsForProfile(forwarderA.profileId),
+    forwarderARequestPosted: await countNotificationsForProfile(
+      forwarderA.profileId,
+      "new_request_posted",
+    ),
+    forwarderAAccepted: await countNotificationsForProfile(
+      forwarderA.profileId,
+      "quote_accepted",
+    ),
+    forwarderAMessageReceived: await countNotificationsForProfile(
+      forwarderA.profileId,
+      "message_received",
+    ),
     forwarderB: await countNotificationsForProfile(forwarderB.profileId),
-    forwarderNoQuote: await countNotificationsForProfile(
+    forwarderBRequestPosted: await countNotificationsForProfile(
+      forwarderB.profileId,
+      "new_request_posted",
+    ),
+    forwarderBRejected: await countNotificationsForProfile(
+      forwarderB.profileId,
+      "quote_rejected",
+    ),
+    forwarderNoQuoteRequestPosted: await countNotificationsForProfile(
+      forwarderNoQuote.profileId,
+      "new_request_posted",
+    ),
+    forwarderNoQuoteOther: await countNotificationsForProfile(
       forwarderNoQuote.profileId,
     ),
   };
@@ -622,12 +671,41 @@ async function main(): Promise<SmokeResult> {
     assert(passed, `Privacy check failed: ${check}`);
   }
 
-  assert(notificationCounts.importer >= 3, "Importer notifications missing");
-  assert(notificationCounts.forwarderA >= 2, "Forwarder A notifications missing");
-  assert(notificationCounts.forwarderB >= 1, "Forwarder B notifications missing");
   assert(
-    notificationCounts.forwarderNoQuote === 0,
-    "Non-participant forwarder received notifications",
+    notificationCounts.importerQuoteReceived === 2,
+    "Importer quote notifications missing",
+  );
+  assert(
+    notificationCounts.importerMessageReceived === 0,
+    "Importer received message feed notifications",
+  );
+  assert(
+    notificationCounts.forwarderARequestPosted === 1,
+    "Forwarder A request-posted notification missing",
+  );
+  assert(
+    notificationCounts.forwarderAAccepted === 1,
+    "Forwarder A quote decision notification missing",
+  );
+  assert(
+    notificationCounts.forwarderAMessageReceived === 0,
+    "Forwarder A received message feed notifications",
+  );
+  assert(
+    notificationCounts.forwarderBRequestPosted === 1,
+    "Forwarder B request-posted notification missing",
+  );
+  assert(
+    notificationCounts.forwarderBRejected === 1,
+    "Forwarder B quote decision notification missing",
+  );
+  assert(
+    notificationCounts.forwarderNoQuoteRequestPosted === 1,
+    "Non-quoting forwarder request-posted notification missing",
+  );
+  assert(
+    notificationCounts.forwarderNoQuoteOther === 1,
+    "Non-quoting forwarder received unexpected non-request notifications",
   );
 
   return {

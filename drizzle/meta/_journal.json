@@ -127,6 +127,20 @@
       "when": 1780819200000,
       "tag": "0017_profile_route_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780822800000,
+      "tag": "0018_forwarder_member_role_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780826400000,
+      "tag": "0019_new_request_posted_notifications",
+      "breakpoints": true
     }
   ]
 }

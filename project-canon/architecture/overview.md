@@ -13,6 +13,10 @@ The current implementation is a single Next.js App Router application with:
 - Drizzle ORM and SQL migrations
 - a custom Node server for Next.js plus WebSocket realtime handling
 
+Realtime messaging is implemented as part of the monolith. The approved V1
+shape is `server.mjs` hosting `/api/realtime/ws` for quote-gated messaging and
+read-state updates, with relationship checks before subscription.
+
 The app is monolithic at deployment level.
 
 Bounded major surfaces:

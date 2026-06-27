@@ -114,6 +114,7 @@ export const quoteStatusEnum = pgEnum("quote_status", [
 export type QuoteStatus = (typeof quoteStatusEnum.enumValues)[number];
 
 export const notificationTypeEnum = pgEnum("notification_type", [
+  "new_request_posted",
   "new_quote_received",
   "quote_accepted",
   "quote_rejected",

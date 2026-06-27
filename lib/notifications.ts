@@ -56,6 +56,51 @@ async function createNotificationBestEffort(input: CreateNotificationInput) {
   }
 }
 
+export async function notifyShipmentRequestPosted(input: {
+  requestId: string;
+  actorUserProfileId: string;
+}) {
+  const [request] = await db
+    .select({
+      cargoDescription: shipmentRequests.cargoDescription,
+      origin: shipmentRequests.origin,
+      destination: shipmentRequests.destination,
+    })
+    .from(shipmentRequests)
+    .where(eq(shipmentRequests.id, input.requestId))
+    .limit(1);
+
+  if (!request) {
+    return;
+  }
+
+  const recipients = await db
+    .select({
+      userProfileId: forwarderMembers.userProfileId,
+    })
+    .from(forwarderMembers)
+    .innerJoin(
+      forwarderCompanies,
+      eq(forwarderMembers.forwarderCompanyId, forwarderCompanies.id),
+    )
+    .where(eq(forwarderCompanies.isSuspended, false));
+
+  await Promise.all(
+    recipients.map((recipient) =>
+      createNotificationBestEffort({
+        recipientUserProfileId: recipient.userProfileId,
+        actorUserProfileId: input.actorUserProfileId,
+        type: "new_request_posted",
+        title: "New shipment request posted",
+        body: `${request.cargoDescription} from ${request.origin} to ${request.destination}.`,
+        linkHref: `/app/forwarder/requests/${input.requestId}`,
+        sourceShipmentRequestId: input.requestId,
+        dedupeKey: `shipment_request:${input.requestId}:posted:${recipient.userProfileId}`,
+      }),
+    ),
+  );
+}
+
 export async function notifyQuoteSubmitted(input: {
   quoteId: string;
   requestId: string;

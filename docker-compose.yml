@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: importing-ph-postgres
     ports:
-      - "55432:5432"
+      - "5032:5432"
     environment:
       POSTGRES_DB: importing_ph_dev
       POSTGRES_USER: importing_ph

@@ -81,6 +81,7 @@ Clerk Auth
 Render
 Resend
 Cloudflare R2 (future)
+WebSockets for V1 quote-gated realtime messaging/read-state
 ```
 
 Not approved:
@@ -97,10 +98,11 @@ Queues
 React Query
 Zustand
 Redis
-WebSockets
 ```
 
-Unless explicitly requested.
+Unless explicitly requested. WebSockets are the approved exception for V1
+realtime messaging/read-state inside the monolithic Next.js app; do not broaden
+that approval into queues, event buses, or separate realtime services.
 
 ---
 

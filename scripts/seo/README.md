@@ -36,13 +36,13 @@ npm run seo:test
 Run rendered verification against a local app:
 
 ```bash
-LOCAL_SEO_BASE_URL=http://127.0.0.1:3001 npm run seo:verify
+LOCAL_SEO_BASE_URL=http://127.0.0.1:5001 npm run seo:verify
 ```
 
 Run the local SEO audit with the mock provider:
 
 ```bash
-LOCAL_SEO_BASE_URL=http://127.0.0.1:3001 npm run seo:audit:mock
+LOCAL_SEO_BASE_URL=http://127.0.0.1:5001 npm run seo:audit:mock
 ```
 
 Run keyword planning with the mock provider:
@@ -69,7 +69,7 @@ npm run seo:serp-rank -- --cache-only
 Default local base URL:
 
 ```bash
-LOCAL_SEO_BASE_URL=http://localhost:3000
+LOCAL_SEO_BASE_URL=http://localhost:5001
 ```
 
 Optional DataForSEO credentials. These are required only when `--provider dataforseo` is selected:

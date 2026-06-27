@@ -74,7 +74,7 @@ const __dirname = path.dirname(__filename);
 
 export const seoWorkspaceRoot = path.resolve(__dirname, "..", "..");
 export const seoCacheDir = path.join(seoWorkspaceRoot, ".cache", "seo-workbench");
-export const defaultBaseUrl = "http://localhost:3000";
+export const defaultBaseUrl = "http://localhost:5001";
 export const defaultDomain = new URL(siteOrigin).hostname;
 
 export const seedKeywords = [
