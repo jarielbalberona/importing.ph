@@ -511,6 +511,156 @@ export const guides: Guide[] = [
     ],
   },
   {
+    slug: "china-to-philippines-shipping-quote",
+    title: "China to Philippines Shipping Quote: What to Prepare",
+    description:
+      "A practical checklist for getting comparable China-to-Philippines shipping quotes without vague pricing or repeated back-and-forth.",
+    category: "Marketplace Tips",
+    status: "published",
+    publishedAt: "2026-06-07",
+    keywords: [
+      "china to philippines shipping quote",
+      "shipping quote philippines",
+      "cargo forwarder philippines quote",
+    ],
+    audience: "beginner-importers",
+    readingTimeMinutes: 7,
+    relatedLinks: [
+      {
+        label: "How to Request a Shipping Quote Properly",
+        href: "/guides/how-to-request-a-shipping-quote",
+        description: "Use the same details when asking multiple forwarders to quote.",
+      },
+      {
+        label: "What Is CBM in Shipping?",
+        href: "/guides/what-is-cbm",
+        description: "Estimate volume before comparing air and sea cargo options.",
+      },
+      {
+        label: "Create a free account",
+        href: "/sign-up",
+        description: "Post one request and compare private forwarder quotes.",
+      },
+    ],
+    sections: [
+      {
+        heading: "A useful quote starts with useful shipment details",
+        body: [
+          "A China-to-Philippines shipping quote is not just a price request. It is a summary of assumptions about pickup, cargo size, delivery scope, timing, and handling risk.",
+          "If those assumptions are missing, forwarders either guess or ask the same questions again. That slows the quote down and makes comparison harder.",
+        ],
+      },
+      {
+        heading: "Minimum details to include",
+        bullets: [
+          "Supplier or pickup city in China",
+          "Cargo description and cargo type",
+          "Carton count, total CBM, gross weight, or complete dimensions",
+          "Destination city or municipality in the Philippines",
+          "Preferred mode: air, sea, either, or not sure",
+          "Delivery scope: door delivery, warehouse pickup, or not sure",
+          "Special handling notes such as fragile goods, batteries, liquids, or documents",
+        ],
+      },
+      {
+        heading: "How to compare quotes without fooling yourself",
+        body: [
+          "Do not compare only the headline amount. A cheaper quote can be worse if it excludes handling, delivery, permits, duties, or storage assumptions that another quote included.",
+          "For a cleaner marketplace comparison, compare price, mode, transit range, inclusions, exclusions, validity date, and forwarder notes side by side.",
+        ],
+        bullets: [
+          "Quote amount and currency",
+          "Air or sea mode",
+          "Estimated transit range",
+          "Inclusions and exclusions",
+          "Quote validity date",
+          "Clarifying notes and assumptions",
+        ],
+      },
+      {
+        heading: "Common questions",
+        faqs: [
+          {
+            question: "Can I ask for a quote if I am not sure whether to use air or sea?",
+            answer:
+              "Yes. Say that you are not sure and include shipment size, weight, and urgency. A forwarder can usually recommend whether air or sea is realistic.",
+          },
+          {
+            question: "Should I send the same request to multiple forwarders?",
+            answer:
+              "Yes. Using one consistent request makes the quote comparison more honest because every forwarder is responding to the same facts.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "how-to-choose-a-freight-forwarder-philippines",
+    title: "How to Choose a Freight Forwarder in the Philippines",
+    description:
+      "A practical importer checklist for comparing forwarders by quote quality, service scope, responsiveness, and risk instead of price alone.",
+    category: "Marketplace Tips",
+    status: "published",
+    publishedAt: "2026-06-08",
+    keywords: [
+      "how to choose freight forwarder philippines",
+      "freight forwarder philippines",
+      "cargo forwarder philippines",
+    ],
+    audience: "beginner-importers",
+    readingTimeMinutes: 8,
+    relatedLinks: [
+      {
+        label: "List of China to Philippines Forwarders",
+        href: "/guides/list-of-forwarders-china-to-philippines",
+        description: "Start with a shortlist, then compare quote quality.",
+      },
+      {
+        label: "China to Philippines Shipping Quote",
+        href: "/guides/china-to-philippines-shipping-quote",
+        description: "Prepare the request details forwarders need before they quote.",
+      },
+    ],
+    sections: [
+      {
+        heading: "The cheapest forwarder is not automatically the best choice",
+        body: [
+          "A forwarder should be judged by how clearly they handle your actual shipment, not by a generic lowest number.",
+          "For beginners, the safer comparison is quote quality: what is included, what is excluded, what timing is realistic, and whether the forwarder asks practical follow-up questions.",
+        ],
+      },
+      {
+        heading: "Signals of a stronger forwarder response",
+        bullets: [
+          "They answer based on your actual cargo details.",
+          "They give a transit range instead of one perfect date.",
+          "They separate inclusions from exclusions.",
+          "They flag special handling risks early.",
+          "They explain what information is still missing.",
+          "They keep communication tied to the quote instead of scattering details across channels.",
+        ],
+      },
+      {
+        heading: "Red flags to slow down for",
+        bullets: [
+          "Very low price with no assumptions",
+          "No clear delivery scope",
+          "No validity date",
+          "Unclear responsibility for duties, taxes, storage, or permits",
+          "Pressure to proceed before cargo details are confirmed",
+          "Avoiding basic questions about cargo size, weight, or destination",
+        ],
+      },
+      {
+        heading: "Use marketplace comparison to reduce guesswork",
+        body: [
+          "A marketplace does not remove the need for judgment. It gives you a cleaner comparison surface.",
+          "When forwarders quote the same request, you can see who is clear, who is vague, who is realistic, and who fits the shipment best.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "draft-guide-example",
     title: "Draft Guide Example",
     description: "Internal draft used to verify published-route filtering.",

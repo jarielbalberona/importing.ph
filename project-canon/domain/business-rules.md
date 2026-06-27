@@ -12,6 +12,9 @@ Source: current repo inspection, plus bounded migrated reference from legacy roo
 - messaging is gated by quote-linked conversation access
 - forwarder companies can be suspended for marketplace safety
 - unread badge state is conversation-based, not raw-message-count based
+- posting a shipment request creates in-app request notifications for active forwarder members
+- quote submission creates in-app quote notifications for the importer
+- quote decisions create in-app quote notifications for the submitting forwarder
 
 ## Bounded Migrated Rules From Legacy/Reference Docs
 

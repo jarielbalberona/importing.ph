@@ -22,3 +22,18 @@ Baseline seeded from current repo inspection and a small number of migrated lega
 - `operations/` - environments, deployment, troubleshooting, and verification expectations
 - `decisions/` - durable ADR-level decisions when they exist
 - `changelog/` - durable canon changes, not task history
+
+## Canon Routing Index
+
+- product/workflow: `product/overview.md`, `product/workflows.md`
+- user roles/permissions: `product/user-roles.md`, `domain/permissions.md`
+- domain/business rules: `domain/entities.md`, `domain/business-rules.md`
+- frontend/UI: `architecture/frontend.md`
+- backend/API: `architecture/backend.md`
+- database/persistence: `architecture/database.md`, `domain/entities.md`
+- integrations: `architecture/integrations.md`
+- deployment/environments: `operations/environments.md`, `operations/deployment.md`
+- troubleshooting/operations: `operations/troubleshooting.md`, `operations/agent-guardrails.md`
+- verification/testing: `operations/verification-profile.md`
+- security/privacy: `domain/permissions.md`, `operations/agent-guardrails.md`
+- mobile/offline/device: not applicable; importing.ph is web-only in this repo

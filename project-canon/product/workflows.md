@@ -9,10 +9,11 @@ Source: current repo inspection.
 1. user signs in
 2. user completes onboarding as importer or forwarder
 3. importer creates and posts a shipment request
-4. forwarder submits one quote per request/company
-5. importer reviews requests and quote counts
-6. conversation opens from quote relationship
-7. notifications and unread badges reflect quote/message activity
+4. active forwarders receive a request-posted notification
+5. forwarder submits one quote per request/company
+6. importer receives a quote notification and reviews quote counts/private quotes
+7. conversation opens from quote relationship
+8. notifications and unread badges reflect request, quote, message, and read-state activity
 
 ## Supporting Workflows
 
@@ -21,6 +22,8 @@ Source: current repo inspection.
 - admin marketplace oversight and forwarder suspension
 - PSGC-backed destination lookup for request destinations
 - optional shipment request attachments with private object storage
+- transactional email templates for marketplace notifications
+- quote summary PDF template surface for future quote/export flows
 
 ## Workflow Boundaries
 

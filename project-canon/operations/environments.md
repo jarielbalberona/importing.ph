@@ -19,6 +19,8 @@ Expected environment-sensitive dependencies:
 - `DATABASE_URL`
 - Clerk publishable/secret keys
 - realtime signing secret or Clerk secret fallback
+- Resend `RESEND_API_KEY`
+- transactional email sender `EMAIL_FROM`
 - R2 attachment storage variables when attachment flow is enabled
 - PSGC source files for import operations
 
