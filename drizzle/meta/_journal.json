@@ -148,6 +148,13 @@
       "when": 1784005200000,
       "tag": "0020_v1_code_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784012400000,
+      "tag": "0021_public_request_sharing",
+      "breakpoints": true
     }
   ]
 }

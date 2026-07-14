@@ -14,6 +14,12 @@ import {
   MessagingAccessError,
 } from "@/lib/messages";
 import { RateLimitError } from "@/lib/rate-limit";
+import {
+  disableRequestSharingForCurrentImporter,
+  enableRequestSharingForCurrentImporter,
+  RequestShareError,
+  rotateRequestShareLinkForCurrentImporter,
+} from "@/lib/request-sharing";
 
 const idSchema = z.string().uuid();
 
@@ -47,6 +53,57 @@ export async function publishDraftRequest(formData: FormData) {
       ? `/app/requests/${requestId.data}?request=posted`
       : `/app/requests/${requestId.data}?requestError=publish-unavailable`,
   );
+}
+
+export async function saveRequestShare(formData: FormData) {
+  const requestId = idSchema.safeParse(formData.get("requestId"));
+
+  if (!requestId.success) {
+    redirect("/app/requests?error=invalid-request");
+  }
+
+  try {
+    await enableRequestSharingForCurrentImporter({
+      requestId: requestId.data,
+      publicSummary: formData.get("publicSummary"),
+    });
+  } catch (error) {
+    redirectToShareError(requestId.data, error);
+  }
+
+  redirect(`/app/requests/${requestId.data}?share=saved`);
+}
+
+export async function rotateRequestShare(formData: FormData) {
+  const requestId = idSchema.safeParse(formData.get("requestId"));
+
+  if (!requestId.success) {
+    redirect("/app/requests?error=invalid-request");
+  }
+
+  try {
+    await rotateRequestShareLinkForCurrentImporter(requestId.data);
+  } catch (error) {
+    redirectToShareError(requestId.data, error);
+  }
+
+  redirect(`/app/requests/${requestId.data}?share=rotated`);
+}
+
+export async function disableRequestShare(formData: FormData) {
+  const requestId = idSchema.safeParse(formData.get("requestId"));
+
+  if (!requestId.success) {
+    redirect("/app/requests?error=invalid-request");
+  }
+
+  try {
+    await disableRequestSharingForCurrentImporter(requestId.data);
+  } catch (error) {
+    redirectToShareError(requestId.data, error);
+  }
+
+  redirect(`/app/requests/${requestId.data}?share=disabled`);
 }
 
 export async function startImporterConversation(formData: FormData) {
@@ -110,4 +167,14 @@ async function decideQuote(formData: FormData, decision: "accept" | "reject") {
   }
 
   redirect(target);
+}
+
+function redirectToShareError(requestId: string, error: unknown): never {
+  if (error instanceof RateLimitError) {
+    redirect(`/app/requests/${requestId}?shareError=rate_limited`);
+  }
+  if (error instanceof RequestShareError) {
+    redirect(`/app/requests/${requestId}?shareError=${error.code}`);
+  }
+  throw error;
 }

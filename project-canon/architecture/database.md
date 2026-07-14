@@ -27,6 +27,7 @@ Important current boundaries:
 - Clerk is not the primary business-data store
 - quote uniqueness is enforced per shipment request and forwarder company
 - a partial unique index enforces at most one accepted quote per shipment request
+- a unique nullable index enforces one active public-share token per shipment request link, with database checks for the 16-character URL-safe token and 10–280 character public summary
 - conversations are scoped to request + forwarder company and opened by quote relationship
 - notification rows dedupe by `dedupeKey`
 

@@ -23,6 +23,10 @@ Source: current repo inspection, plus bounded migrated reference from legacy roo
 - admin marketplace activity is a read model over request, quote, and safety events; it is not a separate audit-ledger table
 - shipment request attachments stay private and are served only through the authenticated application download route after relationship authorization
 - attachments are user-provided and explicitly not malware-scanned in V1; downloads are forced as opaque attachments with no-sniff and no-store controls
+- public shipment sharing is importer-controlled and opt-in; posting a request never creates a public link automatically
+- public request links expose only the importer-approved summary, coarse route, shipment classification and totals, posted date, and open/closed state; importer identity, private cargo data, addresses, attachments, and quote data remain private
+- public request tokens are unlisted identifiers, not authorization credentials; anonymous viewing is allowed, but quotation submission still requires an eligible authenticated forwarder and the existing quote authorization checks
+- disabling sharing invalidates the current link but retains the public summary and last-shared timestamp; closed links remain visible until the importer disables them
 
 ## Bounded Migrated Rules From Legacy/Reference Docs
 

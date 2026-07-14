@@ -27,6 +27,7 @@ Relationship summary:
 - an importer user owns one importer profile
 - a forwarder user joins a forwarder company through membership
 - shipment requests belong to importer profiles
+- shipment requests may have one active 16-character public share token, an importer-approved public summary, and a retained last-shared timestamp; all three fields default to null
 - quotes belong to one request and one forwarder company
 - conversations link importer, forwarder company, request, and the opening quote
 - notifications reference user recipients plus optional source request/quote/conversation/message

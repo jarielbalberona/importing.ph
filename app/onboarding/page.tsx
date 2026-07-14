@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getProfileForCurrentUser } from "@/lib/authz";
-import { resolveAuthenticatedDestination } from "@/lib/auth-redirect";
+import {
+  resolveAuthenticatedDestination,
+  SUBMIT_QUOTE_INTENT,
+} from "@/lib/auth-redirect";
 import { completeOnboarding } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +41,9 @@ export default async function OnboardingPage({
             Set up your account
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Tell us how you will use importing.ph so we can show the right
-            tools.
+            {params.intent === SUBMIT_QUOTE_INTENT
+              ? "Set up a forwarding account to submit your quotation."
+              : "Tell us how you will use importing.ph so we can show the right tools."}
           </p>
         </div>
         <form action={completeOnboarding} className="mt-8 grid gap-6">
@@ -77,6 +81,7 @@ export default async function OnboardingPage({
                   name="role"
                   value="forwarder"
                   required
+                  defaultChecked={params.intent === SUBMIT_QUOTE_INTENT}
                   className="mt-1"
                 />
                 <span>

@@ -18,6 +18,9 @@ Current permission model is role-based with additional relationship checks.
 - realtime conversation access checks importer ownership or forwarder-company membership before subscription
 - importer profile views are intended to be more restricted than public forwarder company profiles
 - forwarder quote access and messaging are tied to request/company relationships, not global visibility
+- anyone may read an active non-draft `/r/{token}` page, but its query is a dedicated allowlisted projection that excludes importer identity, private addresses and notes, attachments, quotes, and internal IDs
+- only the owning importer may create or edit a public link while a request is posted, rotate an active posted link, or disable an active link in any request state
+- a public token grants no mutation permission; all quotation mutations remain behind authenticated forwarder role, membership, request-state, duplicate, and rate-limit checks
 
 ## Current Caution
 

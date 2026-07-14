@@ -2,8 +2,11 @@ import type { UserRole } from "@/db/schema";
 import { destinationForRole } from "@/lib/routes";
 
 export const POST_SHIPMENT_REQUEST_INTENT = "post_shipment_request" as const;
+export const SUBMIT_QUOTE_INTENT = "submit_quote" as const;
 
-export type AuthRedirectIntent = typeof POST_SHIPMENT_REQUEST_INTENT;
+export type AuthRedirectIntent =
+  | typeof POST_SHIPMENT_REQUEST_INTENT
+  | typeof SUBMIT_QUOTE_INTENT;
 
 export function normalizeAppRedirectPath(
   input: string | null | undefined,
@@ -38,7 +41,10 @@ export function normalizeAppRedirectPath(
 export function normalizeAuthRedirectIntent(
   input: string | null | undefined,
 ): AuthRedirectIntent | null {
-  if (input === POST_SHIPMENT_REQUEST_INTENT) {
+  if (
+    input === POST_SHIPMENT_REQUEST_INTENT ||
+    input === SUBMIT_QUOTE_INTENT
+  ) {
     return input;
   }
 

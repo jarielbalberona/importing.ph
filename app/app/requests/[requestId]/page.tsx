@@ -11,6 +11,7 @@ import {
 } from "@/components/requests/quote-comparison-panel";
 import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { AttachmentList } from "@/components/requests/attachment-list";
+import { ShareRequestDialog } from "@/components/requests/share-request-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,8 +56,11 @@ import {
 import { listShipmentRequestAttachmentsForViewer } from "@/lib/media";
 import {
   acceptQuote,
+  disableRequestShare,
   publishDraftRequest,
   rejectQuote,
+  rotateRequestShare,
+  saveRequestShare,
   startImporterConversation,
 } from "./actions";
 
@@ -70,6 +74,8 @@ type RequestDetailPageProps = {
     messageError?: string;
     request?: string;
     requestError?: string;
+    share?: string;
+    shareError?: string;
   }>;
 };
 
@@ -103,6 +109,47 @@ export default async function RequestDetailPage({
   const comparisonQuotes = quotes.map((quote) =>
     toComparisonQuote(quote, request.status),
   );
+  const publicDestination =
+    [
+      request.destinationCityMunicipalityName,
+      request.destinationProvinceName,
+    ]
+      .filter(Boolean)
+      .join(", ") || "Philippines";
+  const publicPreview = [
+    {
+      label: "Request state",
+      value:
+        request.status === "posted"
+          ? "Accepting quotations"
+          : "Request closed",
+    },
+    { label: "Cargo type", value: titleFromEnum(request.cargoType) },
+    { label: "Origin", value: request.origin },
+    { label: "Destination", value: publicDestination },
+    {
+      label: "Delivery preference",
+      value: formatDeliveryPreference(request.deliveryPreference),
+    },
+    {
+      label: "Shipping mode",
+      value: formatShippingModePreference(request.shippingModePreference),
+    },
+    {
+      label: "Shipping priority",
+      value: titleFromEnum(request.shippingPreference),
+    },
+    { label: "Total CBM", value: formatMeasure(request.totalCbm, "CBM") },
+    {
+      label: "Total weight",
+      value: formatMeasure(request.totalWeightKg, "kg"),
+    },
+    {
+      label: "Package count",
+      value: request.packageCount?.toString() ?? "Not provided",
+    },
+    { label: "Posted", value: formatDate(request.createdAt) },
+  ];
 
   return (
     <>
@@ -111,6 +158,18 @@ export default async function RequestDetailPage({
         description={`${formatStructuredRoute(request)} / ${titleFromEnum(request.status)}`}
         actions={
           <>
+            {request.status === "posted" || request.publicShareToken ? (
+              <ShareRequestDialog
+                requestId={request.id}
+                requestStatus={request.status}
+                publicShareToken={request.publicShareToken}
+                publicSummary={request.publicSummary}
+                preview={publicPreview}
+                saveAction={saveRequestShare}
+                rotateAction={rotateRequestShare}
+                disableAction={disableRequestShare}
+              />
+            ) : null}
             <Button asChild variant="outline">
               <Link href="/app/requests">Back to requests</Link>
             </Button>
@@ -128,16 +187,20 @@ export default async function RequestDetailPage({
               ? `Quote ${query.decision === "accept" ? "accepted" : "declined"}.`
               : query.request === "posted"
                 ? "Draft request posted. Forwarders can now quote it."
-              : null
+                : query.share
+                  ? shareSuccessMessage(query.share)
+                  : null
           }
           errorMessage={
             query.decisionError
               ? decisionErrorMessage(query.decisionError)
               : query.requestError
                 ? requestErrorMessage(query.requestError)
-              : query.messageError
-                ? messageErrorMessage(query.messageError)
-                : null
+                : query.messageError
+                  ? messageErrorMessage(query.messageError)
+                  : query.shareError
+                    ? shareErrorMessage(query.shareError)
+                    : null
           }
           clearKeys={[
             "decision",
@@ -145,6 +208,8 @@ export default async function RequestDetailPage({
             "messageError",
             "request",
             "requestError",
+            "share",
+            "shareError",
           ]}
         />
 
@@ -633,5 +698,35 @@ function requestErrorMessage(error: string) {
       return "Too many request changes. Wait a few minutes and try again.";
     default:
       return "The request change was not saved. Try again.";
+  }
+}
+
+function shareSuccessMessage(result: string) {
+  switch (result) {
+    case "rotated":
+      return "The public link was replaced. The old URL no longer works.";
+    case "disabled":
+      return "Public sharing was disabled.";
+    default:
+      return "The public link and summary were saved.";
+  }
+}
+
+function shareErrorMessage(error: string) {
+  switch (error) {
+    case "invalid_summary":
+      return "Write a public summary between 10 and 280 characters.";
+    case "not_found":
+      return "That request is not available to your importer account.";
+    case "not_posted":
+      return "Only posted requests can create, edit, or rotate a public link.";
+    case "not_shared":
+      return "That request does not have an active public link.";
+    case "token_generation_failed":
+      return "A unique public link could not be created. Try again.";
+    case "rate_limited":
+      return "Too many request changes. Wait a few minutes and try again.";
+    default:
+      return "The sharing change was not saved. Try again.";
   }
 }

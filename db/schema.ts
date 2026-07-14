@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   index,
   integer,
   numeric,
@@ -369,6 +370,9 @@ export const shipmentRequests = pgTable(
     shippingPreference: shippingPreferenceEnum("shipping_preference").notNull(),
     notes: text("notes"),
     attachmentNotes: text("attachment_notes"),
+    publicShareToken: text("public_share_token"),
+    publicSummary: text("public_summary"),
+    publicSharedAt: timestamp("public_shared_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [
@@ -393,6 +397,17 @@ export const shipmentRequests = pgTable(
       table.destinationCityMunicipalityCode,
     ),
     index("shipment_requests_created_at_idx").on(table.createdAt),
+    uniqueIndex("shipment_requests_public_share_token_idx").on(
+      table.publicShareToken,
+    ),
+    check(
+      "shipment_requests_public_share_token_format",
+      sql`${table.publicShareToken} IS NULL OR ${table.publicShareToken} ~ '^[A-Za-z0-9_-]{16}$'`,
+    ),
+    check(
+      "shipment_requests_public_summary_length",
+      sql`${table.publicSummary} IS NULL OR char_length(${table.publicSummary}) BETWEEN 10 AND 280`,
+    ),
   ],
 );
 
