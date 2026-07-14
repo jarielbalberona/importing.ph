@@ -30,9 +30,6 @@ export default clerkMiddleware(
     }
   },
   {
-    frontendApiProxy: {
-      enabled: true,
-    },
     contentSecurityPolicy: {
       strict: true,
       directives: {
