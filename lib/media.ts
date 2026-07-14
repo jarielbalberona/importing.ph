@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import { and, eq, inArray } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, type Database } from "@/db";
 import {
   forwarderMembers,
   importerProfiles,
@@ -15,7 +15,8 @@ import {
 } from "@/db/schema";
 import { requireProfile, requireRole } from "@/lib/authz";
 import { mediaContextRules } from "@/lib/file-rules";
-import { putR2Object, createSignedR2ReadUrl } from "@/lib/r2-storage";
+import { deleteR2Object, putR2Object } from "@/lib/r2-storage";
+import { persistWithObjectCompensation } from "@/lib/storage-compensation";
 import { validateUploadFile } from "@/lib/file-validation";
 
 export type UploadedMediaFile = {
@@ -26,8 +27,18 @@ export type UploadedMediaFile = {
   status: string;
 };
 
+export type MediaActor = { id: string; role: UserRole };
+
 export async function uploadShipmentRequestAttachment(file: File) {
-  const { profile, importerProfile } = await requireImporterProfileForMedia();
+  const profile = await requireRole(["importer"]);
+  return uploadShipmentRequestAttachmentForProfile(profile, file);
+}
+
+export async function uploadShipmentRequestAttachmentForProfile(
+  profile: MediaActor,
+  file: File,
+) {
+  const importerProfile = await requireImporterProfileForMediaActor(profile);
   const context: MediaFileContext = "shipment_request_attachment";
   const validated = await validateUploadFile(file, context);
   const objectKey = buildObjectKey(context, profile.id, validated.extension);
@@ -39,33 +50,63 @@ export async function uploadShipmentRequestAttachment(file: File) {
     sizeBytes: validated.sizeBytes,
   });
 
-  const [record] = await db
-    .insert(mediaFiles)
-    .values({
-      ownerUserProfileId: profile.id,
-      importerProfileId: importerProfile.id,
-      context,
-      objectKey,
-      originalFilename: validated.originalFilename,
-      contentType: validated.contentType,
-      detectedContentType: validated.detectedContentType,
-      sizeBytes: validated.sizeBytes,
-      checksumSha256: validated.checksumSha256,
-      status: "temporary",
-    })
-    .returning({
-      id: mediaFiles.id,
-      originalFilename: mediaFiles.originalFilename,
-      contentType: mediaFiles.contentType,
-      sizeBytes: mediaFiles.sizeBytes,
-      status: mediaFiles.status,
-    });
+  const record = await persistWithObjectCompensation(objectKey, async () => {
+    const [persisted] = await db
+      .insert(mediaFiles)
+      .values({
+        ownerUserProfileId: profile.id,
+        importerProfileId: importerProfile.id,
+        context,
+        objectKey,
+        originalFilename: validated.originalFilename,
+        contentType: validated.contentType,
+        detectedContentType: validated.detectedContentType,
+        sizeBytes: validated.sizeBytes,
+        checksumSha256: validated.checksumSha256,
+        status: "temporary",
+      })
+      .returning({
+        id: mediaFiles.id,
+        originalFilename: mediaFiles.originalFilename,
+        contentType: mediaFiles.contentType,
+        sizeBytes: mediaFiles.sizeBytes,
+        status: mediaFiles.status,
+      });
+    if (!persisted) {
+      throw new Error("Media row was not returned after insert.");
+    }
+    return persisted;
+  });
 
   return record satisfies UploadedMediaFile;
 }
 
 export async function detachTemporaryShipmentAttachment(fileId: string) {
-  const { profile } = await requireImporterProfileForMedia();
+  const profile = await requireRole(["importer"]);
+  return detachTemporaryShipmentAttachmentForProfile(profile, fileId);
+}
+
+export async function detachTemporaryShipmentAttachmentForProfile(
+  profile: MediaActor,
+  fileId: string,
+) {
+  await requireImporterProfileForMediaActor(profile);
+
+  const [target] = await db
+    .select({ id: mediaFiles.id, objectKey: mediaFiles.objectKey })
+    .from(mediaFiles)
+    .where(
+      and(
+        eq(mediaFiles.id, fileId),
+        eq(mediaFiles.ownerUserProfileId, profile.id),
+        eq(mediaFiles.context, "shipment_request_attachment"),
+        eq(mediaFiles.status, "temporary"),
+      ),
+    )
+    .limit(1);
+
+  if (!target) return false;
+  await deleteR2Object(target.objectKey);
 
   const [file] = await db
     .update(mediaFiles)
@@ -142,7 +183,27 @@ export async function attachFilesToShipmentRequest(
 export async function listShipmentRequestAttachmentsForViewer(
   shipmentRequestId: string,
 ) {
-  await assertCanViewShipmentRequestAttachments(shipmentRequestId);
+  const profile = await requireProfile();
+  const files = await listShipmentRequestAttachmentsForProfile(
+    profile,
+    shipmentRequestId,
+  );
+  if (!files) {
+    throw new Error("Attachment access denied.");
+  }
+  return files;
+}
+
+export async function listShipmentRequestAttachmentsForProfile(
+  profile: MediaActor,
+  shipmentRequestId: string,
+) {
+  const allowed = await canProfileViewShipmentRequestAttachments(
+    profile.id,
+    profile.role,
+    shipmentRequestId,
+  );
+  if (!allowed) return null;
 
   return db
     .select({
@@ -165,15 +226,17 @@ export async function listShipmentRequestAttachmentsForViewer(
     .orderBy(shipmentRequestAttachments.createdAt);
 }
 
-export async function mintAttachmentReadUrl(fileId: string) {
-  const profile = await requireProfile();
-
+export async function getAttachmentDownloadForProfile(
+  profile: MediaActor,
+  fileId: string,
+) {
   const [file] = await db
     .select({
       id: mediaFiles.id,
       objectKey: mediaFiles.objectKey,
       originalFilename: mediaFiles.originalFilename,
       contentType: mediaFiles.contentType,
+      sizeBytes: mediaFiles.sizeBytes,
       status: mediaFiles.status,
       shipmentRequestId: shipmentRequestAttachments.shipmentRequestId,
     })
@@ -205,37 +268,26 @@ export async function mintAttachmentReadUrl(fileId: string) {
     return null;
   }
 
-  return {
-    ...createSignedR2ReadUrl(file.objectKey),
-    originalFilename: file.originalFilename,
-    contentType: file.contentType,
-  };
+  return allowed ? file : null;
 }
 
-async function assertCanViewShipmentRequestAttachments(shipmentRequestId: string) {
-  const profile = await requireProfile();
-  const allowed = await canProfileViewShipmentRequestAttachments(
-    profile.id,
-    profile.role,
-    shipmentRequestId,
-  );
-
-  if (!allowed) {
-    throw new Error("Attachment access denied.");
-  }
-}
-
-async function canProfileViewShipmentRequestAttachments(
+export async function canProfileViewShipmentRequestAttachments(
   userProfileId: string,
   role: UserRole,
   shipmentRequestId: string,
+  database: Pick<Database, "select"> = db,
 ) {
   if (role === "admin") {
-    return true;
+    const [request] = await database
+      .select({ id: shipmentRequests.id })
+      .from(shipmentRequests)
+      .where(eq(shipmentRequests.id, shipmentRequestId))
+      .limit(1);
+    return Boolean(request);
   }
 
   if (role === "importer") {
-    const [owned] = await db
+    const [owned] = await database
       .select({ id: shipmentRequests.id })
       .from(shipmentRequests)
       .innerJoin(
@@ -254,7 +306,7 @@ async function canProfileViewShipmentRequestAttachments(
   }
 
   if (role === "forwarder") {
-    const [postedVisible] = await db
+    const [postedVisible] = await database
       .select({ id: shipmentRequests.id })
       .from(shipmentRequests)
       .innerJoin(
@@ -273,7 +325,7 @@ async function canProfileViewShipmentRequestAttachments(
       return true;
     }
 
-    const [visible] = await db
+    const [visible] = await database
       .select({ id: quotes.id })
       .from(quotes)
       .innerJoin(
@@ -307,9 +359,10 @@ function uniqueIds(values: string[]) {
   return Array.from(new Set(values.filter((value) => value.trim())));
 }
 
-async function requireImporterProfileForMedia() {
-  const profile = await requireRole(["importer"]);
-
+async function requireImporterProfileForMediaActor(profile: MediaActor) {
+  if (profile.role !== "importer") {
+    throw new Error("Importer role is required.");
+  }
   const importerProfile = await db.query.importerProfiles.findFirst({
     where: eq(importerProfiles.userProfileId, profile.id),
   });
@@ -318,5 +371,5 @@ async function requireImporterProfileForMedia() {
     throw new Error("Importer profile is missing for the current user.");
   }
 
-  return { profile, importerProfile };
+  return importerProfile;
 }

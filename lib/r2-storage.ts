@@ -6,7 +6,6 @@ type R2Config = {
   accessKeyId: string;
   secretAccessKey: string;
   region: string;
-  readUrlExpiresSeconds: number;
 };
 
 type PutObjectInput = {
@@ -43,7 +42,6 @@ export function getR2Config(): R2Config {
     accessKeyId,
     secretAccessKey,
     region: process.env.R2_REGION || "auto",
-    readUrlExpiresSeconds: readExpiry(),
   };
 }
 
@@ -82,61 +80,74 @@ export async function putR2Object(input: PutObjectInput) {
   }
 }
 
-export function createSignedR2ReadUrl(objectKey: string) {
+export async function getR2Object(objectKey: string) {
   const config = getR2Config();
   const url = objectUrl(config, objectKey);
   const now = new Date();
-  const date = amzDate(now);
-  const shortDate = date.slice(0, 8);
-  const credentialScope = `${shortDate}/${config.region}/${service}/aws4_request`;
-  const signedHeaders = "host";
+  const payloadHash = sha256Hex("");
+  const headers = signedHeaders(url, now, payloadHash);
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      ...headers,
+      authorization: authorizationHeader({
+        config,
+        method: "GET",
+        url,
+        headers,
+        payloadHash,
+        now,
+      }),
+    },
+    cache: "no-store",
+  });
 
-  url.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
-  url.searchParams.set(
-    "X-Amz-Credential",
-    `${config.accessKeyId}/${credentialScope}`,
-  );
-  url.searchParams.set("X-Amz-Date", date);
-  url.searchParams.set("X-Amz-Expires", String(config.readUrlExpiresSeconds));
-  url.searchParams.set("X-Amz-SignedHeaders", signedHeaders);
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`R2 get failed with ${response.status}`);
+  }
+  return response;
+}
 
-  const canonicalRequest = [
-    "GET",
-    encodePath(url.pathname),
-    canonicalQueryString(url.searchParams),
-    `host:${url.host}\n`,
-    signedHeaders,
-    "UNSIGNED-PAYLOAD",
-  ].join("\n");
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    date,
-    credentialScope,
-    sha256Hex(canonicalRequest),
-  ].join("\n");
-  const signature = hmacHex(signingKey(config.secretAccessKey, shortDate, config.region), stringToSign);
+export async function deleteR2Object(objectKey: string) {
+  const config = getR2Config();
+  const url = objectUrl(config, objectKey);
+  const now = new Date();
+  const payloadHash = sha256Hex("");
+  const headers = signedHeaders(url, now, payloadHash);
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      ...headers,
+      authorization: authorizationHeader({
+        config,
+        method: "DELETE",
+        url,
+        headers,
+        payloadHash,
+        now,
+      }),
+    },
+  });
 
-  url.searchParams.set("X-Amz-Signature", signature);
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`R2 delete failed with ${response.status}`);
+  }
+}
 
+function signedHeaders(url: URL, now: Date, payloadHash: string) {
   return {
-    url: url.toString(),
-    expiresInSeconds: config.readUrlExpiresSeconds,
+    host: url.host,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": amzDate(now),
   };
 }
 
 function endpointFromAccountId() {
   const accountId = process.env.R2_ACCOUNT_ID;
   return accountId ? `https://${accountId}.r2.cloudflarestorage.com` : undefined;
-}
-
-function readExpiry() {
-  const parsed = Number.parseInt(process.env.R2_READ_URL_EXPIRES_SECONDS || "900", 10);
-
-  if (!Number.isFinite(parsed) || parsed < 60 || parsed > 3600) {
-    return 900;
-  }
-
-  return parsed;
 }
 
 function objectUrl(config: R2Config, objectKey: string) {

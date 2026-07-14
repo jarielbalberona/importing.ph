@@ -10,8 +10,11 @@ import {
 const context = "shipment_request_attachment";
 
 describe("shipment attachment validation", () => {
-  it("detects pdf from bytes instead of browser mime", () => {
-    const detected = detectContentType(Buffer.from("%PDF-1.7\n"), "invoice.bin");
+  it("detects pdf from bytes", async () => {
+    const detected = await detectContentType(
+      Buffer.from("%PDF-1.7\n"),
+      "invoice.pdf",
+    );
 
     assert.deepEqual(detected, {
       contentType: "application/pdf",
@@ -44,9 +47,9 @@ describe("shipment attachment validation", () => {
     );
   });
 
-  it("accepts jpeg by magic bytes and records checksum metadata", async () => {
-    const file = new File([Buffer.from([0xff, 0xd8, 0xff, 0x00])], "photo.txt", {
-      type: "text/plain",
+  it("accepts jpeg by detected bytes and records checksum metadata", async () => {
+    const file = new File([Buffer.from([0xff, 0xd8, 0xff, 0x00])], "photo.jpg", {
+      type: "image/jpeg",
     });
 
     const validated = await validateUploadFile(file, context);

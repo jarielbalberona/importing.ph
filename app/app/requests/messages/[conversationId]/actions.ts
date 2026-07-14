@@ -8,6 +8,7 @@ import {
   markConversationReadForCurrentImporter,
   MessagingAccessError,
 } from "@/lib/messages";
+import { RateLimitError } from "@/lib/rate-limit";
 
 const idSchema = z.string().uuid();
 
@@ -25,6 +26,11 @@ export async function sendImporterMessage(formData: FormData) {
     );
     redirect(`/app/requests/messages/${conversationId.data}?message=sent`);
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(
+        `/app/requests/messages/${conversationId.data}?messageError=rate_limited`,
+      );
+    }
     if (error instanceof MessagingAccessError || error instanceof z.ZodError) {
       redirect(
         `/app/requests/messages/${conversationId.data}?messageError=send`,

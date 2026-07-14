@@ -11,7 +11,9 @@ import {
 import { attachFilesToShipmentRequest } from "@/lib/media";
 import { notifyShipmentRequestPosted } from "@/lib/notifications";
 import { requireRole } from "@/lib/authz";
+import { runBestEffort } from "@/lib/best-effort";
 import { formatDestination } from "@/lib/format";
+import { consumeRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import {
   createShipmentRequestSchema,
   type CreateShipmentRequestInput,
@@ -36,6 +38,7 @@ export async function createShipmentRequestForCurrentImporter(
   options: { status?: Extract<ShipmentRequestStatus, "draft" | "posted"> } = {},
 ) {
   const { profile, importerProfile } = await requireImporterProfile();
+  await consumeRateLimit(rateLimitPolicies.requestMutation, profile.id);
   const parsed = createShipmentRequestSchema.parse(input);
   const status = options.status ?? "posted";
   const destinationDisplayName =
@@ -97,10 +100,15 @@ export async function createShipmentRequestForCurrentImporter(
   });
 
   if (status === "posted") {
-    await notifyShipmentRequestPosted({
-      requestId: request.id,
-      actorUserProfileId: profile.id,
-    });
+    await runBestEffort(
+      "notification.request_posted_failed",
+      () =>
+        notifyShipmentRequestPosted({
+          requestId: request.id,
+          actorUserProfileId: profile.id,
+        }),
+      { requestId: request.id },
+    );
   }
 
   return request;
@@ -108,6 +116,7 @@ export async function createShipmentRequestForCurrentImporter(
 
 export async function publishShipmentRequestForCurrentImporter(requestId: string) {
   const { profile, importerProfile } = await requireImporterProfile();
+  await consumeRateLimit(rateLimitPolicies.requestMutation, profile.id);
   const now = new Date();
 
   const [request] = await db
@@ -123,10 +132,15 @@ export async function publishShipmentRequestForCurrentImporter(requestId: string
     .returning({ id: shipmentRequests.id });
 
   if (request) {
-    await notifyShipmentRequestPosted({
-      requestId: request.id,
-      actorUserProfileId: profile.id,
-    });
+    await runBestEffort(
+      "notification.request_posted_failed",
+      () =>
+        notifyShipmentRequestPosted({
+          requestId: request.id,
+          actorUserProfileId: profile.id,
+        }),
+      { requestId: request.id },
+    );
   }
 
   return request;

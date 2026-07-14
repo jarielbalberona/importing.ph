@@ -13,6 +13,7 @@ import {
   getOrCreateConversationForCurrentImporter,
   MessagingAccessError,
 } from "@/lib/messages";
+import { RateLimitError } from "@/lib/rate-limit";
 
 const idSchema = z.string().uuid();
 
@@ -31,7 +32,15 @@ export async function publishDraftRequest(formData: FormData) {
     redirect("/app/requests?error=invalid-request");
   }
 
-  const request = await publishShipmentRequestForCurrentImporter(requestId.data);
+  let request;
+  try {
+    request = await publishShipmentRequestForCurrentImporter(requestId.data);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(`/app/requests/${requestId.data}?requestError=rate_limited`);
+    }
+    throw error;
+  }
 
   redirect(
     request
@@ -58,7 +67,9 @@ export async function startImporterConversation(formData: FormData) {
 
     redirect(`/app/requests/messages/${conversationId}`);
   } catch (error) {
-    if (error instanceof MessagingAccessError) {
+    if (error instanceof RateLimitError) {
+      redirect(`/app/requests/${requestId.data}?messageError=rate_limited`);
+    } else if (error instanceof MessagingAccessError) {
       redirect(`/app/requests/${requestId.data}?messageError=${error.code}`);
     }
 
@@ -78,12 +89,20 @@ async function decideQuote(formData: FormData, decision: "accept" | "reject") {
 
   try {
     if (decision === "accept") {
-      await acceptQuoteForCurrentImporter(quoteId.data);
+      await acceptQuoteForCurrentImporter({
+        requestId: requestId.data,
+        quoteId: quoteId.data,
+      });
     } else {
-      await rejectQuoteForCurrentImporter(quoteId.data);
+      await rejectQuoteForCurrentImporter({
+        requestId: requestId.data,
+        quoteId: quoteId.data,
+      });
     }
   } catch (error) {
-    if (error instanceof QuoteDecisionError) {
+    if (error instanceof RateLimitError) {
+      target = `/app/requests/${requestId.data}?decisionError=rate_limited`;
+    } else if (error instanceof QuoteDecisionError) {
       target = `/app/requests/${requestId.data}?decisionError=${error.code}`;
     } else {
       throw error;

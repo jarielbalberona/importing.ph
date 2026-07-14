@@ -23,9 +23,10 @@ V1 launch checklist:
 - import PSGC data into the target database before destination lookup is used
 - verify Clerk production URLs and redirect settings
 - verify Resend sender/domain setup and one transactional email delivery smoke
-- verify R2 bucket credentials and private attachment read URL behavior if attachments are enabled
+- verify R2 bucket credentials, upload compensation, relationship authorization, and authenticated forced-download behavior if attachments are enabled
+- run the temporary-upload cleanup command in dry-run mode before any confirmed cleanup: `npm run media:cleanup-temporary`; deletion requires `-- --confirm`
 - run the V1 marketplace smoke against the target-like local or staging database
-- run browser proof with separate importer and forwarder sessions for request creation, quote submission, quote decision, quote-gated conversation, message send, and unread/read updates
+- run browser proof with separate importer and forwarder sessions for request creation, competing quote submission, automatic loser rejection, quote-gated conversation, message send, forced attachment download, and unread/read updates
 - confirm database backup/restore ownership before public launch
 
 Migrated reference note:

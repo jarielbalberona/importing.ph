@@ -605,6 +605,8 @@ function decisionErrorMessage(error: string) {
       return "Expired quotes cannot be accepted.";
     case "already_selected":
       return "This request already has an accepted quote.";
+    case "rate_limited":
+      return "Too many quote changes. Wait a few minutes and try again.";
     default:
       return "The quote decision was not saved. Try again.";
   }
@@ -616,6 +618,8 @@ function messageErrorMessage(error: string) {
       return "Messages are available after this forwarder sends a quote.";
     case "not_found":
       return "That conversation is not available.";
+    case "rate_limited":
+      return "Too many messages. Wait a minute and try again.";
     default:
       return "Messages are not available right now.";
   }
@@ -625,6 +629,8 @@ function requestErrorMessage(error: string) {
   switch (error) {
     case "publish-unavailable":
       return "This draft can no longer be posted.";
+    case "rate_limited":
+      return "Too many request changes. Wait a few minutes and try again.";
     default:
       return "The request change was not saved. Try again.";
   }

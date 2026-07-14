@@ -1,6 +1,6 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 
-import { db } from "@/db";
+import { db, type Database } from "@/db";
 import {
   forwarderCompanies,
   quotes,
@@ -9,6 +9,9 @@ import {
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyQuoteDecision, notifyQuoteSubmitted } from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
+import { runBestEffort } from "@/lib/best-effort";
+import { consumeRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
+import { logServerError } from "@/lib/server-log";
 import {
   dateFromDateInput,
   quoteSubmissionSchemaForRequestMode,
@@ -125,27 +128,51 @@ export async function getQuoteCountForRequest(requestId: string) {
   return result?.quoteCount ?? 0;
 }
 
-export async function acceptQuoteForCurrentImporter(quoteId: string) {
-  const { profile, importerProfile } = await requireImporterProfile();
+type QuoteMutationDatabase = Pick<Database, "transaction">;
 
-  const result = await db.transaction(async (tx) => {
+export type QuoteDecisionInput = {
+  requestId: string;
+  quoteId: string;
+};
+
+export async function acceptQuoteForImporter(
+  database: QuoteMutationDatabase,
+  input: QuoteDecisionInput & { importerProfileId: string; now?: Date },
+) {
+  return database.transaction(async (tx) => {
+    const [request] = await tx
+      .select({ id: shipmentRequests.id, status: shipmentRequests.status })
+      .from(shipmentRequests)
+      .where(
+        and(
+          eq(shipmentRequests.id, input.requestId),
+          eq(shipmentRequests.importerProfileId, input.importerProfileId),
+        ),
+      )
+      .for("update")
+      .limit(1);
+
+    if (!request) {
+      throw new QuoteDecisionError("not_found");
+    }
+    if (request.status === "quote_selected") {
+      throw new QuoteDecisionError("already_selected");
+    }
+    if (request.status !== "posted") {
+      throw new QuoteDecisionError("invalid_status");
+    }
+
     const [target] = await tx
       .select({
         id: quotes.id,
         status: quotes.status,
         validUntil: quotes.validUntil,
-        requestId: shipmentRequests.id,
-        requestStatus: shipmentRequests.status,
       })
       .from(quotes)
-      .innerJoin(
-        shipmentRequests,
-        eq(quotes.shipmentRequestId, shipmentRequests.id),
-      )
       .where(
         and(
-          eq(quotes.id, quoteId),
-          eq(shipmentRequests.importerProfileId, importerProfile.id),
+          eq(quotes.id, input.quoteId),
+          eq(quotes.shipmentRequestId, input.requestId),
         ),
       )
       .limit(1);
@@ -153,205 +180,349 @@ export async function acceptQuoteForCurrentImporter(quoteId: string) {
     if (!target) {
       throw new QuoteDecisionError("not_found");
     }
-
     if (target.status !== "submitted") {
       throw new QuoteDecisionError("invalid_status");
     }
 
-    if (target.validUntil.getTime() <= Date.now()) {
+    const now = input.now ?? new Date();
+    if (target.validUntil.getTime() <= now.getTime()) {
       throw new QuoteDecisionError("expired");
     }
 
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${target.requestId}))`);
+    const [accepted] = await tx
+      .update(quotes)
+      .set({ status: "accepted", updatedAt: now })
+      .where(
+        and(eq(quotes.id, target.id), eq(quotes.status, "submitted")),
+      )
+      .returning({ id: quotes.id });
 
-    const [alreadyAccepted] = await tx
-      .select({ id: quotes.id })
-      .from(quotes)
+    if (!accepted) {
+      throw new QuoteDecisionError("invalid_status");
+    }
+
+    const autoRejected = await tx
+      .update(quotes)
+      .set({ status: "rejected", updatedAt: now })
       .where(
         and(
-          eq(quotes.shipmentRequestId, target.requestId),
-          eq(quotes.status, "accepted"),
+          eq(quotes.shipmentRequestId, input.requestId),
+          eq(quotes.status, "submitted"),
+          ne(quotes.id, target.id),
         ),
       )
-      .limit(1);
+      .returning({ id: quotes.id });
 
-    if (alreadyAccepted) {
+    const [updatedRequest] = await tx
+      .update(shipmentRequests)
+      .set({ status: "quote_selected", updatedAt: now })
+      .where(
+        and(
+          eq(shipmentRequests.id, input.requestId),
+          eq(shipmentRequests.status, "posted"),
+        ),
+      )
+      .returning({ id: shipmentRequests.id });
+
+    if (!updatedRequest) {
       throw new QuoteDecisionError("already_selected");
     }
 
-    const now = new Date();
+    return {
+      requestId: input.requestId,
+      acceptedQuoteId: accepted.id,
+      autoRejectedQuoteIds: autoRejected.map((quote) => quote.id),
+    };
+  });
+}
 
-    await tx
-      .update(quotes)
-      .set({ status: "accepted", updatedAt: now })
-      .where(eq(quotes.id, target.id));
+export async function acceptQuoteForCurrentImporter(input: QuoteDecisionInput) {
+  const { profile, importerProfile } = await requireImporterProfile();
+  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
 
-    await tx
-      .update(shipmentRequests)
-      .set({ status: "quote_selected", updatedAt: now })
-      .where(eq(shipmentRequests.id, target.requestId));
-
-    return { requestId: target.requestId };
+  const result = await acceptQuoteForImporter(db, {
+    ...input,
+    importerProfileId: importerProfile.id,
   });
 
-  await notifyQuoteDecision({
-    quoteId,
-    requestId: result.requestId,
-    actorUserProfileId: profile.id,
-    decision: "accepted",
-  });
+  const decisions = [
+    { quoteId: result.acceptedQuoteId, decision: "accepted" as const },
+    ...result.autoRejectedQuoteIds.map((quoteId) => ({
+      quoteId,
+      decision: "rejected" as const,
+    })),
+  ];
+  await Promise.all(
+    decisions.map(async ({ quoteId, decision }) => {
+      try {
+        await notifyQuoteDecision({
+          quoteId,
+          requestId: result.requestId,
+          actorUserProfileId: profile.id,
+          decision,
+        });
+      } catch (error) {
+        logServerError("notification.quote_decision_failed", error, {
+          requestId: result.requestId,
+          quoteId,
+        });
+      }
+    }),
+  );
 
   return result;
 }
 
-export async function rejectQuoteForCurrentImporter(quoteId: string) {
-  const { profile, importerProfile } = await requireImporterProfile();
-
-  const result = await db.transaction(async (tx) => {
-    const [target] = await tx
-      .select({
-        id: quotes.id,
-        status: quotes.status,
-        requestId: shipmentRequests.id,
-      })
-      .from(quotes)
-      .innerJoin(
-        shipmentRequests,
-        eq(quotes.shipmentRequestId, shipmentRequests.id),
-      )
+export async function rejectQuoteForImporter(
+  database: QuoteMutationDatabase,
+  input: QuoteDecisionInput & { importerProfileId: string; now?: Date },
+) {
+  return database.transaction(async (tx) => {
+    const [request] = await tx
+      .select({ id: shipmentRequests.id, status: shipmentRequests.status })
+      .from(shipmentRequests)
       .where(
         and(
-          eq(quotes.id, quoteId),
-          eq(shipmentRequests.importerProfileId, importerProfile.id),
+          eq(shipmentRequests.id, input.requestId),
+          eq(shipmentRequests.importerProfileId, input.importerProfileId),
+        ),
+      )
+      .for("update")
+      .limit(1);
+
+    if (!request) throw new QuoteDecisionError("not_found");
+    if (request.status !== "posted") {
+      throw new QuoteDecisionError("invalid_status");
+    }
+
+    const [target] = await tx
+      .select({ id: quotes.id, status: quotes.status })
+      .from(quotes)
+      .where(
+        and(
+          eq(quotes.id, input.quoteId),
+          eq(quotes.shipmentRequestId, input.requestId),
         ),
       )
       .limit(1);
 
-    if (!target) {
-      throw new QuoteDecisionError("not_found");
-    }
-
+    if (!target) throw new QuoteDecisionError("not_found");
     if (target.status !== "submitted") {
       throw new QuoteDecisionError("invalid_status");
     }
 
-    await tx
+    const [rejected] = await tx
       .update(quotes)
-      .set({ status: "rejected", updatedAt: new Date() })
-      .where(eq(quotes.id, target.id));
+      .set({ status: "rejected", updatedAt: input.now ?? new Date() })
+      .where(
+        and(eq(quotes.id, target.id), eq(quotes.status, "submitted")),
+      )
+      .returning({ id: quotes.id });
 
-    return { requestId: target.requestId };
+    if (!rejected) throw new QuoteDecisionError("invalid_status");
+    return { requestId: request.id, rejectedQuoteId: rejected.id };
+  });
+}
+
+export async function rejectQuoteForCurrentImporter(input: QuoteDecisionInput) {
+  const { profile, importerProfile } = await requireImporterProfile();
+  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
+
+  const result = await rejectQuoteForImporter(db, {
+    ...input,
+    importerProfileId: importerProfile.id,
   });
 
-  await notifyQuoteDecision({
-    quoteId,
-    requestId: result.requestId,
-    actorUserProfileId: profile.id,
-    decision: "rejected",
-  });
+  await runBestEffort(
+    "notification.quote_decision_failed",
+    () =>
+      notifyQuoteDecision({
+        quoteId: result.rejectedQuoteId,
+        requestId: result.requestId,
+        actorUserProfileId: profile.id,
+        decision: "rejected",
+      }),
+    { requestId: result.requestId, quoteId: result.rejectedQuoteId },
+  );
 
   return result;
 }
 
+export async function updateQuoteForForwarder(
+  database: QuoteMutationDatabase,
+  input: QuoteDecisionInput & {
+    forwarderCompanyId: string;
+    quoteInput: unknown;
+    now?: Date;
+  },
+) {
+  return database.transaction(async (tx) => {
+    const [request] = await tx
+      .select({
+        id: shipmentRequests.id,
+        status: shipmentRequests.status,
+        shippingModePreference: shipmentRequests.shippingModePreference,
+      })
+      .from(shipmentRequests)
+      .where(eq(shipmentRequests.id, input.requestId))
+      .for("update")
+      .limit(1);
+
+    if (!request) throw new QuoteSubmissionError("not_found");
+    const [ownedQuote] = await tx
+      .select({ id: quotes.id, status: quotes.status })
+      .from(quotes)
+      .where(
+        and(
+          eq(quotes.id, input.quoteId),
+          eq(quotes.shipmentRequestId, input.requestId),
+          eq(quotes.forwarderCompanyId, input.forwarderCompanyId),
+        ),
+      )
+      .limit(1);
+
+    if (!ownedQuote) throw new QuoteSubmissionError("not_found");
+    if (ownedQuote.status !== "submitted" || request.status !== "posted") {
+      throw new QuoteSubmissionError("invalid_status");
+    }
+
+    const parsed = quoteSubmissionSchemaForRequestMode(
+      request.shippingModePreference,
+    ).parse(input.quoteInput);
+    const [quote] = await tx
+      .update(quotes)
+      .set({
+        quoteAmount: parsed.quoteAmount,
+        currency: parsed.currency,
+        shippingMode: parsed.shippingMode,
+        serviceOffered: parsed.serviceOffered,
+        estimatedTransitMinDays: parsed.estimatedTransitMinDays,
+        estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
+        inclusions: parsed.inclusions ?? "",
+        exclusions: parsed.exclusions ?? "",
+        notes: parsed.notes,
+        validUntil: dateFromDateInput(parsed.validUntil),
+        updatedAt: input.now ?? new Date(),
+      })
+      .where(and(eq(quotes.id, ownedQuote.id), eq(quotes.status, "submitted")))
+      .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
+    return quote;
+  });
+}
+
 export async function updateQuoteForCurrentForwarder(
-  quoteId: string,
+  target: QuoteDecisionInput,
   input: unknown,
 ) {
-  const { member } = await requireForwarderMember();
+  const { profile, member } = await requireForwarderMember();
+  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
 
   if (member.companyIsSuspended) {
     throw new QuoteSubmissionError("forwarder_suspended");
   }
 
-  const [target] = await db
-    .select({
-      id: quotes.id,
-      requestId: shipmentRequests.id,
-      requestStatus: shipmentRequests.status,
-      quoteStatus: quotes.status,
-      shippingModePreference: shipmentRequests.shippingModePreference,
-    })
-    .from(quotes)
-    .innerJoin(
-      shipmentRequests,
-      eq(quotes.shipmentRequestId, shipmentRequests.id),
-    )
-    .where(
-      and(
-        eq(quotes.id, quoteId),
-        eq(quotes.forwarderCompanyId, member.companyId),
-      ),
-    )
-    .limit(1);
-
-  if (!target) {
-    throw new QuoteSubmissionError("not_found");
-  }
-
-  if (target.quoteStatus !== "submitted" || target.requestStatus !== "posted") {
-    throw new QuoteSubmissionError("invalid_status");
-  }
-
-  const parsed = quoteSubmissionSchemaForRequestMode(
-    target.shippingModePreference,
-  ).parse(input);
-
-  const [quote] = await db
-    .update(quotes)
-    .set({
-      quoteAmount: parsed.quoteAmount,
-      currency: parsed.currency,
-      shippingMode: parsed.shippingMode,
-      serviceOffered: parsed.serviceOffered,
-      estimatedTransitMinDays: parsed.estimatedTransitMinDays,
-      estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
-      inclusions: parsed.inclusions ?? "",
-      exclusions: parsed.exclusions ?? "",
-      notes: parsed.notes,
-      validUntil: dateFromDateInput(parsed.validUntil),
-      updatedAt: new Date(),
-    })
-    .where(eq(quotes.id, target.id))
-    .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
-
-  return quote;
+  return updateQuoteForForwarder(db, {
+    ...target,
+    forwarderCompanyId: member.companyId,
+    quoteInput: input,
+  });
 }
 
-export async function withdrawQuoteForCurrentForwarder(quoteId: string) {
-  const { member } = await requireForwarderMember();
+export async function withdrawQuoteForForwarder(
+  database: QuoteMutationDatabase,
+  input: QuoteDecisionInput & { forwarderCompanyId: string; now?: Date },
+) {
+  return database.transaction(async (tx) => {
+    const [request] = await tx
+      .select({ id: shipmentRequests.id, status: shipmentRequests.status })
+      .from(shipmentRequests)
+      .where(eq(shipmentRequests.id, input.requestId))
+      .for("update")
+      .limit(1);
+    if (!request || request.status !== "posted") return undefined;
 
-  const [target] = await db
-    .select({
-      id: quotes.id,
-      requestStatus: shipmentRequests.status,
-      quoteStatus: quotes.status,
-    })
-    .from(quotes)
-    .innerJoin(
-      shipmentRequests,
-      eq(quotes.shipmentRequestId, shipmentRequests.id),
-    )
-    .where(
-      and(
-        eq(quotes.id, quoteId),
-        eq(quotes.forwarderCompanyId, member.companyId),
-      ),
-    )
-    .limit(1);
+    const [quote] = await tx
+      .update(quotes)
+      .set({ status: "withdrawn", updatedAt: input.now ?? new Date() })
+      .where(
+        and(
+          eq(quotes.id, input.quoteId),
+          eq(quotes.shipmentRequestId, input.requestId),
+          eq(quotes.forwarderCompanyId, input.forwarderCompanyId),
+          eq(quotes.status, "submitted"),
+        ),
+      )
+      .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
+    return quote;
+  });
+}
 
-  if (
-    !target ||
-    target.quoteStatus !== "submitted" ||
-    target.requestStatus !== "posted"
-  ) {
-    return undefined;
+export async function withdrawQuoteForCurrentForwarder(input: QuoteDecisionInput) {
+  const { profile, member } = await requireForwarderMember();
+  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
+  return withdrawQuoteForForwarder(db, {
+    ...input,
+    forwarderCompanyId: member.companyId,
+  });
+}
+
+export async function createQuoteForForwarder(
+  database: QuoteMutationDatabase,
+  input: {
+    requestId: string;
+    forwarderCompanyId: string;
+    forwarderMemberId: string;
+    quoteInput: unknown;
+  },
+) {
+  let quote: { id: string };
+  try {
+    quote = await database.transaction(async (tx) => {
+      const [request] = await tx
+        .select({
+          id: shipmentRequests.id,
+          status: shipmentRequests.status,
+          shippingModePreference: shipmentRequests.shippingModePreference,
+        })
+        .from(shipmentRequests)
+        .where(eq(shipmentRequests.id, input.requestId))
+        .for("update")
+        .limit(1);
+
+      if (!request || request.status !== "posted") {
+        throw new QuoteSubmissionError("request_unavailable");
+      }
+
+      const parsed = quoteSubmissionSchemaForRequestMode(
+        request.shippingModePreference,
+      ).parse(input.quoteInput);
+      const [created] = await tx
+        .insert(quotes)
+        .values({
+          shipmentRequestId: input.requestId,
+          forwarderCompanyId: input.forwarderCompanyId,
+          submittedByForwarderMemberId: input.forwarderMemberId,
+          status: "submitted",
+          quoteAmount: parsed.quoteAmount,
+          currency: parsed.currency,
+          shippingMode: parsed.shippingMode,
+          serviceOffered: parsed.serviceOffered,
+          estimatedTransitMinDays: parsed.estimatedTransitMinDays,
+          estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
+          inclusions: parsed.inclusions ?? "",
+          exclusions: parsed.exclusions ?? "",
+          notes: parsed.notes,
+          validUntil: dateFromDateInput(parsed.validUntil),
+        })
+        .returning({ id: quotes.id });
+      return created;
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new QuoteSubmissionError("duplicate");
+    }
+    throw error;
   }
-
-  const [quote] = await db
-    .update(quotes)
-    .set({ status: "withdrawn", updatedAt: new Date() })
-    .where(eq(quotes.id, target.id))
-    .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
 
   return quote;
 }
@@ -361,67 +532,39 @@ export async function createQuoteForCurrentForwarder(
   input: unknown,
 ) {
   const { profile, member } = await requireForwarderMember();
+  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
 
   if (member.companyIsSuspended) {
     throw new QuoteSubmissionError("forwarder_suspended");
   }
 
-  const [request] = await db
-    .select({
-      id: shipmentRequests.id,
-      shippingModePreference: shipmentRequests.shippingModePreference,
-    })
-    .from(shipmentRequests)
-    .where(
-      and(
-        eq(shipmentRequests.id, requestId),
-        eq(shipmentRequests.status, "posted"),
-      ),
-    )
-    .limit(1);
-
-  if (!request) {
-    throw new QuoteSubmissionError("request_unavailable");
-  }
-
-  const parsed = quoteSubmissionSchemaForRequestMode(
-    request.shippingModePreference,
-  ).parse(input);
-
-  const existingQuote = await getForwarderOwnQuoteForRequest(
+  const quote = await createQuoteForForwarder(db, {
     requestId,
-    member.companyId,
-  );
-
-  if (existingQuote) {
-    throw new QuoteSubmissionError("duplicate");
-  }
-
-  const [quote] = await db
-    .insert(quotes)
-    .values({
-      shipmentRequestId: requestId,
-      forwarderCompanyId: member.companyId,
-      submittedByForwarderMemberId: member.id,
-      status: "submitted",
-      quoteAmount: parsed.quoteAmount,
-      currency: parsed.currency,
-      shippingMode: parsed.shippingMode,
-      serviceOffered: parsed.serviceOffered,
-      estimatedTransitMinDays: parsed.estimatedTransitMinDays,
-      estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
-      inclusions: parsed.inclusions ?? "",
-      exclusions: parsed.exclusions ?? "",
-      notes: parsed.notes,
-      validUntil: dateFromDateInput(parsed.validUntil),
-    })
-    .returning({ id: quotes.id });
-
-  await notifyQuoteSubmitted({
-    quoteId: quote.id,
-    requestId,
-    actorUserProfileId: profile.id,
+    forwarderCompanyId: member.companyId,
+    forwarderMemberId: member.id,
+    quoteInput: input,
   });
 
+  await runBestEffort(
+    "notification.quote_submitted_failed",
+    () =>
+      notifyQuoteSubmitted({
+        quoteId: quote.id,
+        requestId,
+        actorUserProfileId: profile.id,
+      }),
+    { requestId, quoteId: quote.id },
+  );
+
   return quote;
+}
+
+function isUniqueViolation(error: unknown) {
+  let current = error;
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (typeof current !== "object" || current === null) return false;
+    if ("code" in current && current.code === "23505") return true;
+    current = "cause" in current ? current.cause : undefined;
+  }
+  return false;
 }

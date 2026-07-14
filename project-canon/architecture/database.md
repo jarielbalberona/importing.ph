@@ -16,6 +16,7 @@ Core table groups currently present:
 - importer profiles: `importer_profiles`
 - forwarder org model: `forwarder_companies`, `forwarder_members`, `forwarder_quote_defaults`
 - marketplace requests and quotes: `shipment_requests`, `quotes`
+- defensive controls: `rate_limit_states`
 - messaging: `conversations`, `messages`, `conversation_read_states`
 - notifications: `notifications`
 - media and attachments: `media_files`, `shipment_request_attachments`
@@ -25,6 +26,7 @@ Important current boundaries:
 
 - Clerk is not the primary business-data store
 - quote uniqueness is enforced per shipment request and forwarder company
+- a partial unique index enforces at most one accepted quote per shipment request
 - conversations are scoped to request + forwarder company and opened by quote relationship
 - notification rows dedupe by `dedupeKey`
 

@@ -14,6 +14,7 @@ import {
   MessagingAccessError,
 } from "@/lib/messages";
 import { quoteSubmissionInputFromFormData } from "@/lib/validation";
+import { RateLimitError } from "@/lib/rate-limit";
 
 const requestIdSchema = z.string().uuid();
 
@@ -32,7 +33,9 @@ export async function submitQuote(formData: FormData) {
       quoteSubmissionInputFromFormData(formData),
     );
   } catch (error) {
-    if (error instanceof QuoteSubmissionError) {
+    if (error instanceof RateLimitError) {
+      target = `/app/forwarder/requests/${requestId.data}/quote?error=rate_limited`;
+    } else if (error instanceof QuoteSubmissionError) {
       target = `/app/forwarder/requests/${requestId.data}/quote?error=${error.code}`;
     } else if (error instanceof z.ZodError) {
       target = `/app/forwarder/requests/${requestId.data}/quote?error=validation`;
@@ -56,11 +59,13 @@ export async function updateQuote(formData: FormData) {
 
   try {
     await updateQuoteForCurrentForwarder(
-      quoteId.data,
+      { requestId: requestId.data, quoteId: quoteId.data },
       quoteSubmissionInputFromFormData(formData),
     );
   } catch (error) {
-    if (error instanceof QuoteSubmissionError) {
+    if (error instanceof RateLimitError) {
+      target = `/app/forwarder/requests/${requestId.data}/quote?mode=edit&error=rate_limited`;
+    } else if (error instanceof QuoteSubmissionError) {
       target = `/app/forwarder/requests/${requestId.data}/quote?mode=edit&error=${error.code}`;
     } else if (error instanceof z.ZodError) {
       target = `/app/forwarder/requests/${requestId.data}/quote?mode=edit&error=validation`;
@@ -80,7 +85,18 @@ export async function withdrawQuote(formData: FormData) {
     redirect("/app/forwarder/requests?error=invalid-request");
   }
 
-  const quote = await withdrawQuoteForCurrentForwarder(quoteId.data);
+  let quote;
+  try {
+    quote = await withdrawQuoteForCurrentForwarder({
+      requestId: requestId.data,
+      quoteId: quoteId.data,
+    });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect(`/app/forwarder/requests/${requestId.data}?quoteError=rate_limited`);
+    }
+    throw error;
+  }
 
   redirect(
     quote
@@ -103,7 +119,9 @@ export async function startForwarderConversation(formData: FormData) {
 
     redirect(`/app/forwarder/messages/${conversationId}`);
   } catch (error) {
-    if (error instanceof MessagingAccessError) {
+    if (error instanceof RateLimitError) {
+      redirect(`/app/forwarder/requests/${requestId.data}?messageError=rate_limited`);
+    } else if (error instanceof MessagingAccessError) {
       redirect(`/app/forwarder/requests/${requestId.data}?messageError=${error.code}`);
     }
 

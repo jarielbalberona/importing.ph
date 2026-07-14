@@ -355,6 +355,8 @@ function quoteErrorMessage(error: string) {
   switch (error) {
     case "withdraw-unavailable":
       return "This quote can no longer be withdrawn.";
+    case "rate_limited":
+      return "Too many quote changes. Wait a few minutes and try again.";
     default:
       return "The quote change was not saved. Try again.";
   }
@@ -408,6 +410,8 @@ function messageErrorMessage(error: string) {
       return "Messages are available after your company sends a quote.";
     case "not_found":
       return "That conversation is not available.";
+    case "rate_limited":
+      return "Too many messages. Wait a minute and try again.";
     default:
       return "Messages are not available right now.";
   }

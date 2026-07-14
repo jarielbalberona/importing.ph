@@ -20,6 +20,28 @@ const subscriptionsByConversationId = new Map();
 
 let sql;
 
+function boundedInteger(value, fallback, maximum) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.min(parsed, maximum)
+    : fallback;
+}
+
+function logServerError(event, error, context = {}) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: "error",
+    event,
+    errorClass: error instanceof Error ? error.name : "UnknownError",
+    errorMessage: message
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted]")
+      .replace(/https?:\/\/\S+/gi, "[redacted]")
+      .replace(/(?:bearer\s+|token[=:]\s*)\S+/gi, "[redacted]"),
+    ...context,
+  }));
+}
+
 function getSql() {
   if (!sql) {
     if (!process.env.DATABASE_URL) {
@@ -27,7 +49,17 @@ function getSql() {
     }
 
     sql = postgres(process.env.DATABASE_URL, {
-      max: 1,
+      max: boundedInteger(process.env.REALTIME_DATABASE_POOL_MAX, 2, 10),
+      connect_timeout: boundedInteger(
+        process.env.DATABASE_CONNECT_TIMEOUT_SECONDS,
+        10,
+        60,
+      ),
+      idle_timeout: boundedInteger(
+        process.env.DATABASE_IDLE_TIMEOUT_SECONDS,
+        20,
+        300,
+      ),
       prepare: false,
     });
   }
@@ -360,7 +392,7 @@ server.on("upgrade", (request, socket, head) => {
       });
     })
     .catch((error) => {
-      console.error("realtime upgrade failed", error);
+      logServerError("realtime.upgrade_failed", error);
       socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
       socket.destroy();
     });

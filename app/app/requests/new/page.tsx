@@ -34,6 +34,8 @@ export default async function NewShipmentRequestPage({
         errorMessage={
           params.error === "validation"
             ? "Complete the required fields and provide total CBM, total weight, or dimensions with package count."
+            : params.error === "rate_limited"
+              ? "Too many request changes. Wait a few minutes and try again."
             : null
         }
         clearKeys={["error"]}

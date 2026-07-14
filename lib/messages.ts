@@ -15,6 +15,8 @@ import {
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyMessageCreated } from "@/lib/notifications";
 import { publishRealtimeEvent } from "@/lib/realtime-events";
+import { runBestEffort } from "@/lib/best-effort";
+import { consumeRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { requireImporterProfile } from "@/lib/shipment-requests";
 
 const messagingQuoteStatuses = ["submitted", "accepted", "rejected"] as const;
@@ -461,6 +463,7 @@ export async function createMessageForCurrentImporter(
   bodyInput: unknown,
 ) {
   const { profile } = await requireImporterProfile();
+  await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
   const conversationId = await getOrCreateConversationForCurrentImporter(
     requestId,
     forwarderCompanyId,
@@ -478,6 +481,7 @@ export async function createMessageForCurrentForwarder(
   bodyInput: unknown,
 ) {
   const { profile } = await requireForwarderMember();
+  await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
   const conversationId = await getOrCreateConversationForCurrentForwarder(
     requestId,
   );
@@ -500,6 +504,8 @@ export async function createMessageInConversationForCurrentImporter(
     throw new MessagingAccessError("not_found");
   }
 
+  await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
+
   return createMessageInConversation({
     conversationId: conversation.id,
     senderUserProfileId: profile.id,
@@ -517,6 +523,8 @@ export async function createMessageInConversationForCurrentForwarder(
   if (!conversation) {
     throw new MessagingAccessError("not_found");
   }
+
+  await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
 
   return createMessageInConversation({
     conversationId: conversation.id,
@@ -711,11 +719,19 @@ async function createMessageInConversation(input: {
     };
   });
 
-  await notifyMessageCreated({
-    conversationId: input.conversationId,
-    messageId: result.inserted.id,
-    senderUserProfileId: input.senderUserProfileId,
-  });
+  await runBestEffort(
+    "notification.message_created_failed",
+    () =>
+      notifyMessageCreated({
+        conversationId: input.conversationId,
+        messageId: result.inserted.id,
+        senderUserProfileId: input.senderUserProfileId,
+      }),
+    {
+      conversationId: input.conversationId,
+      messageId: result.inserted.id,
+    },
+  );
 
   publishRealtimeEvent({
     type: "conversation.message.created",

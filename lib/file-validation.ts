@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { extname } from "node:path";
+
+import { fileTypeFromBuffer } from "file-type";
 
 import type { MediaFileContext } from "@/db/schema";
 import { mediaContextRules } from "@/lib/file-rules";
@@ -46,7 +49,7 @@ export async function validateUploadFile(
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const detected = detectContentType(bytes, file.name);
+  const detected = await detectContentType(bytes, file.name);
 
   if (!detected) {
     throw new UploadValidationError(
@@ -62,6 +65,20 @@ export async function validateUploadFile(
     );
   }
 
+  if (!extensionMatches(file.name, detected.extension)) {
+    throw new UploadValidationError(
+      "invalid_file",
+      "The file extension does not match its contents.",
+    );
+  }
+
+  if (!claimedTypeMatches(file.type, detected.contentType)) {
+    throw new UploadValidationError(
+      "invalid_file",
+      "The file type does not match its contents.",
+    );
+  }
+
   return {
     bytes,
     sizeBytes: bytes.byteLength,
@@ -73,60 +90,22 @@ export async function validateUploadFile(
   };
 }
 
-export function detectContentType(bytes: Buffer, filename = "") {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return { contentType: "image/jpeg", extension: "jpg" };
-  }
-
-  if (
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a
-  ) {
-    return { contentType: "image/png", extension: "png" };
-  }
-
-  if (
-    bytes.length >= 12 &&
-    bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
-    bytes.subarray(8, 12).toString("ascii") === "WEBP"
-  ) {
-    return { contentType: "image/webp", extension: "webp" };
-  }
-
-  if (bytes.length >= 5 && bytes.subarray(0, 5).toString("ascii") === "%PDF-") {
-    return { contentType: "application/pdf", extension: "pdf" };
+export async function detectContentType(bytes: Buffer, filename = "") {
+  const detected = await fileTypeFromBuffer(bytes);
+  if (detected && detected.ext !== "cfb") {
+    const mapped = detectedTypes[detected.ext];
+    return mapped ?? null;
   }
 
   const lower = filename.toLowerCase();
-  if (looksLikeZip(bytes)) {
-    if (lower.endsWith(".docx")) {
-      return {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        extension: "docx",
-      };
-    }
-    if (lower.endsWith(".xlsx")) {
-      return {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        extension: "xlsx",
-      };
-    }
-  }
-
-  if (looksLikeOle(bytes)) {
-    if (lower.endsWith(".doc")) {
+  if (detected?.ext === "cfb") {
+    if (containsUtf16DirectoryName(bytes, "WordDocument")) {
       return { contentType: "application/msword", extension: "doc" };
     }
-    if (lower.endsWith(".xls")) {
+    if (
+      containsUtf16DirectoryName(bytes, "Workbook") ||
+      containsUtf16DirectoryName(bytes, "Book")
+    ) {
       return { contentType: "application/vnd.ms-excel", extension: "xls" };
     }
   }
@@ -138,22 +117,28 @@ export function detectContentType(bytes: Buffer, filename = "") {
   return null;
 }
 
-function looksLikeZip(bytes: Buffer) {
-  return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
-}
+const detectedTypes: Record<
+  string,
+  { contentType: string; extension: string } | undefined
+> = {
+  jpg: { contentType: "image/jpeg", extension: "jpg" },
+  png: { contentType: "image/png", extension: "png" },
+  webp: { contentType: "image/webp", extension: "webp" },
+  pdf: { contentType: "application/pdf", extension: "pdf" },
+  docx: {
+    contentType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    extension: "docx",
+  },
+  xlsx: {
+    contentType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    extension: "xlsx",
+  },
+};
 
-function looksLikeOle(bytes: Buffer) {
-  return (
-    bytes.length >= 8 &&
-    bytes[0] === 0xd0 &&
-    bytes[1] === 0xcf &&
-    bytes[2] === 0x11 &&
-    bytes[3] === 0xe0 &&
-    bytes[4] === 0xa1 &&
-    bytes[5] === 0xb1 &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0xe1
-  );
+function containsUtf16DirectoryName(bytes: Buffer, name: string) {
+  return bytes.includes(Buffer.from(name, "utf16le"));
 }
 
 function looksLikeText(bytes: Buffer) {
@@ -162,6 +147,23 @@ function looksLikeText(bytes: Buffer) {
   return sample.every((byte) => {
     return byte === 0x09 || byte === 0x0a || byte === 0x0d || (byte >= 0x20 && byte <= 0x7e);
   });
+}
+
+function extensionMatches(filename: string, detectedExtension: string) {
+  const extension = extname(filename).slice(1).toLowerCase();
+  return (
+    extension === detectedExtension ||
+    (detectedExtension === "jpg" && extension === "jpeg")
+  );
+}
+
+function claimedTypeMatches(claimed: string, detected: string) {
+  if (!claimed || claimed === "application/octet-stream") return true;
+  if (claimed === detected) return true;
+  return (
+    detected === "text/csv" &&
+    (claimed === "text/plain" || claimed === "application/vnd.ms-excel")
+  );
 }
 
 function sanitizeFilename(filename: string) {

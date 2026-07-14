@@ -9,6 +9,7 @@ import {
   createShipmentRequestSchema,
   shipmentRequestInputFromFormData,
 } from "@/lib/validation";
+import { RateLimitError } from "@/lib/rate-limit";
 
 export async function createShipmentRequest(formData: FormData) {
   await createShipmentRequestWithStatus(formData, "posted");
@@ -29,7 +30,14 @@ async function createShipmentRequestWithStatus(
     redirect("/app/requests/new?error=validation");
   }
 
-  await createShipmentRequestForCurrentImporter(parsed.data, { status });
+  try {
+    await createShipmentRequestForCurrentImporter(parsed.data, { status });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      redirect("/app/requests/new?error=rate_limited");
+    }
+    throw error;
+  }
 
   redirect(`/app/requests?request=${status}`);
 }

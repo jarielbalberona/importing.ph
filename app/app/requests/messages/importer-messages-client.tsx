@@ -655,7 +655,11 @@ function MessageWindow({
 
       <QueryStateToast
         errorMessage={
-          query?.messageError ? "Message was not sent. Try again." : null
+          query?.messageError === "rate_limited"
+            ? "Too many messages. Wait a minute and try again."
+            : query?.messageError
+              ? "Message was not sent. Try again."
+              : null
         }
         clearKeys={["messageError", "message"]}
       />

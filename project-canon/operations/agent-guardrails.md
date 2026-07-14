@@ -12,6 +12,7 @@ Source: current repo inspection.
 - Keep marketplace messaging quote-gated unless durable project truth changes.
 - Treat PSGC location data as database-backed operational data, not frontend-seeded truth.
 - Treat attachment storage as private object-storage flow. Do not replace authorization checks with public URL assumptions.
+- Do not describe V1 attachments as malware-scanned. The accepted control is an explicit unscanned warning plus authenticated forced download; do not add a fake scanner integration.
 - Admin safety actions that suspend forwarder companies are sensitive workflow changes and require proof beyond typecheck.
 
 ## Engineering Guardrails

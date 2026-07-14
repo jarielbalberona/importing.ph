@@ -126,10 +126,13 @@ test("public headers include about link", async () => {
     path.join(process.cwd(), "components/public/site-header.tsx"),
     "utf8",
   );
-  const home = await fs.readFile(path.join(process.cwd(), "app/page.tsx"), "utf8");
+  const home = await fs.readFile(
+    path.join(process.cwd(), "components/public/home-marketing-page.tsx"),
+    "utf8",
+  );
 
   assert.match(header, /href="\/about"/);
-  assert.match(home, /href="\/about"/);
+  assert.match(home, /<PublicSiteHeader \/>/);
 });
 
 test("markdown alternates are covered", () => {

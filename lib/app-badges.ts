@@ -52,6 +52,13 @@ export function buildUnreadConversationSet(input: {
 
 export async function getAppBadgeStateForCurrentUser() {
   const profile = await requireProfile();
+  return getAppBadgeStateForProfile(profile);
+}
+
+export async function getAppBadgeStateForProfile(profile: {
+  id: string;
+  role: "importer" | "forwarder" | "admin";
+}) {
 
   if (profile.role === "admin") {
     return null;

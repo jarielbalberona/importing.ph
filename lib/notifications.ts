@@ -16,6 +16,7 @@ import {
   userProfiles,
 } from "@/db/schema";
 import { requireProfile } from "@/lib/authz";
+import { logServerError } from "@/lib/server-log";
 import { sendMarketplaceNotificationEmail } from "@/packages/email/src";
 
 type CreateNotificationInput = {
@@ -65,8 +66,14 @@ export async function createNotification(input: CreateNotificationInput) {
 async function createNotificationBestEffort(input: CreateNotificationInput) {
   try {
     await createNotification(input);
-  } catch {
-    // Notification writes are not business-critical for V1 marketplace actions.
+  } catch (error) {
+    logServerError("notification.write_failed", error, {
+      recipientUserProfileId: input.recipientUserProfileId,
+      sourceShipmentRequestId: input.sourceShipmentRequestId,
+      sourceQuoteId: input.sourceQuoteId,
+      sourceConversationId: input.sourceConversationId,
+      sourceMessageId: input.sourceMessageId,
+    });
   }
 }
 
@@ -83,8 +90,8 @@ async function sendMarketplaceEmailBestEffort(input: SendEmailInput) {
       actionLabel: input.actionLabel,
       actionUrl: input.actionUrl,
     });
-  } catch {
-    // Email delivery is best-effort in V1 and must not block marketplace writes.
+  } catch (error) {
+    logServerError("notification.email_failed", error);
   }
 }
 
@@ -102,7 +109,8 @@ async function getClerkPrimaryEmailBestEffort(clerkUserId?: string | null) {
       user.emailAddresses[0]?.emailAddress ??
       null
     );
-  } catch {
+  } catch (error) {
+    logServerError("notification.clerk_lookup_failed", error);
     return null;
   }
 }

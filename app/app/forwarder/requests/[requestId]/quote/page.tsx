@@ -195,6 +195,8 @@ function errorMessage(error: string) {
       return "This quote can no longer be edited.";
     case "validation":
       return "Complete the quote fields with a valid shipping mode, amount, transit range, and future validity date.";
+    case "rate_limited":
+      return "Too many quote changes. Wait a few minutes and try again.";
     default:
       return "The quote was not sent. Try again.";
   }

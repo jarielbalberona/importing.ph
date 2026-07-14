@@ -1,33 +1,34 @@
-import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { db } from "@/db";
-import { userProfiles } from "@/db/schema";
+import { apiError, rateLimitResponse } from "@/lib/api-response";
+import { ApiAuthError, requireApiProfile } from "@/lib/api-authz";
+import {
+  consumeRateLimit,
+  RateLimitError,
+  rateLimitPolicies,
+} from "@/lib/rate-limit";
 import { createRealtimeToken } from "@/lib/realtime-token";
 
 export async function POST() {
-  const { userId } = await auth();
+  try {
+    const profile = await requireApiProfile();
+    await consumeRateLimit(rateLimitPolicies.realtimeToken, profile.id);
+    const token = createRealtimeToken({
+      clerkUserId: profile.clerkUserId,
+      userProfileId: profile.id,
+      role: profile.role,
+    });
 
-  if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(token, {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    if (error instanceof ApiAuthError) {
+      return apiError(error.status, error.code, "Authentication is required.");
+    }
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
+    throw error;
   }
-
-  const profile = await db.query.userProfiles.findFirst({
-    where: eq(userProfiles.clerkUserId, userId),
-  });
-
-  if (!profile) {
-    return NextResponse.json({ error: "profile_required" }, { status: 403 });
-  }
-
-  const token = createRealtimeToken({
-    clerkUserId: userId,
-    userProfileId: profile.id,
-    role: profile.role,
-  });
-
-  return NextResponse.json(token, {
-    headers: { "Cache-Control": "no-store" },
-  });
 }

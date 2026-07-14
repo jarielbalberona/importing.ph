@@ -5,11 +5,13 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const userRoleEnum = pgEnum("user_role", [
   "importer",
@@ -481,10 +483,35 @@ export const quotes = pgTable(
       table.shipmentRequestId,
       table.forwarderCompanyId,
     ),
+    uniqueIndex("quotes_one_accepted_per_request_idx")
+      .on(table.shipmentRequestId)
+      .where(sql`quote_status_is_accepted(${table.status})`),
     index("quotes_shipment_request_id_idx").on(table.shipmentRequestId),
     index("quotes_forwarder_company_id_idx").on(table.forwarderCompanyId),
     index("quotes_shipping_mode_idx").on(table.shippingMode),
     index("quotes_status_idx").on(table.status),
+  ],
+);
+
+export const rateLimitStates = pgTable(
+  "rate_limit_states",
+  {
+    scope: text("scope").notNull(),
+    subjectHash: text("subject_hash").notNull(),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    requestCount: integer("request_count").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "rate_limit_states_scope_subject_pk",
+      columns: [table.scope, table.subjectHash],
+    }),
+    index("rate_limit_states_updated_at_idx").on(table.updatedAt),
   ],
 );
 

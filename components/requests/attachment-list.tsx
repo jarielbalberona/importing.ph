@@ -1,7 +1,4 @@
-"use client";
-
-import { useState } from "react";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/file-rules";
@@ -14,9 +11,6 @@ export type AttachmentListItem = {
 };
 
 export function AttachmentList({ files }: { files: AttachmentListItem[] }) {
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   if (files.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -25,32 +19,15 @@ export function AttachmentList({ files }: { files: AttachmentListItem[] }) {
     );
   }
 
-  async function openAttachment(file: AttachmentListItem) {
-    setLoadingId(file.id);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        `/api/media/shipment-request-attachments/${file.id}/url`,
-        { method: "POST" },
-      );
-      const payload = await response.json();
-
-      if (!response.ok) {
-        setError(payload.message || "Attachment is not available.");
-        return;
-      }
-
-      window.open(payload.url, "_blank", "noopener,noreferrer");
-    } catch {
-      setError("Attachment is not available right now.");
-    } finally {
-      setLoadingId(null);
-    }
-  }
-
   return (
     <div className="grid gap-3">
+      <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <p>
+          These files are user-provided and are not malware-scanned. Downloads
+          are forced; open them only if you trust the sender.
+        </p>
+      </div>
       <ul className="grid gap-2">
         {files.map((file) => (
           <li
@@ -68,24 +45,17 @@ export function AttachmentList({ files }: { files: AttachmentListItem[] }) {
                 </p>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void openAttachment(file)}
-              disabled={loadingId === file.id}
-            >
-              {loadingId === file.id ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`/api/media/shipment-request-attachments/${file.id}`}
+              >
                 <Download className="size-4" aria-hidden="true" />
-              )}
-              Open
+                Download
+              </a>
             </Button>
           </li>
         ))}
       </ul>
-      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
     </div>
   );
 }
