@@ -50,6 +50,7 @@ type RealtimeContextValue = {
   subscribe: (conversationId: string) => void;
   unsubscribe: (conversationId: string) => void;
   addListener: (listener: Listener) => () => void;
+  emitLocal: (event: ClientRealtimeEvent) => void;
 };
 
 const RealtimeContext = createContext<RealtimeContextValue | undefined>(
@@ -231,8 +232,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           listenersRef.current.delete(listener);
         };
       },
+      emitLocal: emit,
     }),
-    [send, sendSubscribe, status],
+    [emit, send, sendSubscribe, status],
   );
 
   return (

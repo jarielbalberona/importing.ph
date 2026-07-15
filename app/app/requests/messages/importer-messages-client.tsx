@@ -289,7 +289,7 @@ export function ImporterMessagesClient({
   }, [conversations, realtime]);
 
   useEffect(() => {
-    if (!currentConversation?.currentUserProfileId) {
+    if (!currentConversation?.currentUserProfileId || !currentConversation.hasUnread) {
       return;
     }
 
@@ -321,6 +321,17 @@ export function ImporterMessagesClient({
             lastReadAt: readState.lastReadAt,
           }),
         );
+
+        realtime.emitLocal({
+          type: "conversation.read_state.updated",
+          version: 1,
+          eventId: `local:conversation:${currentConversation.id}:read:${readState.readerUserProfileId}:${readState.lastReadMessageId}`,
+          occurredAt: new Date().toISOString(),
+          conversationId: currentConversation.id,
+          readerUserProfileId: readState.readerUserProfileId,
+          lastReadMessageId: readState.lastReadMessageId,
+          lastReadAt: readState.lastReadAt,
+        });
       })
       .catch(() => {
         // Do not fake seen/read state if the server-side write fails.
@@ -329,7 +340,7 @@ export function ImporterMessagesClient({
     return () => {
       cancelled = true;
     };
-  }, [currentConversation, markConversationReadAction]);
+  }, [currentConversation, markConversationReadAction, realtime]);
 
   return (
     <section
