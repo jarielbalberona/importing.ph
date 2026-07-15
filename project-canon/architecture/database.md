@@ -15,11 +15,11 @@ Core table groups currently present:
 - identity and roles: `user_profiles`
 - importer profiles: `importer_profiles`
 - forwarder org model: `forwarder_companies`, `forwarder_members`, `forwarder_quote_defaults`
-- marketplace requests and quotes: `shipment_requests`, `quotes`
+- marketplace requests and quotes: `shipment_requests`, `quotes`, `quote_revisions`
 - defensive controls: `rate_limit_states`
 - messaging: `conversations`, `messages`, `conversation_read_states`
 - notifications: `notifications`
-- media and attachments: `media_files`, `shipment_request_attachments`
+- media and attachments: `media_files`, `shipment_request_attachments`, `message_attachments`
 - destination lookup data: `psgc_regions`, `psgc_provinces`, `psgc_cities_municipalities`, `psgc_barangays`
 
 Important current boundaries:
@@ -29,6 +29,8 @@ Important current boundaries:
 - a partial unique index enforces at most one accepted quote per shipment request
 - a unique nullable index enforces one active public-share token per shipment request link, with database checks for the 16-character URL-safe token and 10–280 character public summary
 - conversations are scoped to request + forwarder company and opened by quote relationship
+- quote revisions are uniquely ordered by quote + revision number and store immutable commercial snapshots
+- temporary message media is bound to a conversation before `message_attachments` links it to a message and activates the file
 - notification rows dedupe by `dedupeKey`
 
 PSGC note:

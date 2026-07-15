@@ -23,9 +23,11 @@ export async function sendImporterMessage(
   }
 
   try {
+    const attachmentIds = parseAttachmentIds(formData.get("attachmentIds"));
     const message = await createMessageInConversationForCurrentImporter(
       conversationId.data,
       formData.get("body"),
+      attachmentIds,
     );
     return { status: "sent", message };
   } catch (error) {
@@ -44,6 +46,11 @@ export async function sendImporterMessage(
     });
     return { status: "error", code: "server_error" };
   }
+}
+
+function parseAttachmentIds(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value) return [];
+  return z.array(z.string().uuid()).max(5).parse(JSON.parse(value));
 }
 
 export async function markImporterConversationRead(input: {

@@ -140,6 +140,7 @@ function toConversationView(
             senderName: message.senderName,
             senderRole: message.senderRole,
             body: message.body,
+            attachments: message.attachments,
             createdAt: formatDateTime(message.createdAt),
           }))
         : [],

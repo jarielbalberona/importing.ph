@@ -11,6 +11,7 @@ Source: current repo inspection, plus bounded migrated reference from legacy roo
 - quote uniqueness is constrained per request and forwarder company
 - importer requests can be saved as `draft`; drafts are not broadcast to forwarders until posted
 - submitted quotes can be edited or withdrawn only while the request remains `posted`
+- quote submission creates revision 1 and every successful quote edit appends an immutable snapshot inside the quote transaction; accepted, rejected, and withdrawn quotes remain read-only
 - quote acceptance closes the request for marketplace quoting by moving it to `quote_selected`
 - quote acceptance atomically rejects every other submitted quote for the request; PostgreSQL enforces at most one accepted quote per request
 - messaging is gated by quote-linked conversation access
@@ -22,6 +23,9 @@ Source: current repo inspection, plus bounded migrated reference from legacy roo
 - request-posted, quote-decision, and importer-to-forwarder message events also send best-effort email when the recipient email exists
 - admin marketplace activity is a read model over request, quote, and safety events; it is not a separate audit-ledger table
 - shipment request attachments stay private and are served only through the authenticated application download route after relationship authorization
+- conversation attachments are bound to one uploader and one quote-gated conversation while temporary, and become active only in the same transaction that creates the message
+- message attachments allow up to five files and 100 MB total per message; images/documents are limited to 10 MB each and videos to 50 MB each
+- conversation attachments remain private to the importer and forwarder-company participants; public request links never expose them
 - attachments are user-provided and explicitly not malware-scanned in V1; downloads are forced as opaque attachments with no-sniff and no-store controls
 - public shipment sharing is importer-controlled and opt-in; posting a request never creates a public link automatically
 - public request links expose only the importer-approved summary, coarse route, shipment classification and totals, posted date, and open/closed state; importer identity, private cargo data, addresses, attachments, and quote data remain private

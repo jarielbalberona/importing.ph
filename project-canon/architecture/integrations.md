@@ -9,7 +9,7 @@ Current integrations visible in code and config:
 - Clerk for authentication
 - Render for deployment/runtime hosting
 - PostgreSQL database provisioned through Render config
-- Cloudflare R2 for private shipment request attachment storage
+- Cloudflare R2 for private shipment-request and conversation-message attachment storage; browser message uploads use short-lived signed PUT URLs
 - PSGC source data imported from external JSON files into database tables
 - Resend for transactional email delivery
 - React Email templates under `packages/email`

@@ -27,6 +27,7 @@ Observed backend responsibility areas:
 - request draft/post, quote edit/withdraw/decision, messaging, notification, and admin queries/actions
 - PSGC import and lookup
 - attachment validation/storage orchestration
+- short-lived signed R2 PUT authorization, stored-object signature verification, and participant-authorized range delivery for conversation media
 - realtime token handling and conversation subscription checks
 - best-effort Resend-backed marketplace email for events where local recipient email exists
 

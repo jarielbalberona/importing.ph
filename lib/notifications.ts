@@ -226,6 +226,49 @@ export async function notifyQuoteSubmitted(input: {
   });
 }
 
+export async function notifyQuoteUpdated(input: {
+  quoteId: string;
+  requestId: string;
+  revisionNumber: number;
+  actorUserProfileId: string;
+}) {
+  const [target] = await db
+    .select({
+      importerUserProfileId: importerProfiles.userProfileId,
+      cargoDescription: shipmentRequests.cargoDescription,
+      forwarderCompanyName: forwarderCompanies.name,
+    })
+    .from(quotes)
+    .innerJoin(
+      shipmentRequests,
+      eq(quotes.shipmentRequestId, shipmentRequests.id),
+    )
+    .innerJoin(
+      importerProfiles,
+      eq(shipmentRequests.importerProfileId, importerProfiles.id),
+    )
+    .innerJoin(
+      forwarderCompanies,
+      eq(quotes.forwarderCompanyId, forwarderCompanies.id),
+    )
+    .where(eq(quotes.id, input.quoteId))
+    .limit(1);
+
+  if (!target) return;
+
+  await createNotificationBestEffort({
+    recipientUserProfileId: target.importerUserProfileId,
+    actorUserProfileId: input.actorUserProfileId,
+    type: "quote_updated",
+    title: "Quote updated",
+    body: `${target.forwarderCompanyName} updated its quote for ${target.cargoDescription}.`,
+    linkHref: `/app/requests/${input.requestId}`,
+    sourceShipmentRequestId: input.requestId,
+    sourceQuoteId: input.quoteId,
+    dedupeKey: `quote:${input.quoteId}:updated:${input.revisionNumber}`,
+  });
+}
+
 export async function notifyQuoteDecision(input: {
   quoteId: string;
   requestId: string;

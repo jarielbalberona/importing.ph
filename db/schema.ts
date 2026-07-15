@@ -119,6 +119,7 @@ export type QuoteStatus = (typeof quoteStatusEnum.enumValues)[number];
 export const notificationTypeEnum = pgEnum("notification_type", [
   "new_request_posted",
   "new_quote_received",
+  "quote_updated",
   "quote_accepted",
   "quote_rejected",
   "message_received",
@@ -128,6 +129,7 @@ export type NotificationType = (typeof notificationTypeEnum.enumValues)[number];
 
 export const mediaFileContextEnum = pgEnum("media_file_context", [
   "shipment_request_attachment",
+  "conversation_message_attachment",
 ]);
 
 export type MediaFileContext = (typeof mediaFileContextEnum.enumValues)[number];
@@ -456,13 +458,17 @@ export const mediaFiles = pgTable(
       () => importerProfiles.id,
       { onDelete: "set null" },
     ),
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "cascade",
+    }),
     context: mediaFileContextEnum("context").notNull(),
     objectKey: text("object_key").notNull(),
     originalFilename: text("original_filename").notNull(),
     contentType: text("content_type").notNull(),
     detectedContentType: text("detected_content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
-    checksumSha256: text("checksum_sha256").notNull(),
+    checksumSha256: text("checksum_sha256"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
     status: mediaFileStatusEnum("status").notNull().default("temporary"),
     attachedAt: timestamp("attached_at", { withTimezone: true }),
     ...timestamps,
@@ -475,6 +481,7 @@ export const mediaFiles = pgTable(
       table.status,
     ),
     index("media_files_importer_profile_id_idx").on(table.importerProfileId),
+    index("media_files_conversation_id_idx").on(table.conversationId),
     index("media_files_status_created_at_idx").on(table.status, table.createdAt),
   ],
 );
@@ -539,6 +546,47 @@ export const quotes = pgTable(
     index("quotes_forwarder_company_id_idx").on(table.forwarderCompanyId),
     index("quotes_shipping_mode_idx").on(table.shippingMode),
     index("quotes_status_idx").on(table.status),
+  ],
+);
+
+export const quoteRevisions = pgTable(
+  "quote_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    revisionNumber: integer("revision_number").notNull(),
+    editedByForwarderMemberId: uuid("edited_by_forwarder_member_id")
+      .notNull()
+      .references(() => forwarderMembers.id, { onDelete: "restrict" }),
+    quoteAmount: numeric("quote_amount", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull(),
+    shippingMode: quoteShippingModeEnum("shipping_mode").notNull(),
+    serviceOffered: text("service_offered").notNull(),
+    estimatedTransitMinDays: integer("estimated_transit_min_days").notNull(),
+    estimatedTransitMaxDays: integer("estimated_transit_max_days").notNull(),
+    inclusions: text("inclusions").notNull(),
+    exclusions: text("exclusions").notNull(),
+    notes: text("notes"),
+    validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("quote_revisions_quote_revision_idx").on(
+      table.quoteId,
+      table.revisionNumber,
+    ),
+    index("quote_revisions_quote_created_at_idx").on(
+      table.quoteId,
+      table.createdAt,
+    ),
+    check(
+      "quote_revisions_revision_number_positive",
+      sql`${table.revisionNumber} > 0`,
+    ),
   ],
 );
 
@@ -619,6 +667,37 @@ export const messages = pgTable(
     ),
     index("messages_sender_user_profile_id_idx").on(
       table.senderUserProfileId,
+    ),
+  ],
+);
+
+export const messageAttachments = pgTable(
+  "message_attachments",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => mediaFiles.id, { onDelete: "restrict" }),
+    displayPosition: integer("display_position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "message_attachments_message_file_pk",
+      columns: [table.messageId, table.fileId],
+    }),
+    uniqueIndex("message_attachments_message_position_idx").on(
+      table.messageId,
+      table.displayPosition,
+    ),
+    uniqueIndex("message_attachments_file_id_idx").on(table.fileId),
+    check(
+      "message_attachments_display_position_nonnegative",
+      sql`${table.displayPosition} >= 0`,
     ),
   ],
 );

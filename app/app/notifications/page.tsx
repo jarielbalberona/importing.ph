@@ -157,6 +157,7 @@ function NotificationAction({ notification }: { notification: Notification }) {
 function actionMeta(type: Notification["type"]) {
   switch (type) {
     case "new_quote_received":
+    case "quote_updated":
       return { label: "View quote", Icon: FileSearchIcon };
     case "quote_accepted":
     case "quote_rejected":

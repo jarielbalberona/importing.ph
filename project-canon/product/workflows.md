@@ -11,11 +11,11 @@ Source: current repo inspection.
 3. importer creates a shipment request as a draft or posts it immediately
 4. active forwarders receive request-posted in-app notifications and best-effort email notifications when a request is posted
 5. forwarder submits one quote per request/company
-6. forwarder can edit or withdraw a submitted quote while the request remains open and the quote is not decided
+6. forwarder can edit or withdraw a submitted quote while the request remains open and the quote is not decided; each successful submission/edit creates an immutable revision snapshot
 7. importer receives a quote notification and reviews quote counts/private quotes
 8. accepting a quote atomically moves the request to `quote_selected` and rejects every other submitted quote
 9. conversation opens from quote relationship
-10. notifications and unread badges reflect request, quote, message, and read-state activity
+10. notifications and unread badges reflect request, quote, quote-update, message, and read-state activity
 
 ## Public Request Sharing
 
@@ -38,6 +38,7 @@ Source: current repo inspection.
 - admin marketplace activity log
 - PSGC-backed destination lookup for request destinations
 - optional unscanned shipment request attachments with private object storage, authenticated forced download, and a visible user warning
+- private conversation attachments for images, videos, and business documents, with authenticated inline media delivery or forced document download
 - transactional email templates for marketplace notifications
 - quote summary PDF template surface for future quote/export flows
 - importer-controlled public request links with anonymous privacy-safe viewing and authenticated quotation handoff

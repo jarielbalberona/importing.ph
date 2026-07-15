@@ -125,6 +125,9 @@ const detectedTypes: Record<
   png: { contentType: "image/png", extension: "png" },
   webp: { contentType: "image/webp", extension: "webp" },
   pdf: { contentType: "application/pdf", extension: "pdf" },
+  mp4: { contentType: "video/mp4", extension: "mp4" },
+  webm: { contentType: "video/webm", extension: "webm" },
+  mov: { contentType: "video/quicktime", extension: "mov" },
   docx: {
     contentType:
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -149,7 +152,7 @@ function looksLikeText(bytes: Buffer) {
   });
 }
 
-function extensionMatches(filename: string, detectedExtension: string) {
+export function extensionMatches(filename: string, detectedExtension: string) {
   const extension = extname(filename).slice(1).toLowerCase();
   return (
     extension === detectedExtension ||
@@ -157,7 +160,7 @@ function extensionMatches(filename: string, detectedExtension: string) {
   );
 }
 
-function claimedTypeMatches(claimed: string, detected: string) {
+export function claimedTypeMatches(claimed: string, detected: string) {
   if (!claimed || claimed === "application/octet-stream") return true;
   if (claimed === detected) return true;
   return (
@@ -166,7 +169,7 @@ function claimedTypeMatches(claimed: string, detected: string) {
   );
 }
 
-function sanitizeFilename(filename: string) {
+export function sanitizeFilename(filename: string) {
   const trimmed = filename.trim();
 
   if (!trimmed) {

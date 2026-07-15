@@ -14,7 +14,6 @@ async function main() {
     .from(mediaFiles)
     .where(
       and(
-        eq(mediaFiles.context, "shipment_request_attachment"),
         eq(mediaFiles.status, "temporary"),
         lt(mediaFiles.createdAt, cutoff),
       ),

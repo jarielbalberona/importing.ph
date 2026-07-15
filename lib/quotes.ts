@@ -1,15 +1,20 @@
-import { and, count, eq, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 
 import { db, type Database } from "@/db";
 import {
   conversations,
   forwarderCompanies,
+  quoteRevisions,
   quotes,
   shipmentRequests,
 } from "@/db/schema";
 import { getForwarderCompanyPublicProfileCompleteness } from "@/lib/forwarder-company-profile";
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
-import { notifyQuoteDecision, notifyQuoteSubmitted } from "@/lib/notifications";
+import {
+  notifyQuoteDecision,
+  notifyQuoteSubmitted,
+  notifyQuoteUpdated,
+} from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
 import { runBestEffort } from "@/lib/best-effort";
 import { consumeRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
@@ -68,6 +73,7 @@ export const importerQuoteColumns = {
   forwarderCompanyId: quotes.forwarderCompanyId,
   forwarderCompanyName: forwarderCompanies.name,
   createdAt: quotes.createdAt,
+  updatedAt: quotes.updatedAt,
 };
 
 export const forwarderOwnQuoteColumns = {
@@ -84,13 +90,39 @@ export const forwarderOwnQuoteColumns = {
   notes: quotes.notes,
   validUntil: quotes.validUntil,
   createdAt: quotes.createdAt,
+  updatedAt: quotes.updatedAt,
 };
+
+const quoteRevisionColumns = {
+  id: quoteRevisions.id,
+  quoteId: quoteRevisions.quoteId,
+  revisionNumber: quoteRevisions.revisionNumber,
+  quoteAmount: quoteRevisions.quoteAmount,
+  currency: quoteRevisions.currency,
+  shippingMode: quoteRevisions.shippingMode,
+  serviceOffered: quoteRevisions.serviceOffered,
+  estimatedTransitMinDays: quoteRevisions.estimatedTransitMinDays,
+  estimatedTransitMaxDays: quoteRevisions.estimatedTransitMaxDays,
+  inclusions: quoteRevisions.inclusions,
+  exclusions: quoteRevisions.exclusions,
+  notes: quoteRevisions.notes,
+  validUntil: quoteRevisions.validUntil,
+  createdAt: quoteRevisions.createdAt,
+};
+
+async function getQuoteRevisions(quoteId: string) {
+  return db
+    .select(quoteRevisionColumns)
+    .from(quoteRevisions)
+    .where(eq(quoteRevisions.quoteId, quoteId))
+    .orderBy(asc(quoteRevisions.revisionNumber));
+}
 
 export async function getImporterVisibleQuotesForOwnedRequest(
   requestId: string,
   importerProfileId: string,
 ) {
-  return db
+  const visibleQuotes = await db
     .select(importerQuoteColumns)
     .from(quotes)
     .innerJoin(
@@ -107,6 +139,13 @@ export async function getImporterVisibleQuotesForOwnedRequest(
         eq(shipmentRequests.importerProfileId, importerProfileId),
       ),
     );
+
+  return Promise.all(
+    visibleQuotes.map(async (quote) => ({
+      ...quote,
+      revisions: await getQuoteRevisions(quote.id),
+    })),
+  );
 }
 
 export async function getForwarderOwnQuoteForRequest(
@@ -124,7 +163,8 @@ export async function getForwarderOwnQuoteForRequest(
     )
     .limit(1);
 
-  return quote;
+  if (!quote) return undefined;
+  return { ...quote, revisions: await getQuoteRevisions(quote.id) };
 }
 
 export async function getQuoteCountForRequest(requestId: string) {
@@ -360,6 +400,7 @@ export async function updateQuoteForForwarder(
   database: QuoteMutationDatabase,
   input: QuoteDecisionInput & {
     forwarderCompanyId: string;
+    forwarderMemberId: string;
     quoteInput: unknown;
     now?: Date;
   },
@@ -387,6 +428,7 @@ export async function updateQuoteForForwarder(
           eq(quotes.forwarderCompanyId, input.forwarderCompanyId),
         ),
       )
+      .for("update")
       .limit(1);
 
     if (!ownedQuote) throw new QuoteSubmissionError("not_found");
@@ -397,24 +439,44 @@ export async function updateQuoteForForwarder(
     const parsed = quoteSubmissionSchemaForRequestMode(
       request.shippingModePreference,
     ).parse(input.quoteInput);
+    const now = input.now ?? new Date();
+    const [latestRevision] = await tx
+      .select({ revisionNumber: quoteRevisions.revisionNumber })
+      .from(quoteRevisions)
+      .where(eq(quoteRevisions.quoteId, ownedQuote.id))
+      .orderBy(sql`${quoteRevisions.revisionNumber} desc`)
+      .limit(1);
+    const revisionNumber = (latestRevision?.revisionNumber ?? 0) + 1;
+    const snapshot = {
+      quoteAmount: parsed.quoteAmount,
+      currency: parsed.currency,
+      shippingMode: parsed.shippingMode,
+      serviceOffered: parsed.serviceOffered,
+      estimatedTransitMinDays: parsed.estimatedTransitMinDays,
+      estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
+      inclusions: parsed.inclusions ?? "",
+      exclusions: parsed.exclusions ?? "",
+      notes: parsed.notes,
+      validUntil: dateFromDateInput(parsed.validUntil),
+    };
     const [quote] = await tx
       .update(quotes)
       .set({
-        quoteAmount: parsed.quoteAmount,
-        currency: parsed.currency,
-        shippingMode: parsed.shippingMode,
-        serviceOffered: parsed.serviceOffered,
-        estimatedTransitMinDays: parsed.estimatedTransitMinDays,
-        estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
-        inclusions: parsed.inclusions ?? "",
-        exclusions: parsed.exclusions ?? "",
-        notes: parsed.notes,
-        validUntil: dateFromDateInput(parsed.validUntil),
-        updatedAt: input.now ?? new Date(),
+        ...snapshot,
+        updatedAt: now,
       })
       .where(and(eq(quotes.id, ownedQuote.id), eq(quotes.status, "submitted")))
       .returning({ id: quotes.id, requestId: quotes.shipmentRequestId });
-    return quote;
+    if (!quote) throw new QuoteSubmissionError("invalid_status");
+
+    await tx.insert(quoteRevisions).values({
+      quoteId: quote.id,
+      revisionNumber,
+      editedByForwarderMemberId: input.forwarderMemberId,
+      ...snapshot,
+      createdAt: now,
+    });
+    return { ...quote, revisionNumber };
   });
 }
 
@@ -429,11 +491,29 @@ export async function updateQuoteForCurrentForwarder(
     throw new QuoteSubmissionError("forwarder_suspended");
   }
 
-  return updateQuoteForForwarder(db, {
+  const result = await updateQuoteForForwarder(db, {
     ...target,
     forwarderCompanyId: member.companyId,
+    forwarderMemberId: member.id,
     quoteInput: input,
   });
+
+  await runBestEffort(
+    "notification.quote_updated_failed",
+    () =>
+      notifyQuoteUpdated({
+        quoteId: result.id,
+        requestId: result.requestId,
+        revisionNumber: result.revisionNumber,
+        actorUserProfileId: profile.id,
+      }),
+    {
+      requestId: result.requestId,
+      quoteId: result.id,
+      revisionNumber: result.revisionNumber,
+    },
+  );
+  return result;
 }
 
 export async function withdrawQuoteForForwarder(
@@ -549,6 +629,22 @@ export async function createQuoteForForwarder(
           validUntil: dateFromDateInput(parsed.validUntil),
         })
         .returning({ id: quotes.id });
+
+      await tx.insert(quoteRevisions).values({
+        quoteId: created.id,
+        revisionNumber: 1,
+        editedByForwarderMemberId: input.forwarderMemberId,
+        quoteAmount: parsed.quoteAmount,
+        currency: parsed.currency,
+        shippingMode: parsed.shippingMode,
+        serviceOffered: parsed.serviceOffered,
+        estimatedTransitMinDays: parsed.estimatedTransitMinDays,
+        estimatedTransitMaxDays: parsed.estimatedTransitMaxDays,
+        inclusions: parsed.inclusions ?? "",
+        exclusions: parsed.exclusions ?? "",
+        notes: parsed.notes,
+        validUntil: dateFromDateInput(parsed.validUntil),
+      });
 
       const [conversation] = await tx
         .insert(conversations)

@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeftIcon,
   CheckCheckIcon,
   CheckIcon,
   HelpCircleIcon,
   InfoIcon,
+  FileIcon,
+  PaperclipIcon,
+  RefreshCwIcon,
+  XIcon,
 } from "lucide-react";
 import {
   useCallback,
@@ -51,6 +56,13 @@ import {
   sendImporterMessage,
 } from "./[conversationId]/actions";
 import type { MessageSendResult } from "@/lib/messages";
+import type { MessageAttachment } from "@/lib/message-attachments";
+import {
+  formatBytes,
+  messageAttachmentMaxCount,
+  messageAttachmentMaxTotalBytes,
+  maxBytesForMessageContentType,
+} from "@/lib/file-rules";
 
 export type ImporterConversationView = {
   id: string;
@@ -80,6 +92,7 @@ export type ImporterConversationView = {
     senderName: string;
     senderRole: string;
     body: string;
+    attachments: MessageAttachment[];
     createdAt: string;
   }>;
   readStates: Array<{
@@ -239,6 +252,7 @@ export function ImporterMessagesClient({
                 senderName: event.message.senderName,
                 senderRole: event.message.senderRole,
                 body: event.message.body,
+                attachments: event.message.attachments,
                 createdAt: new Date(event.message.createdAt).toLocaleString(),
               },
             ],
@@ -577,7 +591,13 @@ function MessageWindow({
   onToggleDetails: () => void;
 }) {
   const messagesViewportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeUploadsRef = useRef(new Map<string, XMLHttpRequest>());
+  const previewUrlsRef = useRef(new Set<string>());
   const [draft, setDraft] = useState("");
+  const [composerAttachments, setComposerAttachments] = useState<
+    ComposerAttachment[]
+  >([]);
   const [sendError, setSendError] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<DisplayMessage[]>([]);
   const [isSending, startSending] = useTransition();
@@ -594,12 +614,198 @@ function MessageWindow({
   const latestSeenOutgoingMessageId =
     getLatestSeenOutgoingMessageId(displayConversation);
   const latestMessageId = displayedMessages.at(-1)?.id;
+  const hasPendingUploads = composerAttachments.some(
+    (attachment) => attachment.status === "uploading",
+  );
+  const hasFailedUploads = composerAttachments.some(
+    (attachment) => attachment.status === "error",
+  );
+
+  useEffect(() => {
+    const activeUploads = activeUploadsRef.current;
+    const previewUrls = previewUrlsRef.current;
+    return () => {
+      for (const upload of activeUploads.values()) upload.abort();
+      for (const previewUrl of previewUrls) URL.revokeObjectURL(previewUrl);
+      activeUploads.clear();
+      previewUrls.clear();
+    };
+  }, []);
+
+  async function uploadAttachment(item: ComposerAttachment) {
+    setComposerAttachments((items) =>
+      items.map((current) =>
+        current.localId === item.localId
+          ? { ...current, status: "uploading", progress: 0, error: undefined }
+          : current,
+      ),
+    );
+
+    let fileId: string | undefined;
+    try {
+      const contentType = normalizedContentType(item.file);
+      const authorizationResponse = await fetch(
+        "/api/media/message-attachments/authorize",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId: conversation.id,
+            filename: item.file.name,
+            contentType,
+            sizeBytes: item.file.size,
+          }),
+        },
+      );
+      const authorization = (await authorizationResponse.json()) as {
+        upload?: { fileId: string; uploadUrl: string };
+        message?: string;
+      };
+      if (!authorizationResponse.ok || !authorization.upload) {
+        throw new Error(authorization.message || "Upload could not be authorized.");
+      }
+      fileId = authorization.upload.fileId;
+      setComposerAttachments((items) =>
+        items.map((current) =>
+          current.localId === item.localId ? { ...current, fileId } : current,
+        ),
+      );
+
+      await uploadDirectlyToR2({
+        localId: item.localId,
+        file: item.file,
+        contentType,
+        uploadUrl: authorization.upload.uploadUrl,
+        activeUploads: activeUploadsRef.current,
+        onProgress(progress) {
+          setComposerAttachments((items) =>
+            items.map((current) =>
+              current.localId === item.localId ? { ...current, progress } : current,
+            ),
+          );
+        },
+      });
+
+      const finalizeResponse = await fetch(
+        `/api/media/message-attachments/${fileId}/finalize`,
+        { method: "POST" },
+      );
+      const finalized = (await finalizeResponse.json()) as {
+        file?: MessageAttachment;
+        message?: string;
+      };
+      if (!finalizeResponse.ok || !finalized.file) {
+        throw new Error(finalized.message || "Upload validation failed.");
+      }
+      setComposerAttachments((items) =>
+        items.map((current) =>
+          current.localId === item.localId
+            ? {
+                ...current,
+                fileId,
+                attachment: finalized.file,
+                status: "ready",
+                progress: 100,
+              }
+            : current,
+        ),
+      );
+    } catch (error) {
+      setComposerAttachments((items) =>
+        items.map((current) =>
+          current.localId === item.localId
+            ? {
+                ...current,
+                fileId,
+                status: "error",
+                error: error instanceof Error ? error.message : "Upload failed.",
+              }
+            : current,
+        ),
+      );
+    }
+  }
+
+  function selectAttachments(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
+
+    const combined = [...composerAttachments.map((item) => item.file), ...files];
+    if (combined.length > messageAttachmentMaxCount) {
+      setSendError("A message can contain up to 5 attachments.");
+      return;
+    }
+    if (combined.reduce((sum, file) => sum + file.size, 0) > messageAttachmentMaxTotalBytes) {
+      setSendError("Attachments for one message cannot exceed 100 MB total.");
+      return;
+    }
+
+    const additions: ComposerAttachment[] = [];
+    for (const file of files) {
+      const contentType = normalizedContentType(file);
+      if (!contentType || file.size > maxBytesForMessageContentType(contentType)) {
+        setSendError(
+          `${file.name} exceeds the allowed size or has an unsupported file type.`,
+        );
+        continue;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.add(previewUrl);
+      additions.push({
+        localId: crypto.randomUUID(),
+        file,
+        previewUrl,
+        status: "uploading",
+        progress: 0,
+      });
+    }
+    if (additions.length === 0) return;
+    setSendError(null);
+    setComposerAttachments((items) => [...items, ...additions]);
+    for (const addition of additions) void uploadAttachment(addition);
+  }
+
+  async function removeAttachment(item: ComposerAttachment) {
+    activeUploadsRef.current.get(item.localId)?.abort();
+    activeUploadsRef.current.delete(item.localId);
+    if (item.fileId) {
+      await fetch(`/api/media/message-attachments/${item.fileId}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    }
+    URL.revokeObjectURL(item.previewUrl);
+    previewUrlsRef.current.delete(item.previewUrl);
+    setComposerAttachments((items) =>
+      items.filter((current) => current.localId !== item.localId),
+    );
+  }
+
+  async function retryAttachment(item: ComposerAttachment) {
+    if (item.fileId) {
+      await fetch(`/api/media/message-attachments/${item.fileId}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    }
+    await uploadAttachment({ ...item, fileId: undefined, attachment: undefined });
+  }
 
   function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = draft.trim();
 
-    if (!body || isSending || !conversation.currentUserProfileId) {
+    const attachments = composerAttachments.filter(
+      (attachment): attachment is ReadyComposerAttachment =>
+        attachment.status === "ready" && Boolean(attachment.fileId && attachment.attachment),
+    );
+
+    if (
+      (!body && attachments.length === 0) ||
+      isSending ||
+      hasPendingUploads ||
+      hasFailedUploads ||
+      !conversation.currentUserProfileId
+    ) {
       return;
     }
 
@@ -610,17 +816,26 @@ function MessageWindow({
       senderName: "You",
       senderRole: "",
       body,
+      attachments: attachments.map((item) => ({
+        ...item.attachment,
+        downloadUrl: item.previewUrl,
+      })),
       createdAt: "Sending…",
       deliveryStatus: "sending",
     };
 
     setSendError(null);
     setDraft("");
+    setComposerAttachments([]);
     setOptimisticMessages((messages) => [...messages, optimisticMessage]);
 
     const formData = new FormData();
     formData.set("conversationId", conversation.id);
     formData.set("body", body);
+    formData.set(
+      "attachmentIds",
+      JSON.stringify(attachments.map((attachment) => attachment.fileId)),
+    );
 
     startSending(async () => {
       let result: MessageSendResult;
@@ -632,6 +847,7 @@ function MessageWindow({
           messages.filter((message) => message.id !== temporaryId),
         );
         setDraft(body);
+        setComposerAttachments(attachments);
         setSendError(
           "Message was not sent. Your text has been restored so you can try again.",
         );
@@ -639,6 +855,10 @@ function MessageWindow({
       }
 
       if (result.status === "sent") {
+        for (const attachment of attachments) {
+          URL.revokeObjectURL(attachment.previewUrl);
+          previewUrlsRef.current.delete(attachment.previewUrl);
+        }
         setOptimisticMessages((messages) => [
           ...messages.filter((message) => message.id !== temporaryId),
           {
@@ -654,6 +874,7 @@ function MessageWindow({
         messages.filter((message) => message.id !== temporaryId),
       );
       setDraft(body);
+      setComposerAttachments(attachments);
       setSendError(messageSendError(result.code));
     });
   }
@@ -787,8 +1008,20 @@ function MessageWindow({
       </div>
 
       <form onSubmit={sendMessage} className="border-t bg-background p-3">
+        {composerAttachments.length > 0 ? (
+          <div className="mb-3 grid gap-2 sm:grid-cols-2">
+            {composerAttachments.map((attachment) => (
+              <ComposerAttachmentCard
+                key={attachment.localId}
+                attachment={attachment}
+                disabled={isSending}
+                onRemove={() => void removeAttachment(attachment)}
+                onRetry={() => void retryAttachment(attachment)}
+              />
+            ))}
+          </div>
+        ) : null}
         <Textarea
-          required
           rows={2}
           maxLength={2000}
           value={draft}
@@ -802,7 +1035,26 @@ function MessageWindow({
           </p>
         ) : null}
         <div className="mt-2 flex items-center justify-between gap-3">
-          <Popover>
+          <div className="flex items-center gap-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="sr-only"
+              accept=".jpg,.jpeg,.png,.webp,.mp4,.webm,.mov,.pdf,.doc,.docx,.xls,.xlsx,.csv"
+              onChange={selectAttachments}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={isSending || composerAttachments.length >= messageAttachmentMaxCount}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Attach files"
+            >
+              <PaperclipIcon />
+            </Button>
+            <Popover>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -825,8 +1077,17 @@ function MessageWindow({
                 </p>
               </div>
             </PopoverContent>
-          </Popover>
-          <Button type="submit" disabled={isSending || draft.trim().length === 0}>
+            </Popover>
+          </div>
+          <Button
+            type="submit"
+            disabled={
+              isSending ||
+              hasPendingUploads ||
+              hasFailedUploads ||
+              (draft.trim().length === 0 && composerAttachments.length === 0)
+            }
+          >
             {isSending ? "Sending…" : "Send"}
           </Button>
         </div>
@@ -893,6 +1154,23 @@ type DisplayMessage = Message & {
   deliveryStatus?: "sending" | "sent";
 };
 
+type ComposerAttachment = {
+  localId: string;
+  file: File;
+  previewUrl: string;
+  fileId?: string;
+  attachment?: MessageAttachment;
+  status: "uploading" | "ready" | "error";
+  progress: number;
+  error?: string;
+};
+
+type ReadyComposerAttachment = ComposerAttachment & {
+  fileId: string;
+  attachment: MessageAttachment;
+  status: "ready";
+};
+
 function MessageBubble({
   message,
   isSeen,
@@ -919,9 +1197,25 @@ function MessageBubble({
             : "rounded-2xl rounded-bl-sm bg-background px-4 py-3 shadow-sm ring-1 ring-border"
         }
       >
-        <p className="whitespace-pre-wrap break-words text-sm leading-6">
-          {message.body}
-        </p>
+        {message.attachments.length > 0 ? (
+          <div className="grid gap-2">
+            {message.attachments.map((attachment) => (
+              <MessageAttachmentView
+                key={attachment.id}
+                attachment={attachment}
+                isOwnMessage={isOwnMessage}
+              />
+            ))}
+          </div>
+        ) : null}
+        {message.body ? (
+          <p className={cn(
+            "whitespace-pre-wrap break-words text-sm leading-6",
+            message.attachments.length > 0 && "mt-2",
+          )}>
+            {message.body}
+          </p>
+        ) : null}
       </div>
       <p className="flex items-center gap-1 px-1 text-xs text-muted-foreground">
         {message.deliveryStatus === "sending" ? "Sending…" : message.createdAt}
@@ -933,6 +1227,194 @@ function MessageBubble({
       </p>
     </article>
   );
+}
+
+function MessageAttachmentView({
+  attachment,
+  isOwnMessage,
+}: {
+  attachment: MessageAttachment;
+  isOwnMessage: boolean;
+}) {
+  if (attachment.contentType.startsWith("image/")) {
+    return (
+      <a
+        href={attachment.downloadUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="block overflow-hidden rounded-lg"
+      >
+        <Image
+          src={attachment.downloadUrl}
+          alt={attachment.originalFilename}
+          width={480}
+          height={320}
+          unoptimized
+          className="max-h-80 w-auto max-w-full object-contain"
+        />
+      </a>
+    );
+  }
+
+  if (attachment.contentType.startsWith("video/")) {
+    return (
+      <video
+        src={attachment.downloadUrl}
+        controls
+        preload="metadata"
+        className="max-h-80 max-w-full rounded-lg"
+      >
+        <track kind="captions" />
+      </video>
+    );
+  }
+
+  return (
+    <a
+      href={attachment.downloadUrl}
+      className={cn(
+        "flex min-w-0 items-center gap-3 rounded-lg border p-3 text-sm",
+        isOwnMessage
+          ? "border-primary-foreground/30 bg-primary-foreground/10"
+          : "bg-muted/60",
+      )}
+    >
+      <FileIcon className="size-5 shrink-0" />
+      <span className="min-w-0">
+        <span className="block truncate font-medium">
+          {attachment.originalFilename}
+        </span>
+        <span className="block text-xs opacity-75">
+          {attachmentLabel(attachment.contentType)} / {formatBytes(attachment.sizeBytes)}
+        </span>
+      </span>
+    </a>
+  );
+}
+
+function ComposerAttachmentCard({
+  attachment,
+  disabled,
+  onRemove,
+  onRetry,
+}: {
+  attachment: ComposerAttachment;
+  disabled: boolean;
+  onRemove: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <FileIcon className="size-4 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium">{attachment.file.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {attachment.status === "uploading"
+              ? `Uploading ${attachment.progress}%`
+              : attachment.status === "ready"
+                ? `${formatBytes(attachment.file.size)} ready`
+                : attachment.error || "Upload failed"}
+          </p>
+        </div>
+        {attachment.status === "error" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={disabled}
+            onClick={onRetry}
+            aria-label={`Retry ${attachment.file.name}`}
+          >
+            <RefreshCwIcon />
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={disabled}
+          onClick={onRemove}
+          aria-label={`Remove ${attachment.file.name}`}
+        >
+          <XIcon />
+        </Button>
+      </div>
+      {attachment.status === "uploading" ? (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full bg-primary transition-[width]"
+            style={{ width: `${attachment.progress}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function uploadDirectlyToR2(input: {
+  localId: string;
+  file: File;
+  contentType: string;
+  uploadUrl: string;
+  activeUploads: Map<string, XMLHttpRequest>;
+  onProgress: (progress: number) => void;
+}) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    input.activeUploads.set(input.localId, xhr);
+    xhr.open("PUT", input.uploadUrl);
+    xhr.setRequestHeader("Content-Type", input.contentType);
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        input.onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    });
+    xhr.addEventListener("load", () => {
+      input.activeUploads.delete(input.localId);
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error("Direct upload failed. Try again."));
+    });
+    xhr.addEventListener("error", () => {
+      input.activeUploads.delete(input.localId);
+      reject(new Error("Direct upload failed. Check your connection and retry."));
+    });
+    xhr.addEventListener("abort", () => {
+      input.activeUploads.delete(input.localId);
+      reject(new Error("Upload cancelled."));
+    });
+    xhr.send(input.file);
+  });
+}
+
+function normalizedContentType(file: File) {
+  const extension = file.name.split(".").at(-1)?.toLowerCase();
+  const types: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mov: "video/quicktime",
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    csv: "text/csv",
+  };
+  return extension ? types[extension] ?? "" : "";
+}
+
+function attachmentLabel(contentType: string) {
+  if (contentType === "application/pdf") return "PDF";
+  if (contentType.includes("word")) return "Word document";
+  if (contentType.includes("excel") || contentType.includes("spreadsheet")) {
+    return "Spreadsheet";
+  }
+  if (contentType === "text/csv") return "CSV";
+  return "File";
 }
 
 function getLatestSeenOutgoingMessageId(conversation: ImporterConversationView) {

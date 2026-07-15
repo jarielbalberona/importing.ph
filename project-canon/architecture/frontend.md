@@ -28,6 +28,8 @@ Current V1 product surfaces include:
 - forwarder open-request list with launch checklist
 - forwarder company profile screen with public-profile completeness meter
 - shared importer/forwarder inbox client with conversation-level read/unread labels
+- shared importer/forwarder inbox composer with direct-upload progress, cancellation, retry, optimistic attachment messages, and inline image/video or document-card rendering
+- quote revision history dialogs on importer and forwarder request details
 - admin marketplace page with activity, users, requests, quotes, and forwarder safety controls
 
 Status note:

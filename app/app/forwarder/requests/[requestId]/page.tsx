@@ -41,6 +41,7 @@ import {
   canEditForwarderCompanySettings,
   getForwarderCompanyPublicProfileCompleteness,
 } from "@/lib/forwarder-company-profile";
+import { QuoteRevisionHistoryDialog } from "@/components/quotes/quote-revision-history-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -331,6 +332,9 @@ function OwnQuotePanel({
             label="Valid until"
             value={formatDate(ownQuote.validUntil)}
           />
+          {ownQuote.revisions.length > 1 ? (
+            <DefinitionItem label="Updated" value={formatDate(ownQuote.updatedAt)} />
+          ) : null}
         </DefinitionGrid>
       </DetailSection>
 
@@ -344,6 +348,7 @@ function OwnQuotePanel({
 
       <section className="border-t p-4 sm:p-5">
         <div className="grid gap-3 sm:flex sm:flex-wrap">
+          <QuoteRevisionHistoryDialog revisions={ownQuote.revisions} />
           <form action={startForwarderConversation}>
             <input type="hidden" name="requestId" value={requestId} />
             <Button type="submit" variant="outline" className="w-full sm:w-auto">

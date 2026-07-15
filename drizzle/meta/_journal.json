@@ -162,6 +162,13 @@
       "when": 1784111862709,
       "tag": "0022_marvelous_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784117056822,
+      "tag": "0023_striped_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

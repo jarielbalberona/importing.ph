@@ -12,6 +12,12 @@ import {
   shipmentRequests,
   userProfiles,
 } from "@/db/schema";
+import {
+  attachFilesToMessage,
+  listAttachmentsForMessages,
+  messageAttachmentPreview,
+  type MessageAttachment,
+} from "@/lib/message-attachments";
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyMessageCreated } from "@/lib/notifications";
 import { publishRealtimeEvent } from "@/lib/realtime-events";
@@ -28,7 +34,17 @@ export class MessagingAccessError extends Error {
   }
 }
 
-export const messageBodySchema = z.string().trim().min(1).max(2000);
+export const messageBodySchema = z.string().trim().max(2000);
+
+export const messageInputSchema = z
+  .object({
+    body: messageBodySchema,
+    attachmentIds: z.array(z.string().uuid()).max(5),
+  })
+  .refine(
+    (input) => input.body.length > 0 || input.attachmentIds.length > 0,
+    "Write a message or attach at least one file.",
+  );
 
 export type MessageBodyInput = z.infer<typeof messageBodySchema>;
 
@@ -39,6 +55,7 @@ export type SentMessage = {
   senderRole: string;
   senderName: string;
   body: string;
+  attachments: MessageAttachment[];
   createdAt: string;
 };
 
@@ -332,6 +349,9 @@ async function getConversationForParticipant(input: {
     .innerJoin(userProfiles, eq(messages.senderUserProfileId, userProfiles.id))
     .where(eq(messages.conversationId, conversation.id))
     .orderBy(messages.createdAt);
+  const attachmentsByMessageId = await listAttachmentsForMessages(
+    conversationMessages.map((message) => message.id),
+  );
 
   const readStates = await db
     .select(readStateColumns)
@@ -340,7 +360,10 @@ async function getConversationForParticipant(input: {
 
   return {
     ...conversation,
-    messages: conversationMessages,
+    messages: conversationMessages.map((message) => ({
+      ...message,
+      attachments: attachmentsByMessageId.get(message.id) ?? [],
+    })),
     readStates,
   };
 }
@@ -420,6 +443,9 @@ async function attachLatestMessages<T extends { id: string }>(
     .from(messages)
     .where(inArray(messages.conversationId, conversationIds))
     .orderBy(desc(messages.createdAt));
+  const latestAttachments = await listAttachmentsForMessages(
+    latestRows.map((message) => message.id),
+  );
 
   const latestByConversationId = new Map<
     string,
@@ -473,7 +499,10 @@ async function attachLatestMessages<T extends { id: string }>(
 
     return {
       ...conversation,
-      latestMessageBody: latestMessage?.body ?? null,
+      latestMessageBody: latestMessage
+        ? latestMessage.body ||
+          messageAttachmentPreview(latestAttachments.get(latestMessage.id) ?? [])
+        : null,
       latestMessageAt: latestMessage?.createdAt ?? null,
       hasUnread,
     };
@@ -484,6 +513,7 @@ export async function createMessageForCurrentImporter(
   requestId: string,
   forwarderCompanyId: string,
   bodyInput: unknown,
+  attachmentIdsInput: unknown = [],
 ) {
   const { profile } = await requireImporterProfile();
   await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
@@ -496,6 +526,7 @@ export async function createMessageForCurrentImporter(
     conversationId,
     senderUserProfileId: profile.id,
     bodyInput,
+    attachmentIdsInput,
   });
   await recordFirstMessageFunnelEvent({
     conversationId,
@@ -508,6 +539,7 @@ export async function createMessageForCurrentImporter(
 export async function createMessageForCurrentForwarder(
   requestId: string,
   bodyInput: unknown,
+  attachmentIdsInput: unknown = [],
 ) {
   const { profile } = await requireForwarderMember();
   await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
@@ -519,6 +551,7 @@ export async function createMessageForCurrentForwarder(
     conversationId,
     senderUserProfileId: profile.id,
     bodyInput,
+    attachmentIdsInput,
   });
   await recordFirstMessageFunnelEvent({
     conversationId,
@@ -531,6 +564,7 @@ export async function createMessageForCurrentForwarder(
 export async function createMessageInConversationForCurrentImporter(
   conversationId: string,
   bodyInput: unknown,
+  attachmentIdsInput: unknown = [],
 ) {
   const conversation = await getConversationForCurrentImporter(conversationId);
   const { profile } = await requireImporterProfile();
@@ -545,6 +579,7 @@ export async function createMessageInConversationForCurrentImporter(
     conversationId: conversation.id,
     senderUserProfileId: profile.id,
     bodyInput,
+    attachmentIdsInput,
   });
   await recordFirstMessageFunnelEvent({
     conversationId: conversation.id,
@@ -557,6 +592,7 @@ export async function createMessageInConversationForCurrentImporter(
 export async function createMessageInConversationForCurrentForwarder(
   conversationId: string,
   bodyInput: unknown,
+  attachmentIdsInput: unknown = [],
 ) {
   const conversation = await getConversationForCurrentForwarder(conversationId);
   const { profile } = await requireForwarderMember();
@@ -571,6 +607,7 @@ export async function createMessageInConversationForCurrentForwarder(
     conversationId: conversation.id,
     senderUserProfileId: profile.id,
     bodyInput,
+    attachmentIdsInput,
   });
   await recordFirstMessageFunnelEvent({
     conversationId: conversation.id,
@@ -744,8 +781,13 @@ async function createMessageInConversation(input: {
   conversationId: string;
   senderUserProfileId: string;
   bodyInput: unknown;
+  attachmentIdsInput: unknown;
 }) {
-  const body = messageBodySchema.parse(input.bodyInput);
+  const parsed = messageInputSchema.parse({
+    body: input.bodyInput ?? "",
+    attachmentIds: input.attachmentIdsInput ?? [],
+  });
+  const body = parsed.body;
   const now = new Date();
 
   const result = await db.transaction(async (tx) => {
@@ -761,6 +803,13 @@ async function createMessageInConversation(input: {
         id: messages.id,
         createdAt: messages.createdAt,
       });
+
+    const attachments = await attachFilesToMessage(tx, {
+      messageId: inserted.id,
+      conversationId: input.conversationId,
+      ownerUserProfileId: input.senderUserProfileId,
+      fileIds: parsed.attachmentIds,
+    });
 
     await tx
       .update(conversations)
@@ -780,6 +829,7 @@ async function createMessageInConversation(input: {
 
     return {
       message,
+      attachments,
       inserted,
       conversationUpdatedAt: now,
     };
@@ -812,6 +862,7 @@ async function createMessageInConversation(input: {
       senderRole: result.message.senderRole,
       senderName: result.message.senderName,
       body: result.message.body,
+      attachments: result.attachments,
       createdAt: result.message.createdAt.toISOString(),
     },
   });
@@ -823,7 +874,8 @@ async function createMessageInConversation(input: {
     conversationId: input.conversationId,
     updatedAt: result.conversationUpdatedAt.toISOString(),
     latestMessageId: result.message.id,
-    latestMessagePreview: result.message.body,
+    latestMessagePreview:
+      result.message.body || messageAttachmentPreview(result.attachments),
   });
 
   return {
@@ -833,6 +885,7 @@ async function createMessageInConversation(input: {
     senderRole: result.message.senderRole,
     senderName: result.message.senderName,
     body: result.message.body,
+    attachments: result.attachments,
     createdAt: result.message.createdAt.toISOString(),
   } satisfies SentMessage;
 }

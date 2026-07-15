@@ -1,4 +1,5 @@
 import type { UserRole } from "@/db/schema";
+import type { MessageAttachment } from "@/lib/message-attachments";
 
 export type RealtimeMessagePayload = {
   id: string;
@@ -7,6 +8,7 @@ export type RealtimeMessagePayload = {
   senderRole: UserRole;
   senderName: string;
   body: string;
+  attachments: MessageAttachment[];
   createdAt: string;
 };
 

@@ -12,6 +12,7 @@ import {
 import { RequestStatusBadge } from "@/components/requests/request-status-badge";
 import { AttachmentList } from "@/components/requests/attachment-list";
 import { ShareRequestDialog } from "@/components/requests/share-request-dialog";
+import { QuoteRevisionHistoryDialog } from "@/components/quotes/quote-revision-history-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -423,6 +424,11 @@ function ReceivedQuotes({
                       {formatQuoteShippingMode(quote.shippingMode)} /{" "}
                       {quote.serviceOffered}
                     </span>
+                    {quote.revisions.length > 1 ? (
+                      <span className="mt-1 block text-xs font-medium text-blue-700">
+                        Updated {formatDate(quote.updatedAt)}
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     {formatMoney(quote.currency, quote.quoteAmount)}
@@ -496,6 +502,9 @@ function QuoteDialog({
             label="Submitted"
             value={formatDate(quote.createdAt)}
           />
+          {quote.revisions.length > 1 ? (
+            <DefinitionItem label="Updated" value={formatDate(quote.updatedAt)} />
+          ) : null}
           <DefinitionItem
             label="Status"
             value={<StatusBadge>{titleFromEnum(quote.status)}</StatusBadge>}
@@ -510,6 +519,7 @@ function QuoteDialog({
       </div>
 
       <DialogFooter>
+        <QuoteRevisionHistoryDialog revisions={quote.revisions} />
         <QuoteActions
           quote={quote}
           requestId={requestId}

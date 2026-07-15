@@ -15,6 +15,12 @@ type PutObjectInput = {
   sizeBytes: number;
 };
 
+type PresignedPutInput = {
+  objectKey: string;
+  contentType: string;
+  expiresInSeconds?: number;
+};
+
 const service = "s3";
 
 export function getR2Config(): R2Config {
@@ -81,11 +87,18 @@ export async function putR2Object(input: PutObjectInput) {
 }
 
 export async function getR2Object(objectKey: string) {
+  return getR2ObjectRange(objectKey);
+}
+
+export async function getR2ObjectRange(objectKey: string, range?: string) {
   const config = getR2Config();
   const url = objectUrl(config, objectKey);
   const now = new Date();
   const payloadHash = sha256Hex("");
-  const headers = signedHeaders(url, now, payloadHash);
+  const headers = {
+    ...signedHeaders(url, now, payloadHash),
+    ...(range ? { range } : {}),
+  };
   const response = await fetch(url, {
     method: "GET",
     headers: {
@@ -109,6 +122,83 @@ export async function getR2Object(objectKey: string) {
     throw new Error(`R2 get failed with ${response.status}`);
   }
   return response;
+}
+
+export async function headR2Object(objectKey: string) {
+  const config = getR2Config();
+  const url = objectUrl(config, objectKey);
+  const now = new Date();
+  const payloadHash = sha256Hex("");
+  const headers = signedHeaders(url, now, payloadHash);
+  const response = await fetch(url, {
+    method: "HEAD",
+    headers: {
+      ...headers,
+      authorization: authorizationHeader({
+        config,
+        method: "HEAD",
+        url,
+        headers,
+        payloadHash,
+        now,
+      }),
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`R2 head failed with ${response.status}`);
+  return response;
+}
+
+export function createPresignedR2PutUrl(input: PresignedPutInput) {
+  const config = getR2Config();
+  const url = objectUrl(config, input.objectKey);
+  const now = new Date();
+  const date = amzDate(now);
+  const shortDate = date.slice(0, 8);
+  const credentialScope = `${shortDate}/${config.region}/${service}/aws4_request`;
+  const expires = Math.min(Math.max(input.expiresInSeconds ?? 600, 60), 3600);
+  const headers = {
+    "content-type": input.contentType,
+    host: url.host,
+  };
+  const signedHeaderNames = Object.keys(headers).sort().join(";");
+
+  url.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
+  url.searchParams.set(
+    "X-Amz-Credential",
+    `${config.accessKeyId}/${credentialScope}`,
+  );
+  url.searchParams.set("X-Amz-Date", date);
+  url.searchParams.set("X-Amz-Expires", String(expires));
+  url.searchParams.set("X-Amz-SignedHeaders", signedHeaderNames);
+
+  const canonicalHeaders = Object.keys(headers)
+    .sort()
+    .map((key) => `${key}:${headers[key as keyof typeof headers].trim()}\n`)
+    .join("");
+  const canonicalRequest = [
+    "PUT",
+    encodePath(url.pathname),
+    canonicalQueryString(url.searchParams),
+    canonicalHeaders,
+    signedHeaderNames,
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    date,
+    credentialScope,
+    sha256Hex(canonicalRequest),
+  ].join("\n");
+  const signature = hmacHex(
+    signingKey(config.secretAccessKey, shortDate, config.region),
+    stringToSign,
+  );
+  url.searchParams.set("X-Amz-Signature", signature);
+
+  return { url: url.toString(), expiresAt: new Date(now.getTime() + expires * 1000) };
 }
 
 export async function deleteR2Object(objectKey: string) {

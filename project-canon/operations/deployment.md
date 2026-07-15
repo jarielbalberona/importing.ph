@@ -24,6 +24,7 @@ V1 launch checklist:
 - verify Clerk production URLs and redirect settings
 - verify Resend sender/domain setup and one transactional email delivery smoke
 - verify R2 bucket credentials, upload compensation, relationship authorization, and authenticated forced-download behavior if attachments are enabled
+- keep R2 direct-upload CORS restricted to `https://importing.ph` and retain the one-day lifecycle rule for `temporary/conversation-message-attachments/`
 - run the temporary-upload cleanup command in dry-run mode before any confirmed cleanup: `npm run media:cleanup-temporary`; deletion requires `-- --confirm`
 - run the V1 marketplace smoke against the target-like local or staging database
 - run browser proof with separate importer and forwarder sessions for request creation, competing quote submission, automatic loser rejection, quote-gated conversation, message send, forced attachment download, and unread/read updates

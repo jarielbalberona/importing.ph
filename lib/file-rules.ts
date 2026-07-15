@@ -2,6 +2,25 @@ import type { MediaFileContext } from "@/db/schema";
 
 export const shipmentAttachmentMaxBytes = 10 * 1024 * 1024;
 export const shipmentAttachmentMaxCount = 5;
+export const messageAttachmentMaxCount = 5;
+export const messageAttachmentMaxTotalBytes = 100 * 1024 * 1024;
+export const messageAttachmentDocumentMaxBytes = 10 * 1024 * 1024;
+export const messageAttachmentVideoMaxBytes = 50 * 1024 * 1024;
+
+export const messageAttachmentContentTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "application/pdf",
+  "text/csv",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+] as const;
 
 export const mediaContextRules: Record<
   MediaFileContext,
@@ -28,7 +47,19 @@ export const mediaContextRules: Record<
     ],
     label: "shipment request attachment",
   },
+  conversation_message_attachment: {
+    maxBytes: messageAttachmentVideoMaxBytes,
+    maxCount: messageAttachmentMaxCount,
+    allowedContentTypes: messageAttachmentContentTypes,
+    label: "message attachment",
+  },
 };
+
+export function maxBytesForMessageContentType(contentType: string) {
+  return contentType.startsWith("video/")
+    ? messageAttachmentVideoMaxBytes
+    : messageAttachmentDocumentMaxBytes;
+}
 
 export function formatBytes(bytes: number) {
   if (bytes < 1024) {
@@ -44,6 +75,10 @@ export function formatBytes(bytes: number) {
 
 export function acceptedFileDescription(context: MediaFileContext) {
   const rules = mediaContextRules[context];
+
+  if (context === "conversation_message_attachment") {
+    return "JPG, PNG, WebP, MP4, WebM, MOV, PDF, DOC, DOCX, XLS, XLSX, or CSV. Max 10 MB for images/documents and 50 MB for video.";
+  }
 
   return `JPG, PNG, WebP, PDF, DOC, DOCX, XLS, XLSX, or CSV. Max ${formatBytes(rules.maxBytes)} each.`;
 }

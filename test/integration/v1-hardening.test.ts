@@ -12,11 +12,20 @@ import {
   conversations,
   funnelEvents,
   importerProfiles,
+  mediaFiles,
+  messageAttachments,
+  messages,
   quotes,
+  quoteRevisions,
   shipmentRequests,
   userProfiles,
 } from "../../db/schema";
 import { canProfileViewShipmentRequestAttachments } from "../../lib/media";
+import {
+  attachFilesToMessage,
+  canProfileAccessConversation,
+  MessageAttachmentValidationError,
+} from "../../lib/message-attachments";
 import {
   acceptQuoteForImporter,
   createQuoteForForwarder,
@@ -69,6 +78,171 @@ test("quote creation atomically creates exactly one empty conversation", async (
     .where(eq(conversations.openedByQuoteId, quote.id));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].shipmentRequestId, fixture.requestId);
+  const revisions = await first.database
+    .select()
+    .from(quoteRevisions)
+    .where(eq(quoteRevisions.quoteId, quote.id));
+  assert.equal(revisions.length, 1);
+  assert.equal(revisions[0].revisionNumber, 1);
+});
+
+test("quote edits append an immutable snapshot in the same transaction", async () => {
+  const fixture = await createMarketplaceFixture({ createQuotes: false });
+  const quote = await createQuoteForForwarder(first.database, {
+    requestId: fixture.requestId,
+    forwarderCompanyId: fixture.companyIds[0],
+    forwarderMemberId: fixture.memberIds[0],
+    quoteInput: validQuoteInput(),
+  });
+
+  const updated = await updateQuoteForForwarder(first.database, {
+    requestId: fixture.requestId,
+    quoteId: quote.id,
+    forwarderCompanyId: fixture.companyIds[0],
+    forwarderMemberId: fixture.memberIds[0],
+    quoteInput: { ...validQuoteInput(), quoteAmount: "23456.78" },
+  });
+  assert.equal(updated.revisionNumber, 2);
+
+  const revisions = await first.database
+    .select()
+    .from(quoteRevisions)
+    .where(eq(quoteRevisions.quoteId, quote.id))
+    .orderBy(quoteRevisions.revisionNumber);
+  assert.deepEqual(
+    revisions.map((revision) => [revision.revisionNumber, revision.quoteAmount]),
+    [
+      [1, "12345.67"],
+      [2, "23456.78"],
+    ],
+  );
+});
+
+test("message attachment ownership and message linking commit atomically", async () => {
+  const fixture = await createMarketplaceFixture({ createQuotes: false });
+  const quote = await createQuoteForForwarder(first.database, {
+    requestId: fixture.requestId,
+    forwarderCompanyId: fixture.companyIds[0],
+    forwarderMemberId: fixture.memberIds[0],
+    quoteInput: validQuoteInput(),
+  });
+  const [conversation] = await first.database
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(eq(conversations.openedByQuoteId, quote.id));
+  const [file] = await first.database
+    .insert(mediaFiles)
+    .values({
+      ownerUserProfileId: fixture.forwarderUserProfileIds[0],
+      conversationId: conversation.id,
+      context: "conversation_message_attachment",
+      objectKey: `temporary/test/${crypto.randomUUID()}.pdf`,
+      originalFilename: "test.pdf",
+      contentType: "application/pdf",
+      detectedContentType: "application/pdf",
+      sizeBytes: 128,
+      status: "temporary",
+      verifiedAt: new Date(),
+    })
+    .returning({ id: mediaFiles.id });
+
+  const messageId = await first.database.transaction(async (tx) => {
+    const [message] = await tx
+      .insert(messages)
+      .values({
+        conversationId: conversation.id,
+        senderUserProfileId: fixture.forwarderUserProfileIds[0],
+        body: "",
+      })
+      .returning({ id: messages.id });
+    await attachFilesToMessage(tx, {
+      messageId: message.id,
+      conversationId: conversation.id,
+      ownerUserProfileId: fixture.forwarderUserProfileIds[0],
+      fileIds: [file.id],
+    });
+    return message.id;
+  });
+
+  assert.equal(
+    (await first.database.select().from(messageAttachments).where(eq(messageAttachments.messageId, messageId))).length,
+    1,
+  );
+  const [activeFile] = await first.database
+    .select({ status: mediaFiles.status })
+    .from(mediaFiles)
+    .where(eq(mediaFiles.id, file.id));
+  assert.equal(activeFile.status, "active");
+  assert.equal(
+    await canProfileAccessConversation(
+      { id: fixture.importerUserProfileId, role: "importer" },
+      conversation.id,
+      first.database,
+    ),
+    true,
+  );
+  assert.equal(
+    await canProfileAccessConversation(
+      { id: fixture.forwarderUserProfileIds[1], role: "forwarder" },
+      conversation.id,
+      first.database,
+    ),
+    false,
+  );
+});
+
+test("files cannot be attached by another user or to another conversation", async () => {
+  const fixture = await createMarketplaceFixture({ createQuotes: false });
+  const quote = await createQuoteForForwarder(first.database, {
+    requestId: fixture.requestId,
+    forwarderCompanyId: fixture.companyIds[0],
+    forwarderMemberId: fixture.memberIds[0],
+    quoteInput: validQuoteInput(),
+  });
+  const [conversation] = await first.database
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(eq(conversations.openedByQuoteId, quote.id));
+  const [file] = await first.database
+    .insert(mediaFiles)
+    .values({
+      ownerUserProfileId: fixture.forwarderUserProfileIds[0],
+      conversationId: conversation.id,
+      context: "conversation_message_attachment",
+      objectKey: `temporary/test/${crypto.randomUUID()}.pdf`,
+      originalFilename: "private.pdf",
+      contentType: "application/pdf",
+      detectedContentType: "application/pdf",
+      sizeBytes: 128,
+      status: "temporary",
+      verifiedAt: new Date(),
+    })
+    .returning({ id: mediaFiles.id });
+  const before = await first.database.select({ id: messages.id }).from(messages);
+
+  await assert.rejects(
+    first.database.transaction(async (tx) => {
+      const [message] = await tx
+        .insert(messages)
+        .values({
+          conversationId: conversation.id,
+          senderUserProfileId: fixture.forwarderUserProfileIds[1],
+          body: "",
+        })
+        .returning({ id: messages.id });
+      await attachFilesToMessage(tx, {
+        messageId: message.id,
+        conversationId: conversation.id,
+        ownerUserProfileId: fixture.forwarderUserProfileIds[1],
+        fileIds: [file.id],
+      });
+    }),
+    (error) =>
+      error instanceof MessageAttachmentValidationError &&
+      error.code === "unavailable_attachment",
+  );
+  const after = await first.database.select({ id: messages.id }).from(messages);
+  assert.equal(after.length, before.length);
 });
 
 test("incomplete forwarders cannot quote and failed creation leaves no quote or conversation", async () => {
@@ -201,6 +375,7 @@ test("create, update, and withdraw cannot race past request closure", async () =
               requestId: fixture.requestId,
               quoteId: fixture.quoteIds[1],
               forwarderCompanyId: fixture.companyIds[1],
+              forwarderMemberId: fixture.memberIds[1],
               quoteInput: { ...validQuoteInput(), quoteAmount: "23456.78" },
             })
           : withdrawQuoteForForwarder(second.database, {
