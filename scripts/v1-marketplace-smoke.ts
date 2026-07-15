@@ -129,6 +129,10 @@ async function createForwarder(
     role: "forwarder",
     fullName,
     companyName,
+    shippingModes: "both",
+    originCities: "Guangzhou, Shenzhen",
+    destinationAreas: "Metro Manila, Cebu",
+    serviceDescription: "Sea and air forwarding from China to the Philippines.",
   });
 
   const member = await db.query.forwarderMembers.findFirst({

@@ -13,6 +13,7 @@ import {
   forwarderCompanySettingsSchema,
   importerProfileSettingsSchema,
 } from "@/lib/validation";
+import { getForwarderCompanyPublicProfileCompleteness } from "@/lib/forwarder-company-profile";
 
 export class ForwarderCompanySettingsAccessError extends Error {
   constructor(readonly code: "forbidden" | "suspended") {
@@ -76,7 +77,7 @@ export async function getForwarderSettingsForCurrentUser() {
 export async function updateForwarderSettingsForCurrentUser(
   input: unknown,
 ) {
-  const { member } = await requireForwarderMember();
+  const { profile, member } = await requireForwarderMember();
   const parsed = forwarderCompanySettingsSchema.parse(input);
   const now = new Date();
 
@@ -144,6 +145,21 @@ export async function updateForwarderSettingsForCurrentUser(
         },
       });
   });
+
+  const readiness = getForwarderCompanyPublicProfileCompleteness({
+    name: parsed.companyName,
+    slug: member.companySlug,
+    shippingModes: parsed.shippingModes,
+    originCities: parsed.originCities ?? null,
+    destinationAreas: parsed.destinationAreas ?? null,
+    serviceDescription: parsed.serviceDescription ?? null,
+  });
+
+  return {
+    profileId: profile.id,
+    companyId: member.companyId,
+    isReady: readiness.isComplete,
+  };
 }
 
 export async function getForwarderQuoteDefaultsForCurrentCompany(

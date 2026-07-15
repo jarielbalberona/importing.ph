@@ -49,6 +49,10 @@ async function main() {
       role: "forwarder",
       fullName: "Dev Importer Retry",
       companyName: "Dev Importer Retry Co",
+      shippingModes: "both",
+      originCities: "Guangzhou, Shenzhen",
+      destinationAreas: "Metro Manila, Cebu",
+      serviceDescription: "Sea and air forwarding from China to the Philippines.",
     },
   );
 
@@ -86,6 +90,10 @@ async function main() {
     role: "forwarder",
     fullName: "Dev Forwarder",
     companyName: "Dev Forwarder Co",
+    shippingModes: "both",
+    originCities: "Guangzhou, Shenzhen",
+    destinationAreas: "Metro Manila, Cebu",
+    serviceDescription: "Sea and air forwarding from China to the Philippines.",
   });
 
   const forwarderMember = await requireRow(

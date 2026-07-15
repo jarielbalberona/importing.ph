@@ -18,6 +18,7 @@
     "db:prove-onboarding": "tsx scripts/prove-onboarding.ts",
     "db:preflight:v1-hardening": "tsx scripts/preflight-v1-hardening.ts",
     "media:cleanup-temporary": "tsx scripts/cleanup-temporary-uploads.ts",
+    "analytics:cleanup": "tsx scripts/cleanup-funnel-events.ts",
     "realtime:smoke": "tsx scripts/realtime-reconnect-smoke.ts",
     "type-check": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",

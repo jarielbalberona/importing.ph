@@ -17,11 +17,47 @@ import {
   getImporterProfileSlugSource,
 } from "@/lib/slug";
 
-export const onboardingSchema = z.object({
-  role: z.enum(["importer", "forwarder"]),
-  fullName: z.string().trim().min(2).max(120),
-  companyName: z.string().trim().min(2).max(160),
-});
+const sharedOnboardingFields = {
+  fullName: z
+    .string()
+    .trim()
+    .min(2, "Enter your full name.")
+    .max(120, "Full name must be 120 characters or fewer."),
+  companyName: z
+    .string()
+    .trim()
+    .min(2, "Enter your company name.")
+    .max(160, "Company name must be 160 characters or fewer."),
+} as const;
+
+export const onboardingSchema = z.discriminatedUnion("role", [
+  z.object({
+    role: z.literal("importer"),
+    ...sharedOnboardingFields,
+  }),
+  z.object({
+    role: z.literal("forwarder"),
+    ...sharedOnboardingFields,
+    shippingModes: z.enum(["sea", "air", "both"], {
+      error: "Choose the shipping modes your company supports.",
+    }),
+    originCities: z
+      .string()
+      .trim()
+      .min(2, "Add at least one China origin city.")
+      .max(500),
+    destinationAreas: z
+      .string()
+      .trim()
+      .min(2, "Add at least one Philippine destination area.")
+      .max(500),
+    serviceDescription: z
+      .string()
+      .trim()
+      .min(20, "Describe your forwarding service in at least 20 characters.")
+      .max(1000),
+  }),
+]);
 
 type OnboardingInput = z.infer<typeof onboardingSchema>;
 
@@ -104,6 +140,10 @@ export async function createOnboardingProfile(
       .values({
         name: parsed.companyName,
         slug: forwarderSlug,
+        shippingModes: parsed.shippingModes,
+        originCities: parsed.originCities,
+        destinationAreas: parsed.destinationAreas,
+        serviceDescription: parsed.serviceDescription,
       })
       .returning();
 

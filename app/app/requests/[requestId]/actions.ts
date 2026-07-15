@@ -20,6 +20,12 @@ import {
   RequestShareError,
   rotateRequestShareLinkForCurrentImporter,
 } from "@/lib/request-sharing";
+import {
+  findJourneyForEntity,
+  recordFunnelEvent,
+  recordRequestFunnelEvent,
+} from "@/lib/funnel-events";
+import { runBestEffort } from "@/lib/best-effort";
 
 const idSchema = z.string().uuid();
 
@@ -38,9 +44,24 @@ export async function publishDraftRequest(formData: FormData) {
     redirect("/app/requests?error=invalid-request");
   }
 
-  let request;
+  let request: Awaited<
+    ReturnType<typeof publishShipmentRequestForCurrentImporter>
+  >;
   try {
     request = await publishShipmentRequestForCurrentImporter(requestId.data);
+    if (request) {
+      await runBestEffort(
+        "funnel.request_posted_failed",
+        () =>
+          recordRequestFunnelEvent({
+            eventName: "request_posted",
+            role: "importer",
+            entityType: "shipment_request",
+            entityId: request.id,
+          }),
+        { requestId: request.id },
+      );
+    }
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect(`/app/requests/${requestId.data}?requestError=rate_limited`);
@@ -146,10 +167,29 @@ async function decideQuote(formData: FormData, decision: "accept" | "reject") {
 
   try {
     if (decision === "accept") {
-      await acceptQuoteForCurrentImporter({
+      const result = await acceptQuoteForCurrentImporter({
         requestId: requestId.data,
         quoteId: quoteId.data,
       });
+      await runBestEffort(
+        "funnel.quote_accepted_failed",
+        async () => {
+          const journeyId = await findJourneyForEntity({
+            eventName: "request_posted",
+            entityType: "shipment_request",
+            entityId: result.requestId,
+          });
+          if (!journeyId) return;
+          await recordFunnelEvent({
+            journeyId,
+            eventName: "quote_accepted",
+            role: "importer",
+            entityType: "quote",
+            entityId: result.acceptedQuoteId,
+          });
+        },
+        { requestId: result.requestId, quoteId: result.acceptedQuoteId },
+      );
     } else {
       await rejectQuoteForCurrentImporter({
         requestId: requestId.data,

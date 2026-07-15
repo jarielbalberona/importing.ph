@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getProfileForCurrentUser } from "@/lib/authz";
 import {
+  JOIN_AS_FORWARDER_INTENT,
+  normalizeAuthRedirectIntent,
   resolveAuthenticatedDestination,
   SUBMIT_QUOTE_INTENT,
 } from "@/lib/auth-redirect";
-import { completeOnboarding } from "./actions";
+import { OnboardingForm } from "./onboarding-form";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +18,14 @@ export default async function OnboardingPage({
 }) {
   const { profile } = await getProfileForCurrentUser();
   const params = await searchParams;
+  const intent = normalizeAuthRedirectIntent(params.intent);
 
   if (profile) {
     redirect(
       resolveAuthenticatedDestination({
         role: profile.role,
         redirectPath: params.redirect_url,
-        intent: params.intent,
+        intent,
       }),
     );
   }
@@ -41,65 +41,21 @@ export default async function OnboardingPage({
             Set up your account
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {params.intent === SUBMIT_QUOTE_INTENT
+            {intent === SUBMIT_QUOTE_INTENT
               ? "Set up a forwarding account to submit your quotation."
               : "Tell us how you will use importing.ph so we can show the right tools."}
           </p>
         </div>
-        <form action={completeOnboarding} className="mt-8 grid gap-6">
-          <input type="hidden" name="redirectUrl" value={params.redirect_url} />
-          <input type="hidden" name="intent" value={params.intent} />
-          <div className="grid gap-2">
-            <Label htmlFor="fullName">Full name</Label>
-            <Input id="fullName" name="fullName" required minLength={2} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="companyName">Company name</Label>
-            <Input id="companyName" name="companyName" required minLength={2} />
-          </div>
-          <fieldset className="grid gap-3">
-            <legend className="text-sm font-medium">Account type</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Label className="flex cursor-pointer gap-3 rounded-md border bg-background p-4">
-                <input
-                  type="radio"
-                  name="role"
-                  value="importer"
-                  required
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block font-semibold">I am an Importer</span>
-                  <span className="mt-1 block text-sm font-normal leading-6 text-muted-foreground">
-                    Post shipment requests and compare quotes from forwarders.
-                  </span>
-                </span>
-              </Label>
-              <Label className="flex cursor-pointer gap-3 rounded-md border bg-background p-4">
-                <input
-                  type="radio"
-                  name="role"
-                  value="forwarder"
-                  required
-                  defaultChecked={params.intent === SUBMIT_QUOTE_INTENT}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block font-semibold">
-                    I am a forwarder
-                  </span>
-                  <span className="mt-1 block text-sm font-normal leading-6 text-muted-foreground">
-                    Browse shipment requests and send quotes as a logistics
-                    provider.
-                  </span>
-                </span>
-              </Label>
-            </div>
-          </fieldset>
-          <Button type="submit" size="lg" className="w-full sm:w-auto">
-            Continue
-          </Button>
-        </form>
+        <OnboardingForm
+          initialRole={
+            intent === JOIN_AS_FORWARDER_INTENT || intent === SUBMIT_QUOTE_INTENT
+              ? "forwarder"
+              : "importer"
+          }
+          lockForwarderRole={intent === SUBMIT_QUOTE_INTENT}
+          redirectUrl={params.redirect_url}
+          intent={intent ?? undefined}
+        />
       </div>
     </main>
   );

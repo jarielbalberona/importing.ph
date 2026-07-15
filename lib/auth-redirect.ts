@@ -3,10 +3,12 @@ import { destinationForRole } from "@/lib/routes";
 
 export const POST_SHIPMENT_REQUEST_INTENT = "post_shipment_request" as const;
 export const SUBMIT_QUOTE_INTENT = "submit_quote" as const;
+export const JOIN_AS_FORWARDER_INTENT = "join_as_forwarder" as const;
 
 export type AuthRedirectIntent =
   | typeof POST_SHIPMENT_REQUEST_INTENT
-  | typeof SUBMIT_QUOTE_INTENT;
+  | typeof SUBMIT_QUOTE_INTENT
+  | typeof JOIN_AS_FORWARDER_INTENT;
 
 export function normalizeAppRedirectPath(
   input: string | null | undefined,
@@ -43,7 +45,8 @@ export function normalizeAuthRedirectIntent(
 ): AuthRedirectIntent | null {
   if (
     input === POST_SHIPMENT_REQUEST_INTENT ||
-    input === SUBMIT_QUOTE_INTENT
+    input === SUBMIT_QUOTE_INTENT ||
+    input === JOIN_AS_FORWARDER_INTENT
   ) {
     return input;
   }
@@ -93,6 +96,14 @@ export function resolveAuthenticatedDestination(options: {
   if (intent === POST_SHIPMENT_REQUEST_INTENT) {
     if (options.role === "importer") {
       return "/app/requests/new";
+    }
+
+    return destinationForRole(options.role);
+  }
+
+  if (intent === JOIN_AS_FORWARDER_INTENT) {
+    if (options.role === "forwarder") {
+      return "/app/forwarder/requests";
     }
 
     return destinationForRole(options.role);

@@ -247,6 +247,40 @@ export const userProfiles = pgTable(
   (table) => [uniqueIndex("user_profiles_clerk_user_id_idx").on(table.clerkUserId)],
 );
 
+export const funnelEvents = pgTable(
+  "funnel_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    journeyId: uuid("journey_id").notNull(),
+    eventName: text("event_name").notNull(),
+    userProfileId: uuid("user_profile_id").references(() => userProfiles.id, {
+      onDelete: "set null",
+    }),
+    role: userRoleEnum("role"),
+    authIntent: text("auth_intent"),
+    entityType: text("entity_type"),
+    entityId: uuid("entity_id"),
+    dedupeKey: text("dedupe_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("funnel_events_dedupe_key_idx").on(table.dedupeKey),
+    index("funnel_events_event_created_at_idx").on(
+      table.eventName,
+      table.createdAt,
+    ),
+    index("funnel_events_journey_id_idx").on(table.journeyId),
+    index("funnel_events_user_profile_id_idx").on(table.userProfileId),
+    index("funnel_events_created_at_idx").on(table.createdAt),
+    check(
+      "funnel_events_event_name_check",
+      sql`${table.eventName} in ('auth_started', 'onboarding_completed', 'request_started', 'request_posted', 'forwarder_profile_ready', 'quote_started', 'quote_submitted', 'quote_received', 'quote_accepted', 'first_message_sent')`,
+    ),
+  ],
+);
+
 export const importerProfiles = pgTable(
   "importer_profiles",
   {

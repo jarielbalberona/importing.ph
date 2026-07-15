@@ -9,6 +9,8 @@ import * as schema from "../../db/schema";
 import {
   forwarderCompanies,
   forwarderMembers,
+  conversations,
+  funnelEvents,
   importerProfiles,
   quotes,
   shipmentRequests,
@@ -23,6 +25,7 @@ import {
   updateQuoteForForwarder,
   withdrawQuoteForForwarder,
 } from "../../lib/quotes";
+import { recordFunnelEvent } from "../../lib/funnel-events";
 import {
   consumeRateLimit,
   RateLimitError,
@@ -48,7 +51,72 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  await first.client.unsafe("TRUNCATE user_profiles, rate_limit_states CASCADE");
+  await first.client.unsafe("TRUNCATE funnel_events, user_profiles, rate_limit_states CASCADE");
+});
+
+test("quote creation atomically creates exactly one empty conversation", async () => {
+  const fixture = await createMarketplaceFixture({ createQuotes: false });
+  const quote = await createQuoteForForwarder(first.database, {
+    requestId: fixture.requestId,
+    forwarderCompanyId: fixture.companyIds[0],
+    forwarderMemberId: fixture.memberIds[0],
+    quoteInput: validQuoteInput(),
+  });
+
+  const rows = await first.database
+    .select()
+    .from(conversations)
+    .where(eq(conversations.openedByQuoteId, quote.id));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].shipmentRequestId, fixture.requestId);
+});
+
+test("incomplete forwarders cannot quote and failed creation leaves no quote or conversation", async () => {
+  const fixture = await createMarketplaceFixture({ createQuotes: false });
+  await first.database
+    .update(forwarderCompanies)
+    .set({ serviceDescription: null })
+    .where(eq(forwarderCompanies.id, fixture.companyIds[0]));
+
+  await assert.rejects(
+    createQuoteForForwarder(first.database, {
+      requestId: fixture.requestId,
+      forwarderCompanyId: fixture.companyIds[0],
+      forwarderMemberId: fixture.memberIds[0],
+      quoteInput: validQuoteInput(),
+    }),
+    (error) =>
+      error instanceof QuoteSubmissionError && error.code === "profile_incomplete",
+  );
+
+  assert.equal(
+    (await first.database.select().from(quotes).where(eq(quotes.shipmentRequestId, fixture.requestId))).length,
+    0,
+  );
+  assert.equal(
+    (await first.database.select().from(conversations).where(eq(conversations.shipmentRequestId, fixture.requestId))).length,
+    0,
+  );
+});
+
+test("funnel mutation events deduplicate by unique key", async () => {
+  const journeyId = crypto.randomUUID();
+  const entityId = crypto.randomUUID();
+  const input = {
+    journeyId,
+    eventName: "request_posted" as const,
+    role: "importer" as const,
+    entityType: "shipment_request" as const,
+    entityId,
+  };
+
+  assert.equal((await recordFunnelEvent(input, first.database)).created, true);
+  assert.equal((await recordFunnelEvent(input, first.database)).created, false);
+  const rows = await first.database
+    .select()
+    .from(funnelEvents)
+    .where(eq(funnelEvents.journeyId, journeyId));
+  assert.equal(rows.length, 1);
 });
 
 test("simultaneous accept operations produce one winner and reject competitors", async () => {
@@ -596,6 +664,10 @@ async function createMarketplaceFixture(options: { createQuotes?: boolean } = {}
       .values({
         name: `Test Forwarder Company ${index} ${crypto.randomUUID()}`,
         slug: `test-forwarder-${index}-${crypto.randomUUID()}`,
+        shippingModes: "both",
+        originCities: "Guangzhou, Shenzhen",
+        destinationAreas: "Metro Manila, Cebu",
+        serviceDescription: "Sea and air forwarding from China to the Philippines.",
       })
       .returning({ id: forwarderCompanies.id });
     const [member] = await first.database

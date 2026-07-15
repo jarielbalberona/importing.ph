@@ -1,7 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { cloneElement, isValidElement, useId, useMemo, useState, useTransition } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import type { ReactElement, ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -53,7 +61,10 @@ import {
   buildDestinationDisplayName,
   calculateEstimatedTotalCbm,
   getShipmentRequestStepBlockingErrors,
+  inferShipmentSizingMethod,
+  prepareShipmentSizingForSubmission,
   type ShipmentRequestStepIndex,
+  type ShipmentSizingMethod,
 } from "@/lib/shipment-request-wizard";
 import {
   createShipmentRequest,
@@ -64,6 +75,7 @@ import {
   formatBytes,
   shipmentAttachmentMaxCount,
 } from "@/lib/file-rules";
+import { cn } from "@/lib/utils";
 
 type FormValues = z.input<typeof createShipmentRequestSchema>;
 type Option = {
@@ -234,11 +246,27 @@ const shippingModePreferenceOptions = [
   { value: "either", label: "Open to either" },
 ] satisfies Option[];
 
-export function NewShipmentRequestForm() {
+export function NewShipmentRequestForm({
+  defaultValues,
+}: {
+  defaultValues?: Partial<FormValues>;
+} = {}) {
   const [currentStep, setCurrentStep] = useState(0);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+  const [sizingMethod, setSizingMethod] = useState<ShipmentSizingMethod>(() =>
+    inferShipmentSizingMethod(defaultValues ?? {}),
+  );
+  const sizingCache = useRef({
+    knownCbm: defaultValues?.totalCbm,
+    dimensions: {
+      packageCount: defaultValues?.packageCount,
+      lengthCm: defaultValues?.lengthCm,
+      widthCm: defaultValues?.widthCm,
+      heightCm: defaultValues?.heightCm,
+    },
+  });
   const [isPending, startTransition] = useTransition();
   const {
     register,
@@ -259,6 +287,7 @@ export function NewShipmentRequestForm() {
       deliveryPreference: undefined,
       shippingModePreference: undefined,
       shippingPreference: undefined,
+      ...defaultValues,
     },
   });
 
@@ -267,6 +296,48 @@ export function NewShipmentRequestForm() {
   const isFirstStep = currentStep === 0;
   const isFinalStep = currentStep === steps.length - 1;
   const progressLabel = `Step ${currentStep + 1} of ${steps.length}`;
+
+  function changeSizingMethod(nextMethod: ShipmentSizingMethod) {
+    if (nextMethod === sizingMethod) {
+      return;
+    }
+
+    const options = { shouldDirty: true, shouldValidate: false };
+
+    if (nextMethod === "dimensions") {
+      sizingCache.current.knownCbm = getValues("totalCbm");
+      setValue("totalCbm", undefined, options);
+      setValue(
+        "packageCount",
+        sizingCache.current.dimensions.packageCount,
+        options,
+      );
+      setValue("lengthCm", sizingCache.current.dimensions.lengthCm, options);
+      setValue("widthCm", sizingCache.current.dimensions.widthCm, options);
+      setValue("heightCm", sizingCache.current.dimensions.heightCm, options);
+    } else {
+      sizingCache.current.dimensions = {
+        packageCount: getValues("packageCount"),
+        lengthCm: getValues("lengthCm"),
+        widthCm: getValues("widthCm"),
+        heightCm: getValues("heightCm"),
+      };
+      setValue("packageCount", undefined, options);
+      setValue("lengthCm", undefined, options);
+      setValue("widthCm", undefined, options);
+      setValue("heightCm", undefined, options);
+      setValue("totalCbm", sizingCache.current.knownCbm, options);
+    }
+
+    clearErrors([
+      "totalCbm",
+      "packageCount",
+      "lengthCm",
+      "widthCm",
+      "heightCm",
+    ]);
+    setSizingMethod(nextMethod);
+  }
 
   async function goNext() {
     const valid = await validateCurrentStep();
@@ -285,7 +356,7 @@ export function NewShipmentRequestForm() {
     const fieldsValid = await trigger(step.fields, { shouldFocus: true });
     const blockingErrors = getShipmentRequestStepBlockingErrors(
       currentStep as ShipmentRequestStepIndex,
-      getValues(),
+      prepareShipmentSizingForSubmission(getValues(), sizingMethod),
     );
     const blockingErrorEntries = Object.entries(blockingErrors);
 
@@ -326,8 +397,12 @@ export function NewShipmentRequestForm() {
 
     setFormError(null);
     const formData = new FormData();
+    const submissionData = prepareShipmentSizingForSubmission(
+      data,
+      sizingMethod,
+    );
 
-    for (const [key, value] of Object.entries(data)) {
+    for (const [key, value] of Object.entries(submissionData)) {
       if (key === "attachmentFileIds") {
         continue;
       }
@@ -405,6 +480,8 @@ export function NewShipmentRequestForm() {
               control={control}
               register={register}
               errors={errors}
+              sizingMethod={sizingMethod}
+              onSizingMethodChange={changeSizingMethod}
             />
           ) : null}
           {currentStep === 1 ? (
@@ -426,7 +503,10 @@ export function NewShipmentRequestForm() {
             />
           ) : null}
           {currentStep === 3 ? (
-            <ReviewStep values={values} attachments={attachments} />
+            <ReviewStep
+              values={prepareShipmentSizingForSubmission(values, sizingMethod)}
+              attachments={attachments}
+            />
           ) : null}
         </CardContent>
 
@@ -504,7 +584,12 @@ function CargoDetailsStep({
   control,
   register,
   errors,
-}: StepComponentProps<FormValues>) {
+  sizingMethod,
+  onSizingMethodChange,
+}: StepComponentProps<FormValues> & {
+  sizingMethod: ShipmentSizingMethod;
+  onSizingMethodChange: (method: ShipmentSizingMethod) => void;
+}) {
   const selectedCargoType = useWatch({ control, name: "cargoType" });
   const showHandlingNote =
     typeof selectedCargoType === "string" &&
@@ -563,7 +648,13 @@ function CargoDetailsStep({
 
       <section className="grid gap-4">
         <h3 className="text-base font-semibold">Size, weight, and value</h3>
-        <SizeFields control={control} register={register} errors={errors} />
+        <SizeFields
+          control={control}
+          register={register}
+          errors={errors}
+          sizingMethod={sizingMethod}
+          onSizingMethodChange={onSizingMethodChange}
+        />
       </section>
     </div>
   );
@@ -573,19 +664,17 @@ function SizeFields({
   control,
   register,
   errors,
-}: Pick<StepComponentProps<FormValues>, "control" | "register" | "errors">) {
+  sizingMethod,
+  onSizingMethodChange,
+}: Pick<StepComponentProps<FormValues>, "control" | "register" | "errors"> & {
+  sizingMethod: ShipmentSizingMethod;
+  onSizingMethodChange: (method: ShipmentSizingMethod) => void;
+}) {
   const sizeValues = useWatch({
     control,
     name: ["totalCbm", "totalWeightKg", "packageCount", "lengthCm", "widthCm", "heightCm"],
   });
-  const [
-    totalCbm,
-    ,
-    packageCount,
-    lengthCm,
-    widthCm,
-    heightCm,
-  ] = sizeValues;
+  const [, , packageCount, lengthCm, widthCm, heightCm] = sizeValues;
   const estimatedTotalCbm = calculateEstimatedTotalCbm({
     packageCount,
     lengthCm,
@@ -595,11 +684,23 @@ function SizeFields({
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-md border bg-muted/50 p-4 text-sm leading-6 text-muted-foreground">
-        Forwarders usually need <span className="font-medium text-foreground">total gross weight</span> and
-        either <span className="font-medium text-foreground">total CBM</span> or
-        <span className="font-medium text-foreground"> package count plus one-carton dimensions</span>.
-      </div>
+      <fieldset className="grid gap-3">
+        <legend className="text-sm font-medium">How do you want to enter shipment size?</legend>
+        <div role="radiogroup" className="grid gap-3 sm:grid-cols-2">
+          <SizingMethodCard
+            checked={sizingMethod === "known_cbm"}
+            title="I know the total CBM"
+            description="Enter the supplier or packing estimate directly."
+            onSelect={() => onSizingMethodChange("known_cbm")}
+          />
+          <SizingMethodCard
+            checked={sizingMethod === "dimensions"}
+            title="Calculate from carton dimensions"
+            description="Use carton count and one-carton measurements."
+            onSelect={() => onSizingMethodChange("dimensions")}
+          />
+        </div>
+      </fieldset>
       <GuideLinksCard
         title="Need help estimating shipment size?"
         description="Use these before posting if you are unsure about CBM, carton dimensions, or what forwarders usually need."
@@ -616,70 +717,110 @@ function SizeFields({
           },
         ]}
       />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {sizingMethod === "known_cbm" ? (
+          <Field
+            label="Total CBM"
+            error={errors.totalCbm?.message}
+            required
+          >
+            <Input {...register("totalCbm")} inputMode="decimal" placeholder="1.250" />
+          </Field>
+        ) : null}
         <Field
-          label="Total CBM"
-          helper="Enter the estimated total shipment volume if you already know it. Use a decimal format like 1.250."
-          error={errors.totalCbm?.message}
-        >
-          <Input {...register("totalCbm")} inputMode="decimal" placeholder="1.250" />
-        </Field>
-        <Field
-          label="Total weight kg"
-          helper="Use gross weight if available. This helps forwarders estimate shipping cost."
+          label="Total gross weight (kg)"
           error={errors.totalWeightKg?.message}
           required
         >
           <Input {...register("totalWeightKg")} inputMode="decimal" placeholder="120" />
         </Field>
-        <Field
-          label="Package or carton count"
-          helper="Required if you are using dimensions instead of total CBM."
-          error={errors.packageCount?.message}
-        >
-          <Input {...register("packageCount")} inputMode="numeric" placeholder="20" />
-        </Field>
-        <Field
-          label="Declared value"
-          helper="Optional. Use the invoice value if available."
-          error={errors.declaredValue?.message}
-        >
-          <Input {...register("declaredValue")} inputMode="decimal" placeholder="50000" />
-        </Field>
-        <Field
-          label="Length cm per carton"
-          helper="Enter the size of one carton or package, not the whole shipment."
-          error={errors.lengthCm?.message}
-        >
-          <Input {...register("lengthCm")} inputMode="decimal" />
-        </Field>
-        <Field
-          label="Width cm per carton"
-          helper="Use the width of one carton or package."
-          error={errors.widthCm?.message}
-        >
-          <Input {...register("widthCm")} inputMode="decimal" />
-        </Field>
-        <Field
-          label="Height cm per carton"
-          helper="Use the height of one carton or package."
-          error={errors.heightCm?.message}
-        >
-          <Input {...register("heightCm")} inputMode="decimal" />
-        </Field>
+        {sizingMethod === "dimensions" ? (
+          <>
+            <Field
+              label="Package or carton count"
+              error={errors.packageCount?.message}
+              required
+            >
+              <Input {...register("packageCount")} inputMode="numeric" placeholder="20" />
+            </Field>
+            <Field
+              label="Length per carton (cm)"
+              error={errors.lengthCm?.message}
+              required
+            >
+              <Input {...register("lengthCm")} inputMode="decimal" placeholder="50" />
+            </Field>
+            <Field
+              label="Width per carton (cm)"
+              error={errors.widthCm?.message}
+              required
+            >
+              <Input {...register("widthCm")} inputMode="decimal" placeholder="40" />
+            </Field>
+            <Field
+              label="Height per carton (cm)"
+              error={errors.heightCm?.message}
+              required
+            >
+              <Input {...register("heightCm")} inputMode="decimal" placeholder="30" />
+            </Field>
+          </>
+        ) : null}
       </div>
-      {estimatedTotalCbm ? (
+      {sizingMethod === "dimensions" && estimatedTotalCbm ? (
         <div className="rounded-md border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-cyan-950">
-          Estimated total CBM from carton dimensions and package count:{" "}
+          Calculated shipment volume:{" "}
           <span className="font-semibold">{estimatedTotalCbm} CBM</span>
-          {typeof totalCbm === "string" && totalCbm.trim().length > 0 ? (
-            <span className="block pt-1 text-cyan-900">
-              Keep the manual CBM value if it is based on a more reliable supplier or packing estimate.
-            </span>
-          ) : null}
+          <span className="block pt-1 text-cyan-900">
+            This CBM will be saved together with the carton measurements.
+          </span>
         </div>
       ) : null}
+      <details className="rounded-md border bg-muted/30 p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          Add declared cargo value (optional)
+        </summary>
+        <div className="mt-4 max-w-sm">
+          <Field
+            label="Declared value"
+            helper="Use the invoice value if available."
+            error={errors.declaredValue?.message}
+          >
+            <Input {...register("declaredValue")} inputMode="decimal" placeholder="50000" />
+          </Field>
+        </div>
+      </details>
     </div>
+  );
+}
+
+function SizingMethodCard({
+  checked,
+  title,
+  description,
+  onSelect,
+}: {
+  checked: boolean;
+  title: string;
+  description: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={cn(
+        "rounded-lg border bg-background p-4 text-left transition-colors",
+        checked && "border-cyan-600 ring-2 ring-cyan-600/20",
+      )}
+    >
+      <span className="block font-semibold">{title}</span>
+      <span className="mt-1 block text-sm leading-6 text-muted-foreground">
+        {description}
+      </span>
+    </button>
   );
 }
 

@@ -141,6 +141,11 @@ export async function requireForwarderMember() {
       id: forwarderMembers.id,
       companyId: forwarderMembers.forwarderCompanyId,
       companyName: forwarderCompanies.name,
+      companySlug: forwarderCompanies.slug,
+      companyShippingModes: forwarderCompanies.shippingModes,
+      companyOriginCities: forwarderCompanies.originCities,
+      companyDestinationAreas: forwarderCompanies.destinationAreas,
+      companyServiceDescription: forwarderCompanies.serviceDescription,
       companyIsSuspended: forwarderCompanies.isSuspended,
       memberRole: forwarderMembers.memberRole,
     })

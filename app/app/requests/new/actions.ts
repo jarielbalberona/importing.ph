@@ -10,6 +10,8 @@ import {
   shipmentRequestInputFromFormData,
 } from "@/lib/validation";
 import { RateLimitError } from "@/lib/rate-limit";
+import { recordRequestFunnelEvent } from "@/lib/funnel-events";
+import { runBestEffort } from "@/lib/best-effort";
 
 export async function createShipmentRequest(formData: FormData) {
   await createShipmentRequestWithStatus(formData, "posted");
@@ -31,7 +33,23 @@ async function createShipmentRequestWithStatus(
   }
 
   try {
-    await createShipmentRequestForCurrentImporter(parsed.data, { status });
+    const request = await createShipmentRequestForCurrentImporter(parsed.data, {
+      status,
+    });
+
+    if (status === "posted") {
+      await runBestEffort(
+        "funnel.request_posted_failed",
+        () =>
+          recordRequestFunnelEvent({
+            eventName: "request_posted",
+            role: "importer",
+            entityType: "shipment_request",
+            entityId: request.id,
+          }),
+        { requestId: request.id },
+      );
+    }
   } catch (error) {
     if (error instanceof RateLimitError) {
       redirect("/app/requests/new?error=rate_limited");

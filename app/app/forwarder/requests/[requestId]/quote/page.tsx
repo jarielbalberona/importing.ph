@@ -23,6 +23,11 @@ import {
   getForwarderQuoteDefaultsForCurrentCompany,
 } from "@/lib/profile-settings";
 import { updateQuote } from "../actions";
+import {
+  canEditForwarderCompanySettings,
+  getForwarderCompanyPublicProfileCompleteness,
+} from "@/lib/forwarder-company-profile";
+import { FunnelEntryEvent } from "@/components/funnel-entry-event";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +66,15 @@ export default async function ForwarderQuotePage({
   ]);
 
   const isEditing = query.mode === "edit";
+  const readiness = getForwarderCompanyPublicProfileCompleteness({
+    name: member.companyName,
+    slug: member.companySlug,
+    shippingModes: member.companyShippingModes,
+    originCities: member.companyOriginCities,
+    destinationAreas: member.companyDestinationAreas,
+    serviceDescription: member.companyServiceDescription,
+  });
+  const canCompleteProfile = canEditForwarderCompanySettings(member.memberRole);
 
   if (isEditing && !ownQuote) {
     redirect(`/app/forwarder/requests/${request.id}`);
@@ -75,6 +89,14 @@ export default async function ForwarderQuotePage({
 
   return (
     <>
+      {!isEditing ? (
+        <FunnelEntryEvent
+          eventName="quote_started"
+          role="forwarder"
+          entityType="shipment_request"
+          entityId={request.id}
+        />
+      ) : null}
       <PageHeader
         title={isEditing ? "Edit quote" : "Send a quote"}
         description={`${request.cargoDescription} / ${formatStructuredRoute(request)}`}
@@ -120,6 +142,22 @@ export default async function ForwarderQuotePage({
           </div>
         </section>
 
+        {!isEditing && !readiness.isComplete ? (
+          <section className="rounded-md border border-amber-200 bg-amber-50 p-5 text-amber-950">
+            <h2 className="font-semibold">Complete the company profile before quoting</h2>
+            <p className="mt-2 text-sm leading-6">
+              Missing: {readiness.missingFields.join(", ")}.
+              {canCompleteProfile
+                ? " Add these public details, then return to submit the quote."
+                : " Contact a company owner or admin to add these public details."}
+            </p>
+            {canCompleteProfile ? (
+              <Button asChild className="mt-4">
+                <Link href="/app/forwarder/company/edit">Complete company profile</Link>
+              </Button>
+            ) : null}
+          </section>
+        ) : (
         <QuoteSubmissionForm
           requestId={request.id}
           quoteId={ownQuote?.id}
@@ -159,6 +197,7 @@ export default async function ForwarderQuotePage({
               "",
           }}
         />
+        )}
       </div>
     </>
   );
@@ -191,6 +230,8 @@ function errorMessage(error: string) {
       return "This request is no longer available for quoting.";
     case "forwarder_suspended":
       return "Your company is suspended and cannot submit quotes.";
+    case "profile_incomplete":
+      return "Complete your company profile before submitting a new quote.";
     case "invalid_status":
       return "This quote can no longer be edited.";
     case "validation":

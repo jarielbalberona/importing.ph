@@ -34,6 +34,12 @@ export function PublicSiteFooter() {
             Post your shipment once, receive private quotes from cargo
             forwarders, and compare options in one organized workspace.
           </p>
+          <Link
+            href="/privacy"
+            className="mt-4 inline-flex text-sm font-medium text-slate-600 underline-offset-4 hover:underline"
+          >
+            Privacy notice
+          </Link>
         </div>
         <div className="grid grid-cols-2 gap-10 text-sm sm:grid-cols-3">
           {footerColumns.map((column) => (

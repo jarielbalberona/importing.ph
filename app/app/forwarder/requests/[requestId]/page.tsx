@@ -37,6 +37,10 @@ import { listShipmentRequestAttachmentsForViewer } from "@/lib/media";
 import { startForwarderConversation, withdrawQuote } from "./actions";
 import { ConfirmSubmitButton } from "@/components/forms/confirm-submit-button";
 import { RequestDetailToast } from "./request-detail-toast";
+import {
+  canEditForwarderCompanySettings,
+  getForwarderCompanyPublicProfileCompleteness,
+} from "@/lib/forwarder-company-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +82,15 @@ export default async function ForwarderRequestDetailPage({
     getForwarderOwnQuoteForRequest(request.id, member.companyId),
     listShipmentRequestAttachmentsForViewer(request.id),
   ]);
+  const readiness = getForwarderCompanyPublicProfileCompleteness({
+    name: member.companyName,
+    slug: member.companySlug,
+    shippingModes: member.companyShippingModes,
+    originCities: member.companyOriginCities,
+    destinationAreas: member.companyDestinationAreas,
+    serviceDescription: member.companyServiceDescription,
+  });
+  const canCompleteProfile = canEditForwarderCompanySettings(member.memberRole);
 
   return (
     <>
@@ -97,7 +110,7 @@ export default async function ForwarderRequestDetailPage({
             <Button asChild variant="outline">
               <Link href="/app/forwarder/requests">Back to open requests</Link>
             </Button>
-            {ownQuote ? null : (
+            {ownQuote || !readiness.isComplete ? null : (
               <Button asChild>
                 <Link href={`/app/forwarder/requests/${request.id}/quote`}>
                   Send a quote
@@ -109,6 +122,22 @@ export default async function ForwarderRequestDetailPage({
       />
 
       <div className="mt-6 grid gap-4">
+        {!ownQuote && !readiness.isComplete ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-semibold">Complete the company profile before quoting</p>
+            <p className="mt-1 leading-6">
+              Missing: {readiness.missingFields.join(", ")}.
+              {canCompleteProfile
+                ? " Add these details so importers can evaluate your company."
+                : " Ask a company owner or admin to add these details."}
+            </p>
+            {canCompleteProfile ? (
+              <Button asChild size="sm" className="mt-3">
+                <Link href="/app/forwarder/company/edit">Complete company profile</Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <RequestDetailToast
           quoteSubmitted={query.quote === "submitted"}
           quoteStatus={query.quote}

@@ -17,6 +17,11 @@ import {
 import { PublicSiteFooter } from "@/components/public/site-footer";
 import { PublicSiteHeader } from "@/components/public/site-header";
 import { Button } from "@/components/ui/button";
+import {
+  JOIN_AS_FORWARDER_INTENT,
+  POST_SHIPMENT_REQUEST_INTENT,
+  appendAuthRedirectParams,
+} from "@/lib/auth-redirect";
 
 const painPoints = [
   "Repeating cargo details",
@@ -165,13 +170,23 @@ export function HomeMarketingPage() {
             </p>
             <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
               <Button asChild className="rounded-full bg-[#202020] px-5 text-white shadow-xl hover:bg-[#343434]">
-                <Link href="/sign-up">
+                <Link
+                  href={appendAuthRedirectParams("/sign-up", {
+                    intent: POST_SHIPMENT_REQUEST_INTENT,
+                  })}
+                >
                   Post a shipment request
                   <ArrowRight aria-hidden="true" />
                 </Link>
               </Button>
               <Button asChild variant="outline" className="rounded-full border-[#202020] bg-transparent px-5">
-                <Link href="/sign-up">Join as forwarder</Link>
+                <Link
+                  href={appendAuthRedirectParams("/sign-up", {
+                    intent: JOIN_AS_FORWARDER_INTENT,
+                  })}
+                >
+                  Join as forwarder
+                </Link>
               </Button>
             </div>
           </div>

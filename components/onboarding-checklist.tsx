@@ -1,4 +1,5 @@
 import { CheckCircle2Icon, CircleIcon } from "lucide-react";
+import Link from "next/link";
 
 import { DetailCard } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -44,16 +45,8 @@ export function OnboardingChecklist({
         {items.map((item) => {
           const Icon = item.complete ? CheckCircle2Icon : CircleIcon;
 
-          return (
-            <div
-              key={item.label}
-              className={cn(
-                "flex min-w-0 items-start gap-2 rounded-md border px-3 py-2 text-sm",
-                item.complete
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "bg-background",
-              )}
-            >
+          const content = (
+            <>
               <Icon
                 className={cn(
                   "mt-0.5 size-4 shrink-0",
@@ -61,6 +54,27 @@ export function OnboardingChecklist({
                 )}
               />
               <span className="min-w-0 break-words">{item.label}</span>
+            </>
+          );
+          const className = cn(
+            "flex min-w-0 items-start gap-2 rounded-md border px-3 py-2 text-sm",
+            item.complete
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "bg-background",
+            item.href && !item.complete && "transition-colors hover:border-cyan-500 hover:text-cyan-800",
+          );
+
+          return item.href && !item.complete ? (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={className}
+            >
+              {content}
+            </Link>
+          ) : (
+            <div key={item.label} className={className}>
+              {content}
             </div>
           );
         })}

@@ -18,6 +18,7 @@ import { publishRealtimeEvent } from "@/lib/realtime-events";
 import { runBestEffort } from "@/lib/best-effort";
 import { consumeRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { requireImporterProfile } from "@/lib/shipment-requests";
+import { recordRequestFunnelEvent } from "@/lib/funnel-events";
 
 const messagingQuoteStatuses = ["submitted", "accepted", "rejected"] as const;
 
@@ -30,6 +31,28 @@ export class MessagingAccessError extends Error {
 export const messageBodySchema = z.string().trim().min(1).max(2000);
 
 export type MessageBodyInput = z.infer<typeof messageBodySchema>;
+
+export type SentMessage = {
+  id: string;
+  conversationId: string;
+  senderUserProfileId: string;
+  senderRole: string;
+  senderName: string;
+  body: string;
+  createdAt: string;
+};
+
+export type MessageSendResult =
+  | { status: "sent"; message: SentMessage }
+  | {
+      status: "error";
+      code:
+        | "invalid_conversation"
+        | "validation"
+        | "rate_limited"
+        | "forbidden"
+        | "server_error";
+    };
 
 export type ConversationParticipant = "importer" | "forwarder";
 
@@ -469,11 +492,17 @@ export async function createMessageForCurrentImporter(
     forwarderCompanyId,
   );
 
-  return createMessageInConversation({
+  const message = await createMessageInConversation({
     conversationId,
     senderUserProfileId: profile.id,
     bodyInput,
   });
+  await recordFirstMessageFunnelEvent({
+    conversationId,
+    userProfileId: profile.id,
+    role: profile.role,
+  });
+  return message;
 }
 
 export async function createMessageForCurrentForwarder(
@@ -486,11 +515,17 @@ export async function createMessageForCurrentForwarder(
     requestId,
   );
 
-  return createMessageInConversation({
+  const message = await createMessageInConversation({
     conversationId,
     senderUserProfileId: profile.id,
     bodyInput,
   });
+  await recordFirstMessageFunnelEvent({
+    conversationId,
+    userProfileId: profile.id,
+    role: profile.role,
+  });
+  return message;
 }
 
 export async function createMessageInConversationForCurrentImporter(
@@ -506,11 +541,17 @@ export async function createMessageInConversationForCurrentImporter(
 
   await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
 
-  return createMessageInConversation({
+  const message = await createMessageInConversation({
     conversationId: conversation.id,
     senderUserProfileId: profile.id,
     bodyInput,
   });
+  await recordFirstMessageFunnelEvent({
+    conversationId: conversation.id,
+    userProfileId: profile.id,
+    role: profile.role,
+  });
+  return message;
 }
 
 export async function createMessageInConversationForCurrentForwarder(
@@ -526,11 +567,36 @@ export async function createMessageInConversationForCurrentForwarder(
 
   await consumeRateLimit(rateLimitPolicies.messageSend, profile.id);
 
-  return createMessageInConversation({
+  const message = await createMessageInConversation({
     conversationId: conversation.id,
     senderUserProfileId: profile.id,
     bodyInput,
   });
+  await recordFirstMessageFunnelEvent({
+    conversationId: conversation.id,
+    userProfileId: profile.id,
+    role: profile.role,
+  });
+  return message;
+}
+
+async function recordFirstMessageFunnelEvent(input: {
+  conversationId: string;
+  userProfileId: string;
+  role: "importer" | "forwarder" | "admin";
+}) {
+  await runBestEffort(
+    "funnel.first_message_failed",
+    () =>
+      recordRequestFunnelEvent({
+        eventName: "first_message_sent",
+        userProfileId: input.userProfileId,
+        role: input.role,
+        entityType: "conversation",
+        entityId: input.conversationId,
+      }),
+    { conversationId: input.conversationId },
+  );
 }
 
 export async function markConversationReadForCurrentImporter(input: {
@@ -760,5 +826,13 @@ async function createMessageInConversation(input: {
     latestMessagePreview: result.message.body,
   });
 
-  return { id: result.inserted.id };
+  return {
+    id: result.message.id,
+    conversationId: result.message.conversationId,
+    senderUserProfileId: result.message.senderUserProfileId,
+    senderRole: result.message.senderRole,
+    senderName: result.message.senderName,
+    body: result.message.body,
+    createdAt: result.message.createdAt.toISOString(),
+  } satisfies SentMessage;
 }

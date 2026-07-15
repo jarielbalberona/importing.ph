@@ -5,6 +5,7 @@ import { NewShipmentRequestForm } from "@/components/forms/new-shipment-request-
 import { QueryStateToast } from "@/components/query-state-toast";
 import { Button } from "@/components/ui/button";
 import { requireImporterProfile } from "@/lib/shipment-requests";
+import { FunnelEntryEvent } from "@/components/funnel-entry-event";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function NewShipmentRequestPage({
 
   return (
     <>
+      <FunnelEntryEvent eventName="request_started" role="importer" />
       <PageHeader
         title="New shipment request"
         description="Post the shipment once so forwarders can send private quotes."

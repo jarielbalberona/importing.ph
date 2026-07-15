@@ -12,6 +12,7 @@ export const rateLimitPolicies = {
   attachmentDownload: { scope: "attachment_download", limit: 60, windowSeconds: 60 },
   realtimeToken: { scope: "realtime_token", limit: 30, windowSeconds: 60 },
   locationLookup: { scope: "location_lookup", limit: 120, windowSeconds: 60 },
+  funnelEntry: { scope: "funnel_entry", limit: 30, windowSeconds: 60 },
 } as const;
 
 export type RateLimitPolicy = {

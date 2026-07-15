@@ -32,6 +32,7 @@ import {
   titleFromEnum,
 } from "@/lib/format";
 import { getForwarderSettingsForCurrentUser } from "@/lib/profile-settings";
+import { getForwarderCompanyPublicProfileCompleteness } from "@/lib/forwarder-company-profile";
 import { FilterSheet } from "./filter-sheet";
 
 export const dynamic = "force-dynamic";
@@ -57,23 +58,8 @@ export default async function ForwarderRequestsPage({
   const ownQuotes = requests.filter((request) => request.ownQuoteStatus).length;
   const activeFilterCount = countActiveFilters(filters);
   const hasFilters = activeFilterCount > 0;
-  const publicProfileFields = [
-    settings.company.contactPerson,
-    settings.company.contactEmail,
-    settings.company.originCities,
-    settings.company.destinationAreas,
-    settings.company.shippingModes,
-    settings.company.serviceDescription,
-  ];
-  const publicProfileComplete = publicProfileFields.every(
-    (value) => Boolean(value?.trim()),
-  );
-  const quoteDefaultsComplete = Boolean(
-    settings.quoteDefaults?.currency &&
-      settings.quoteDefaults.serviceOffered &&
-      settings.quoteDefaults.transitMinDays &&
-      settings.quoteDefaults.transitMaxDays,
-  );
+  const publicProfileCompleteness =
+    getForwarderCompanyPublicProfileCompleteness(settings.company);
 
   return (
     <>
@@ -96,18 +82,21 @@ export default async function ForwarderRequestsPage({
 
       <OnboardingChecklist
         title="Forwarder launch checklist"
-        description="Complete the public profile and quote defaults before quoting live importer requests."
+        description="Complete your public company profile before quoting live importer requests."
         items={[
           { label: "Company profile created", complete: true },
           {
             label: "Public profile complete",
-            complete: publicProfileComplete,
+            complete: publicProfileCompleteness.isComplete,
+            href: "/app/forwarder/company/edit",
           },
           {
-            label: "Quote defaults configured",
-            complete: quoteDefaultsComplete,
+            label: "First quote sent",
+            complete: ownQuotes > 0,
+            href: publicProfileCompleteness.isComplete
+              ? "/app/forwarder/requests"
+              : "/app/forwarder/company/edit",
           },
-          { label: "First quote sent", complete: ownQuotes > 0 },
         ]}
       />
 

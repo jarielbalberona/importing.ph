@@ -6,6 +6,41 @@ import { createShipmentRequestSchema, getShipmentSizeStepErrors } from "@/lib/va
 export type ShipmentRequestFormValues = z.input<typeof createShipmentRequestSchema>;
 
 export type ShipmentRequestStepIndex = 0 | 1 | 2 | 3;
+export type ShipmentSizingMethod = "known_cbm" | "dimensions";
+
+export function inferShipmentSizingMethod(
+  input: Partial<ShipmentRequestFormValues>,
+): ShipmentSizingMethod {
+  return input.packageCount || input.lengthCm || input.widthCm || input.heightCm
+    ? "dimensions"
+    : "known_cbm";
+}
+
+export function prepareShipmentSizingForSubmission(
+  input: Partial<ShipmentRequestFormValues>,
+  method: ShipmentSizingMethod,
+) {
+  if (method === "known_cbm") {
+    return {
+      ...input,
+      packageCount: undefined,
+      lengthCm: undefined,
+      widthCm: undefined,
+      heightCm: undefined,
+    };
+  }
+
+  return {
+    ...input,
+    totalCbm:
+      calculateEstimatedTotalCbm({
+        packageCount: input.packageCount,
+        lengthCm: input.lengthCm,
+        widthCm: input.widthCm,
+        heightCm: input.heightCm,
+      }) ?? undefined,
+  };
+}
 
 function hasValue(value: unknown) {
   return typeof value === "string" ? value.trim().length > 0 : Boolean(value);

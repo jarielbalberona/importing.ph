@@ -8,7 +8,14 @@ import {
   HelpCircleIcon,
   InfoIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -17,7 +24,6 @@ import {
 } from "@/components/requests/shipment-quote-details-dialog";
 import { QueryStateToast } from "@/components/query-state-toast";
 import { RequestStatusBadge } from "@/components/requests/request-status-badge";
-import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +50,7 @@ import {
   markImporterConversationRead,
   sendImporterMessage,
 } from "./[conversationId]/actions";
+import type { MessageSendResult } from "@/lib/messages";
 
 export type ImporterConversationView = {
   id: string;
@@ -99,8 +106,10 @@ type ImporterMessagesClientProps = {
   detailsSheetDescription?: string;
   emptyMessageDescription?: string;
   markConversationReadAction?: typeof markImporterConversationRead;
-  sendMessageAction?: typeof sendImporterMessage;
+  sendMessageAction?: SendMessageAction;
 };
+
+type SendMessageAction = (formData: FormData) => Promise<MessageSendResult>;
 
 export function ImporterMessagesClient({
   conversations,
@@ -563,13 +572,91 @@ function MessageWindow({
   detailsTitle: string;
   detailsSheetDescription: string;
   emptyMessageDescription: string;
-  sendMessageAction: typeof sendImporterMessage;
+  sendMessageAction: SendMessageAction;
   detailsOpen: boolean;
   onToggleDetails: () => void;
 }) {
-  const latestSeenOutgoingMessageId = getLatestSeenOutgoingMessageId(conversation);
   const messagesViewportRef = useRef<HTMLDivElement>(null);
-  const latestMessageId = conversation.messages.at(-1)?.id;
+  const [draft, setDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [optimisticMessages, setOptimisticMessages] = useState<DisplayMessage[]>([]);
+  const [isSending, startSending] = useTransition();
+  const canonicalMessageIds = new Set(
+    conversation.messages.map((message) => message.id),
+  );
+  const displayedMessages: DisplayMessage[] = [
+    ...conversation.messages,
+    ...optimisticMessages.filter(
+      (message) => !canonicalMessageIds.has(message.id),
+    ),
+  ];
+  const displayConversation = { ...conversation, messages: displayedMessages };
+  const latestSeenOutgoingMessageId =
+    getLatestSeenOutgoingMessageId(displayConversation);
+  const latestMessageId = displayedMessages.at(-1)?.id;
+
+  function sendMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const body = draft.trim();
+
+    if (!body || isSending || !conversation.currentUserProfileId) {
+      return;
+    }
+
+    const temporaryId = `optimistic:${crypto.randomUUID()}`;
+    const optimisticMessage: DisplayMessage = {
+      id: temporaryId,
+      senderUserProfileId: conversation.currentUserProfileId,
+      senderName: "You",
+      senderRole: "",
+      body,
+      createdAt: "Sending…",
+      deliveryStatus: "sending",
+    };
+
+    setSendError(null);
+    setDraft("");
+    setOptimisticMessages((messages) => [...messages, optimisticMessage]);
+
+    const formData = new FormData();
+    formData.set("conversationId", conversation.id);
+    formData.set("body", body);
+
+    startSending(async () => {
+      let result: MessageSendResult;
+
+      try {
+        result = await sendMessageAction(formData);
+      } catch {
+        setOptimisticMessages((messages) =>
+          messages.filter((message) => message.id !== temporaryId),
+        );
+        setDraft(body);
+        setSendError(
+          "Message was not sent. Your text has been restored so you can try again.",
+        );
+        return;
+      }
+
+      if (result.status === "sent") {
+        setOptimisticMessages((messages) => [
+          ...messages.filter((message) => message.id !== temporaryId),
+          {
+            ...result.message,
+            createdAt: new Date(result.message.createdAt).toLocaleString(),
+            deliveryStatus: "sent",
+          },
+        ]);
+        return;
+      }
+
+      setOptimisticMessages((messages) =>
+        messages.filter((message) => message.id !== temporaryId),
+      );
+      setDraft(body);
+      setSendError(messageSendError(result.code));
+    });
+  }
 
   useEffect(() => {
     const viewport = messagesViewportRef.current;
@@ -676,7 +763,7 @@ function MessageWindow({
       />
 
       <div ref={messagesViewportRef} className="min-h-0 flex-1 overflow-y-auto p-4">
-        {conversation.messages.length === 0 ? (
+        {displayedMessages.length === 0 ? (
           <div className="grid h-full min-h-64 place-items-center text-center">
             <div>
               <h3 className="text-base font-semibold">No messages yet</h3>
@@ -687,7 +774,7 @@ function MessageWindow({
           </div>
         ) : (
           <div className="grid gap-4">
-            {conversation.messages.map((message) => (
+            {displayedMessages.map((message) => (
               <MessageBubble
                 key={message.id}
                 message={message}
@@ -699,15 +786,21 @@ function MessageWindow({
         )}
       </div>
 
-      <form action={sendMessageAction} className="border-t bg-background p-3">
-        <input type="hidden" name="conversationId" value={conversation.id} />
+      <form onSubmit={sendMessage} className="border-t bg-background p-3">
         <Textarea
-          name="body"
           required
           rows={2}
           maxLength={2000}
+          value={draft}
+          disabled={isSending}
+          onChange={(event) => setDraft(event.target.value)}
           placeholder="Ask about shipment details, documents, quote scope, pickup, delivery, or payment questions."
         />
+        {sendError ? (
+          <p role="alert" className="mt-2 text-sm text-destructive">
+            {sendError}
+          </p>
+        ) : null}
         <div className="mt-2 flex items-center justify-between gap-3">
           <Popover>
             <PopoverTrigger asChild>
@@ -733,9 +826,9 @@ function MessageWindow({
               </div>
             </PopoverContent>
           </Popover>
-          <PendingSubmitButton type="submit" pendingText="Sending...">
-            Send
-          </PendingSubmitButton>
+          <Button type="submit" disabled={isSending || draft.trim().length === 0}>
+            {isSending ? "Sending…" : "Send"}
+          </Button>
         </div>
       </form>
     </main>
@@ -796,13 +889,16 @@ function ConversationDetails({
 }
 
 type Message = ImporterConversationView["messages"][number];
+type DisplayMessage = Message & {
+  deliveryStatus?: "sending" | "sent";
+};
 
 function MessageBubble({
   message,
   isSeen,
   currentUserProfileId,
 }: {
-  message: Message;
+  message: DisplayMessage;
   isSeen: boolean;
   currentUserProfileId: string | null;
 }) {
@@ -828,8 +924,8 @@ function MessageBubble({
         </p>
       </div>
       <p className="flex items-center gap-1 px-1 text-xs text-muted-foreground">
-        {message.createdAt}
-        {isSeen ? (
+        {message.deliveryStatus === "sending" ? "Sending…" : message.createdAt}
+        {message.deliveryStatus === "sending" ? null : isSeen ? (
           <CheckCheckIcon className="size-3.5" aria-label="Seen" />
         ) : (
           <CheckIcon className="size-3" aria-label="Sent" />
@@ -889,6 +985,22 @@ function getConversationUnreadState(conversation: ImporterConversationView) {
       readState.readerUserProfileId === conversation.currentUserProfileId &&
       readState.lastReadMessageId === latestMessage.id,
   );
+}
+
+function messageSendError(
+  code: Extract<MessageSendResult, { status: "error" }>["code"],
+) {
+  switch (code) {
+    case "rate_limited":
+      return "Too many messages. Wait a minute, then try again.";
+    case "validation":
+      return "Enter a message between 1 and 2,000 characters.";
+    case "forbidden":
+    case "invalid_conversation":
+      return "This conversation is no longer available.";
+    default:
+      return "Message was not sent. Your text has been restored so you can try again.";
+  }
 }
 
 function mergeReadStatePatch(

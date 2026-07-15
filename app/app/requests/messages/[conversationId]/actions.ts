@@ -1,43 +1,48 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
   createMessageInConversationForCurrentImporter,
   markConversationReadForCurrentImporter,
   MessagingAccessError,
+  type MessageSendResult,
 } from "@/lib/messages";
 import { RateLimitError } from "@/lib/rate-limit";
+import { logServerError } from "@/lib/server-log";
 
 const idSchema = z.string().uuid();
 
-export async function sendImporterMessage(formData: FormData) {
+export async function sendImporterMessage(
+  formData: FormData,
+): Promise<MessageSendResult> {
   const conversationId = idSchema.safeParse(formData.get("conversationId"));
 
   if (!conversationId.success) {
-    redirect("/app/requests/messages?error=invalid-conversation");
+    return { status: "error", code: "invalid_conversation" };
   }
 
   try {
-    await createMessageInConversationForCurrentImporter(
+    const message = await createMessageInConversationForCurrentImporter(
       conversationId.data,
       formData.get("body"),
     );
-    redirect(`/app/requests/messages/${conversationId.data}?message=sent`);
+    return { status: "sent", message };
   } catch (error) {
     if (error instanceof RateLimitError) {
-      redirect(
-        `/app/requests/messages/${conversationId.data}?messageError=rate_limited`,
-      );
+      return { status: "error", code: "rate_limited" };
     }
-    if (error instanceof MessagingAccessError || error instanceof z.ZodError) {
-      redirect(
-        `/app/requests/messages/${conversationId.data}?messageError=send`,
-      );
+    if (error instanceof z.ZodError) {
+      return { status: "error", code: "validation" };
+    }
+    if (error instanceof MessagingAccessError) {
+      return { status: "error", code: "forbidden" };
     }
 
-    throw error;
+    logServerError("message.send_importer_failed", error, {
+      conversationId: conversationId.data,
+    });
+    return { status: "error", code: "server_error" };
   }
 }
 

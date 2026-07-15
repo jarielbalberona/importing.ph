@@ -14,6 +14,7 @@ import {
   suspendForwarderCompany,
   unsuspendForwarderCompany,
 } from "./actions";
+import { getAdminFunnelReport } from "@/lib/funnel-events";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,10 @@ type AdminPageProps = {
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const query = await searchParams;
-  const overview = await getAdminOverview();
+  const [overview, funnelReport] = await Promise.all([
+    getAdminOverview(),
+    getAdminFunnelReport(30),
+  ]);
 
   return (
     <AppShell role="admin" badgeState={null}>
@@ -48,6 +52,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <SummaryTile label="Quotes" value={overview.quotes.length} />
         </div>
       </section>
+
+      <AdminSection
+        id="funnels"
+        title="30-day conversion funnels"
+        description="Unique first-party journeys only. Percentages compare each step with the previous step and with the first step."
+      >
+        <div className="grid gap-6 xl:grid-cols-2">
+          <FunnelTable title="Importer funnel" rows={funnelReport.importer} />
+          <FunnelTable title="Forwarder funnel" rows={funnelReport.forwarder} />
+        </div>
+      </AdminSection>
 
       {query.safety ? (
         <div className="mt-6 rounded-md border border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
@@ -309,5 +324,37 @@ function ForwarderStatusBadge({ isSuspended }: { isSuspended: boolean }) {
     >
       {isSuspended ? "Suspended" : "Active"}
     </span>
+  );
+}
+
+type FunnelRow = Awaited<ReturnType<typeof getAdminFunnelReport>>["importer"][number];
+
+function FunnelTable({ title, rows }: { title: string; rows: FunnelRow[] }) {
+  return (
+    <section className="min-w-0 rounded-md border">
+      <h3 className="border-b px-4 py-3 font-semibold">{title}</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[34rem] text-sm">
+          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium">Step</th>
+              <th className="px-4 py-3 text-right font-medium">Journeys</th>
+              <th className="px-4 py-3 text-right font-medium">Step</th>
+              <th className="px-4 py-3 text-right font-medium">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {rows.map((row) => (
+              <tr key={row.eventName}>
+                <td className="px-4 py-3 font-medium">{row.label}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{row.journeys}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{row.stepConversion}%</td>
+                <td className="px-4 py-3 text-right tabular-nums">{row.totalConversion}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

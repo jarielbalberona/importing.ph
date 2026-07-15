@@ -2,10 +2,12 @@ import { and, count, eq, ne, sql } from "drizzle-orm";
 
 import { db, type Database } from "@/db";
 import {
+  conversations,
   forwarderCompanies,
   quotes,
   shipmentRequests,
 } from "@/db/schema";
+import { getForwarderCompanyPublicProfileCompleteness } from "@/lib/forwarder-company-profile";
 import { requireForwarderMember } from "@/lib/forwarder-open-requests";
 import { notifyQuoteDecision, notifyQuoteSubmitted } from "@/lib/notifications";
 import { requireImporterProfile } from "@/lib/shipment-requests";
@@ -16,6 +18,11 @@ import {
   dateFromDateInput,
   quoteSubmissionSchemaForRequestMode,
 } from "@/lib/validation";
+import {
+  findJourneyForEntity,
+  recordFunnelEvent,
+  recordRequestFunnelEvent,
+} from "@/lib/funnel-events";
 
 export class QuoteSubmissionError extends Error {
   constructor(
@@ -23,6 +30,7 @@ export class QuoteSubmissionError extends Error {
       | "duplicate"
       | "request_unavailable"
       | "forwarder_suspended"
+      | "profile_incomplete"
       | "not_found"
       | "invalid_status",
   ) {
@@ -478,9 +486,35 @@ export async function createQuoteForForwarder(
   let quote: { id: string };
   try {
     quote = await database.transaction(async (tx) => {
+      const [company] = await tx
+        .select({
+          name: forwarderCompanies.name,
+          slug: forwarderCompanies.slug,
+          shippingModes: forwarderCompanies.shippingModes,
+          originCities: forwarderCompanies.originCities,
+          destinationAreas: forwarderCompanies.destinationAreas,
+          serviceDescription: forwarderCompanies.serviceDescription,
+          isSuspended: forwarderCompanies.isSuspended,
+        })
+        .from(forwarderCompanies)
+        .where(eq(forwarderCompanies.id, input.forwarderCompanyId))
+        .for("update")
+        .limit(1);
+
+      if (!company) {
+        throw new QuoteSubmissionError("not_found");
+      }
+      if (company.isSuspended) {
+        throw new QuoteSubmissionError("forwarder_suspended");
+      }
+      if (!getForwarderCompanyPublicProfileCompleteness(company).isComplete) {
+        throw new QuoteSubmissionError("profile_incomplete");
+      }
+
       const [request] = await tx
         .select({
           id: shipmentRequests.id,
+          importerProfileId: shipmentRequests.importerProfileId,
           status: shipmentRequests.status,
           shippingModePreference: shipmentRequests.shippingModePreference,
         })
@@ -515,7 +549,18 @@ export async function createQuoteForForwarder(
           validUntil: dateFromDateInput(parsed.validUntil),
         })
         .returning({ id: quotes.id });
-      return created;
+
+      const [conversation] = await tx
+        .insert(conversations)
+        .values({
+          shipmentRequestId: request.id,
+          importerProfileId: request.importerProfileId,
+          forwarderCompanyId: input.forwarderCompanyId,
+          openedByQuoteId: created.id,
+        })
+        .returning({ id: conversations.id });
+
+      return { ...created, conversationId: conversation.id };
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -532,11 +577,25 @@ export async function createQuoteForCurrentForwarder(
   input: unknown,
 ) {
   const { profile, member } = await requireForwarderMember();
-  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
 
   if (member.companyIsSuspended) {
     throw new QuoteSubmissionError("forwarder_suspended");
   }
+
+  const readiness = getForwarderCompanyPublicProfileCompleteness({
+    name: member.companyName,
+    slug: member.companySlug,
+    shippingModes: member.companyShippingModes,
+    originCities: member.companyOriginCities,
+    destinationAreas: member.companyDestinationAreas,
+    serviceDescription: member.companyServiceDescription,
+  });
+
+  if (!readiness.isComplete) {
+    throw new QuoteSubmissionError("profile_incomplete");
+  }
+
+  await consumeRateLimit(rateLimitPolicies.quoteMutation, profile.id);
 
   const quote = await createQuoteForForwarder(db, {
     requestId,
@@ -553,6 +612,39 @@ export async function createQuoteForCurrentForwarder(
         requestId,
         actorUserProfileId: profile.id,
       }),
+    { requestId, quoteId: quote.id },
+  );
+
+  await runBestEffort(
+    "funnel.quote_submitted_failed",
+    () =>
+      recordRequestFunnelEvent({
+        eventName: "quote_submitted",
+        userProfileId: profile.id,
+        role: "forwarder",
+        entityType: "quote",
+        entityId: quote.id,
+      }),
+    { requestId, quoteId: quote.id },
+  );
+
+  await runBestEffort(
+    "funnel.quote_received_failed",
+    async () => {
+      const importerJourneyId = await findJourneyForEntity({
+        eventName: "request_posted",
+        entityType: "shipment_request",
+        entityId: requestId,
+      });
+      if (!importerJourneyId) return;
+      await recordFunnelEvent({
+        journeyId: importerJourneyId,
+        eventName: "quote_received",
+        role: "importer",
+        entityType: "quote",
+        entityId: quote.id,
+      });
+    },
     { requestId, quoteId: quote.id },
   );
 
