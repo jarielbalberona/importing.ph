@@ -189,7 +189,7 @@ export function HomeMarketingPage() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#f7f7f4] via-transparent to-transparent" />
           <div className="absolute bottom-8 left-6 max-w-[calc(100%-3rem)] rounded-md bg-red-500 px-4 py-2 text-xs font-bold uppercase leading-tight tracking-normal text-white sm:left-10 sm:max-w-3xl lg:text-xl">
-            Start your importing journey now
+            Get quotes for sea or air cargo shipments
           </div>
         </div>
       </section>
