@@ -26,6 +26,12 @@ export type GuideRelatedLink = {
   description?: string;
 };
 
+export type GuideSource = {
+  label: string;
+  href: string;
+  publisher: string;
+};
+
 export type GuideAudience = "beginner-importers" | "growing-importers";
 
 export type Guide = {
@@ -40,5 +46,6 @@ export type Guide = {
   audience?: GuideAudience;
   readingTimeMinutes?: number;
   relatedLinks?: GuideRelatedLink[];
+  sources?: GuideSource[];
   sections: GuideSection[];
 };

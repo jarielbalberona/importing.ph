@@ -141,6 +141,33 @@ export default async function GuideDetailPage({ params }: GuidePageProps) {
         </div>
       </article>
 
+      {guide.sources?.length ? (
+        <section className="border-y border-border bg-primary/5">
+          <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Official references</p>
+            <h2 className="mt-3 text-2xl font-extrabold tracking-tight">Check the current rules before you ship</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Import rules can change and product-specific requirements vary. Use these official sources to confirm the current requirements for your shipment.
+            </p>
+            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+              {guide.sources.map((source) => (
+                <li key={`${guide.slug}:${source.href}`}>
+                  <a
+                    href={source.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block rounded-xl border border-border bg-background p-5 transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    <span className="block font-bold">{source.label}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{source.publisher}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+
       {guide.relatedLinks?.length ? (
         <section className="border-y border-border bg-muted/60">
           <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">

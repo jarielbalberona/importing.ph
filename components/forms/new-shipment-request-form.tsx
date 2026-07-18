@@ -707,12 +707,12 @@ function SizeFields({
         guides={[
           {
             slug: "what-is-cbm",
-            title: "What Is CBM in Shipping?",
+            title: "What Is CBM in Shipping? Formula and Examples",
             description: "Understand carton volume and when rough estimates are acceptable.",
           },
           {
             slug: "how-to-request-a-shipping-quote",
-            title: "How to Request a Shipping Quote Properly",
+            title: "How to Request a Shipping Quote: A Practical Template",
             description: "See the usual details forwarders need before they can quote clearly.",
           },
         ]}

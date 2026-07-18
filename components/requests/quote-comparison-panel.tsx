@@ -71,12 +71,12 @@ export function QuoteComparisonPanel({ quotes }: QuoteComparisonPanelProps) {
         guides={[
           {
             slug: "air-cargo-vs-sea-cargo",
-            title: "Air Cargo vs Sea Cargo",
+            title: "Air Freight vs Sea Freight from China to the Philippines",
             description: "Compare urgency, shipment size, and cost tradeoffs before deciding.",
           },
           {
             slug: "how-to-request-a-shipping-quote",
-            title: "How to Request a Shipping Quote Properly",
+            title: "How to Request a Shipping Quote: A Practical Template",
             description: "Review the usual gaps that lead to revised charges or confusing comparisons.",
           },
         ]}

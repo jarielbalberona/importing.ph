@@ -56,7 +56,7 @@ test("published guides have markdown mirrors and drafts do not", () => {
     const markdown = getPublishedGuideMarkdown(guide.slug);
 
     assert.ok(markdown);
-    assert.match(markdown, new RegExp(`# ${guide.title}`));
+    assert.ok(markdown.includes(`# ${guide.title}`));
   }
 
   assert.equal(getPublishedGuideMarkdown("draft-guide-example"), null);
@@ -66,6 +66,16 @@ test("related links point to known public routes or published guides", () => {
   for (const guide of getPublishedGuides()) {
     for (const link of guide.relatedLinks ?? []) {
       assert.equal(validateGuideRelatedLink(link), true, `${guide.slug} -> ${link.href}`);
+    }
+  }
+});
+
+test("guide sources use secure external URLs", () => {
+  for (const guide of getPublishedGuides()) {
+    for (const source of guide.sources ?? []) {
+      const url = new URL(source.href);
+      assert.equal(url.protocol, "https:", `${guide.slug} -> ${source.href}`);
+      assert.ok(source.publisher.trim().length > 0, guide.slug);
     }
   }
 });

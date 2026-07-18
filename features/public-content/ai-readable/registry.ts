@@ -33,16 +33,18 @@ function renderSection(section: Guide["sections"][number]) {
 }
 
 export function renderGuideMarkdown(guide: Guide) {
+  const frontmatterValue = (value: string) => JSON.stringify(value);
   const frontmatter = [
     "---",
-    `title: ${guide.title}`,
-    `description: ${guide.description}`,
-    `canonical: ${getGuidePath(guide.slug)}`,
-    `markdown_url: ${getGuideMarkdownPath(guide.slug)}`,
-    `published_at: ${guide.publishedAt}`,
-    `category: ${guide.category}`,
+    `title: ${frontmatterValue(guide.title)}`,
+    `description: ${frontmatterValue(guide.description)}`,
+    `canonical: ${frontmatterValue(getGuidePath(guide.slug))}`,
+    `markdown_url: ${frontmatterValue(getGuideMarkdownPath(guide.slug))}`,
+    `published_at: ${frontmatterValue(guide.publishedAt)}`,
+    guide.updatedAt ? `updated_at: ${frontmatterValue(guide.updatedAt)}` : null,
+    `category: ${frontmatterValue(guide.category)}`,
     "---",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   const summary = [
     `# ${guide.title}`,
@@ -55,8 +57,16 @@ export function renderGuideMarkdown(guide: Guide) {
     .join("\n\n");
 
   const sections = guide.sections.map(renderSection).join("\n\n");
+  const sources = guide.sources?.length
+    ? [
+        "## Official references",
+        ...guide.sources.map(
+          (source) => `- [${source.label}](${source.href}) — ${source.publisher}`,
+        ),
+      ].join("\n")
+    : null;
 
-  return `${frontmatter}\n\n${summary}\n\n${sections}\n`;
+  return [frontmatter, summary, sections, sources].filter(Boolean).join("\n\n") + "\n";
 }
 
 export function getPublishedGuideMarkdown(slug: string) {
