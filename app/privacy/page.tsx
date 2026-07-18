@@ -8,43 +8,57 @@ export const metadata: Metadata = {
   description: "How importing.ph uses privacy-minimized first-party funnel measurement.",
 };
 
+const privacySections = [
+  {
+    heading: "First-party funnel measurement",
+    body: "importing.ph uses an opaque first-party journey identifier to understand whether people can complete account setup, shipment requests, quotations, and their first marketplace conversation. The identifier is stored in a secure, HttpOnly, SameSite=Lax cookie for up to 30 days.",
+  },
+  {
+    heading: "What we record",
+    body: "We record a small allowlisted set of product milestones, the account role and signup intent when relevant, optional internal entity identifiers, and the time of the event. Administrators see aggregate journey counts and conversion percentages only.",
+  },
+  {
+    heading: "What we do not record",
+    body: "Funnel measurement does not store email addresses, IP addresses, user-agent strings, shipment contents, attachments, quote amounts, or message bodies. Funnel events are deleted after 90 days.",
+  },
+  {
+    heading: "Questions",
+    body: "Contact the importing.ph project owner if you have questions about this measurement or want more information about the data associated with your account.",
+  },
+];
+
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#f7f7f4] text-[#202020]">
+    <main className="min-h-screen bg-background text-foreground">
       <PublicSiteHeader />
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-700">
-          Privacy
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Privacy notice</h1>
-        <div className="mt-8 grid gap-8 text-sm leading-7 text-slate-700 sm:text-base">
-          <section>
-            <h2 className="text-xl font-semibold text-[#202020]">First-party funnel measurement</h2>
-            <p className="mt-3">
-              importing.ph uses an opaque first-party journey identifier to understand whether people can complete account setup, shipment requests, quotations, and their first marketplace conversation. The identifier is stored in a secure, HttpOnly, SameSite=Lax cookie for up to 30 days.
-            </p>
-          </section>
-          <section>
-            <h2 className="text-xl font-semibold text-[#202020]">What we record</h2>
-            <p className="mt-3">
-              We record a small allowlisted set of product milestones, the account role and signup intent when relevant, optional internal entity identifiers, and the time of the event. Administrators see aggregate journey counts and conversion percentages only.
-            </p>
-          </section>
-          <section>
-            <h2 className="text-xl font-semibold text-[#202020]">What we do not record</h2>
-            <p className="mt-3">
-              Funnel measurement does not store email addresses, IP addresses, user-agent strings, shipment contents, attachments, quote amounts, or message bodies. Funnel events are deleted after 90 days.
-            </p>
-          </section>
-          <section>
-            <h2 className="text-xl font-semibold text-[#202020]">Questions</h2>
-            <p className="mt-3">
-              Contact the importing.ph project owner if you have questions about this measurement or want more information about the data associated with your account.
-            </p>
-          </section>
+
+      <section className="border-b border-border bg-primary/5">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Privacy</p>
+          <h1 className="mt-5 text-5xl font-extrabold tracking-[-0.04em] sm:text-7xl">Privacy notice</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+            How importing.ph uses privacy-minimized first-party funnel measurement.
+          </p>
         </div>
-      </main>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
+        <div className="max-w-4xl">
+          {privacySections.map((section, index) => (
+            <article key={section.heading} className="grid gap-5 border-t border-border py-10 sm:grid-cols-[3rem_1fr]">
+              <span className="font-mono text-sm font-bold text-primary" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight">{section.heading}</h2>
+                <p className="mt-4 leading-8 text-muted-foreground">{section.body}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <PublicSiteFooter />
-    </div>
+    </main>
   );
 }

@@ -1,69 +1,83 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const footerColumns = [
+import {
+  JOIN_AS_FORWARDER_INTENT,
+  POST_SHIPMENT_REQUEST_INTENT,
+  appendAuthRedirectParams,
+} from "@/lib/auth-redirect";
+
+const footerGroups = [
   {
     title: "For importers",
-    links: ["Post your shipment", "Receive private quotes", "Compare and continue"],
+    links: [
+      {
+        href: appendAuthRedirectParams("/sign-up", { intent: POST_SHIPMENT_REQUEST_INTENT }),
+        label: "Post your shipment",
+      },
+      { href: "/guides", label: "Beginner guides" },
+    ],
   },
   {
     title: "For forwarders",
-    links: ["Browse shipment requests", "Send a quote", "Message after quoting"],
+    links: [
+      {
+        href: appendAuthRedirectParams("/sign-up", { intent: JOIN_AS_FORWARDER_INTENT }),
+        label: "Join as a forwarder",
+      },
+      { href: "/sign-in", label: "Sign in" },
+    ],
+  },
+  {
+    title: "Explore",
+    links: [
+      { href: "/guides", label: "Guides" },
+      { href: "/about", label: "About" },
+    ],
   },
   {
     title: "Platform",
-    links: ["Private quotes", "Quote comparison", "Notifications"],
+    links: [
+      { href: "/privacy", label: "Privacy notice" },
+      { href: "/sign-up", label: "Create account" },
+    ],
   },
 ];
 
 export function PublicSiteFooter() {
   return (
-    <footer className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-      <div className="flex flex-col gap-8 border-t border-[#e7e2dd] pt-10 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link href="/" className="flex items-center gap-2" aria-label="importing.ph home">
-            <Image
-              src="/assets/importingph.png"
-              alt="importing.ph"
-              width={173}
-              height={50}
-              className="h-8 w-auto"
-            />
+    <footer className="border-t border-border bg-background">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
+        <div className="space-y-5">
+          <Link href="/" aria-label="Importing PH home">
+            <Image src="/assets/importingph.png" alt="Importing PH" width={173} height={50} className="h-9 w-auto" />
           </Link>
-          <p className="mt-6 max-w-sm text-sm leading-6 text-slate-600">
-            Post your shipment once, receive private quotes from cargo
-            forwarders, and compare options in one organized workspace.
+          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
+            Importing Philippines connects importers with cargo forwarders.
           </p>
-          <Link
-            href="/privacy"
-            className="mt-4 inline-flex text-sm font-medium text-slate-600 underline-offset-4 hover:underline"
-          >
-            Privacy notice
-          </Link>
         </div>
-        <div className="grid grid-cols-2 gap-10 text-sm sm:grid-cols-3">
-          {footerColumns.map((column) => (
-            <FooterColumn
-              key={column.title}
-              title={column.title}
-              links={column.links}
-            />
-          ))}
+
+        {footerGroups.map((group) => (
+          <div key={group.title} className="space-y-4">
+            <h2 className="text-sm font-bold text-foreground">{group.title}</h2>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              {group.links.map((link) => (
+                <li key={`${group.title}-${link.label}`}>
+                  <Link href={link.href} className="transition-colors hover:text-primary">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-border">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>Importing PH</p>
+          <p>The platform organizes requests and quotes; forwarders provide shipping services.</p>
         </div>
       </div>
     </footer>
-  );
-}
-
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
-  return (
-    <div>
-      <h3 className="font-semibold text-[#202020]">{title}</h3>
-      <ul className="mt-4 grid gap-3 text-slate-500">
-        {links.map((link) => (
-          <li key={link}>{link}</li>
-        ))}
-      </ul>
-    </div>
   );
 }

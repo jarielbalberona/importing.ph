@@ -3,15 +3,12 @@ import Link from "next/link";
 import {
   ArrowRight,
   Boxes,
-  Clock3,
-  MapPin,
-  MessageCircle,
-  PackageCheck,
-  Route,
-  Search,
+  Check,
+  LockKeyhole,
+  MessagesSquare,
+  Scale,
   ShieldCheck,
-  Ship,
-  X,
+  Users,
 } from "lucide-react";
 
 import { PublicSiteFooter } from "@/components/public/site-footer";
@@ -23,483 +20,327 @@ import {
   appendAuthRedirectParams,
 } from "@/lib/auth-redirect";
 
+const requestHref = appendAuthRedirectParams("/sign-up", {
+  intent: POST_SHIPMENT_REQUEST_INTENT,
+});
+const forwarderHref = appendAuthRedirectParams("/sign-up", {
+  intent: JOIN_AS_FORWARDER_INTENT,
+});
+
+const trustItems = [
+  { icon: ShieldCheck, text: "Your shipment details stay private." },
+  { icon: LockKeyhole, text: "Quotes are shared privately." },
+  { icon: MessagesSquare, text: "Conversations stay tied to your shipment." },
+  {
+    icon: Users,
+    text: "The platform organizes requests and quotes; forwarders provide shipping services.",
+  },
+];
+
+const processSteps = [
+  {
+    title: "Post your shipment",
+    body: "Share cargo, route, timing, and handling notes.",
+    icon: Boxes,
+  },
+  {
+    title: "Receive private quotes",
+    body: "Forwarders respond with pricing and service details.",
+    icon: LockKeyhole,
+  },
+  {
+    title: "Compare and continue",
+    body: "Compare options and continue with the forwarder you choose.",
+    icon: MessagesSquare,
+  },
+];
+
+const capabilities = [
+  {
+    title: "Shipment requests",
+    body: "Share cargo, route, timing, and handling details once.",
+    icon: Boxes,
+  },
+  {
+    title: "Private quotes",
+    body: "Forwarders send pricing, timelines, inclusions, and notes privately.",
+    icon: LockKeyhole,
+  },
+  {
+    title: "Quote comparison",
+    body: "Review options side by side before continuing.",
+    icon: Scale,
+  },
+];
+
 const painPoints = [
   "Repeating cargo details",
   "Asking forwarders one by one",
   "Losing quotes in different chats",
   "Comparing rates, timelines, and inclusions",
-  "Not knowing where to start",
 ];
 
-const workflow = [
-  {
-    title: "Post your shipment",
-    description: "Cargo, route, timing, and handling notes.",
-    icon: Boxes,
-  },
-  {
-    title: "Receive private quotes",
-    description: "Forwarders respond with pricing and service details.",
-    icon: MessageCircle,
-  },
-  {
-    title: "Compare and continue",
-    description: "Compare options and continue with the forwarder you choose.",
-    icon: Search,
-  },
-  {
-    title: "Message after quoting",
-    description: "Keep follow-up questions tied to the shipment.",
-    icon: Clock3,
-  },
-];
-
-const solutions = [
-  {
-    title: "Shipment requests",
-    description: "Share cargo, route, timing, and handling details once.",
-    className: "sm:col-span-2",
-    image: "/assets/shipment-request.jpg",
-  },
-  {
-    title: "Private quotes",
-    description: "Forwarders send pricing, timelines, inclusions, and notes privately.",
-    className: "",
-    image: "/assets/shipment-quote.jpg",
-  },
-  {
-    title: "Quote comparison",
-    description: "Review options side by side before continuing.",
-    className: "",
-    image: "/assets/shipment-comparison.jpg",
-  },
-  {
-    title: "Quote-based messaging",
-    description: "Keep follow-up questions tied to the shipment.",
-    className: "sm:col-span-2 lg:col-span-1",
-    image: "/assets/shipment-message.jpg",
-  },
-];
-
-const offerItems = [
-  {
-    title: "Forwarder defaults",
-    description: "Save common quote details for faster submissions.",
-    icon: PackageCheck,
-  },
-  {
-    title: "Notifications",
-    description: "See important quote and message updates in your account.",
-    icon: Ship,
-  },
-  {
-    title: "Importer privacy",
-    description: "Importer details are not shown as a public directory.",
-    icon: Route,
-  },
-  {
-    title: "Private conversations",
-    description: "Quotes are sent privately and conversations stay tied to the shipment.",
-    icon: ShieldCheck,
-  },
-];
-
-const coverageLocations = [
-  {
-    label: "Guangzhou",
-    detail: "China supplier pickup",
-    image: "/assets/shipment-request.jpg",
-    className: "left-[6%] top-[18%]",
-  },
-  {
-    label: "Shenzhen",
-    detail: "Factory and warehouse handoff",
-    image: "/assets/shipment-quote.jpg",
-    className: "left-[18%] top-[62%]",
-  },
-  {
-    label: "Manila",
-    detail: "Metro Manila delivery",
-    image: "/assets/cargoes.jpg",
-    className: "left-[43%] top-[6%]",
-  },
-  {
-    label: "Cebu",
-    detail: "Visayas receiving point",
-    image: "/assets/shipment-comparison.jpg",
-    className: "right-[4%] top-[28%]",
-  },
-  {
-    label: "Davao",
-    detail: "Mindanao receiving point",
-    image: "/assets/shipment-message.jpg",
-    className: "right-[18%] bottom-[7%]",
-  },
+const platformFeatures = [
+  ["Forwarder defaults", "Save common quote details for faster submissions."],
+  ["Notifications", "See important quote and message updates in your account."],
+  ["Importer privacy", "Importer details are not shown as a public directory."],
+  ["Private conversations", "Quotes and conversations stay tied to the shipment."],
 ];
 
 export function HomeMarketingPage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f7f7f4] text-[#202020]">
+    <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
       <PublicSiteHeader />
 
-      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:pb-12 lg:pt-14">
-        <div
-          className="pointer-events-none absolute right-[-12rem] top-[-16rem] size-[38rem] rounded-full border border-[#e5d7d4]"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute right-[-5rem] top-[-8rem] size-[24rem] rounded-full border border-[#eee4e1]"
-          aria-hidden="true"
-        />
-
-        <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
-          <div className="relative z-10">
-            <h1 className="mt-6 max-w-3xl text-3xl font-semibold leading-[0.98] tracking-normal text-[#1f1f1f] sm:text-4xl lg:text-5xl">
+      <section className="overflow-hidden border-b border-border bg-primary/5">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:min-h-[650px] lg:grid-cols-2 lg:gap-12 lg:pb-24 lg:pt-20">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+              China-to-Philippines cargo quotes
+            </p>
+            <h1 className="mt-5 text-balance text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-5xl lg:text-[3.45rem]">
               Get China-to-Philippines shipping quotes without chasing every forwarder.
             </h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
+              Post your shipment once, receive private quotes from cargo forwarders, and compare options in one organized workspace.
+            </p>
+            <ul className="mt-7 flex flex-col gap-3 text-sm font-semibold sm:flex-row sm:gap-6">
+              {["No scattered chats.", "No repeated details."].map((item) => (
+                <li key={item} className="flex items-center gap-3">
+                  <span className="grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
+                    <Check aria-hidden="true" className="size-3.5" />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <Button asChild size="lg" className="font-bold shadow-xl shadow-primary/20">
+                <Link href={requestHref}>
+                  Post a shipment request <ArrowRight aria-hidden="true" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="font-bold">
+                <Link href={forwarderHref}>Join as a forwarder</Link>
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">It&apos;s free to post. No obligation.</p>
           </div>
 
-          <div className="relative z-10 max-w-md justify-self-start pt-3 lg:justify-self-end lg:pt-16">
-            <p className="text-sm font-medium leading-6 text-[#343434]">
-              Post your shipment once, receive private quotes from cargo
-              forwarders, and compare options in one organized workspace.
-            </p>
-            <p className="mt-4 text-sm leading-6 text-slate-600">
-              No scattered chats. No repeated details. Just one request,
-              multiple quotes, and a clear conversation trail.
-            </p>
-            <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
-              <Button asChild className="rounded-full bg-[#202020] px-5 text-white shadow-xl hover:bg-[#343434]">
-                <Link
-                  href={appendAuthRedirectParams("/sign-up", {
-                    intent: POST_SHIPMENT_REQUEST_INTENT,
-                  })}
-                >
-                  Post a shipment request
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full border-[#202020] bg-transparent px-5">
-                <Link
-                  href={appendAuthRedirectParams("/sign-up", {
-                    intent: JOIN_AS_FORWARDER_INTENT,
-                  })}
-                >
-                  Join as forwarder
-                </Link>
-              </Button>
+          <div className="relative min-h-[22rem] overflow-hidden rounded-3xl border border-border bg-muted shadow-2xl shadow-primary/10 sm:min-h-[30rem] lg:min-h-[34rem]">
+            <Image src="/assets/hero.jpg" alt="Cargo ships viewed from an aircraft approaching the Philippines" fill priority sizes="(min-width: 1024px) 52vw, calc(100vw - 2rem)" className="object-cover object-center" />
+            <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-white/40 bg-background/95 p-5 shadow-xl backdrop-blur sm:inset-x-auto sm:bottom-7 sm:left-7 sm:max-w-sm sm:p-6">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">One organized request</p>
+              <p className="mt-2 text-lg font-bold leading-6">Sea or air cargo. Private forwarder quotes. Clear comparison.</p>
             </div>
           </div>
         </div>
-
-        <div className="relative mt-8 min-h-[22rem] overflow-hidden rounded-md bg-white lg:min-h-[34rem]">
-          <Image
-            src="/assets/hero.jpg"
-            alt="Cargo containers and logistics equipment"
-            fill
-            priority
-            loading="eager"
-            sizes="(min-width: 1024px) 1184px, 100vw"
-            className="object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#f7f7f4] via-transparent to-transparent" />
-          <div className="absolute bottom-8 left-6 max-w-[calc(100%-3rem)] rounded-md bg-red-500 px-4 py-2 text-xs font-bold uppercase leading-tight tracking-normal text-white sm:left-10 sm:max-w-3xl lg:text-xl">
-            Get quotes for sea or air cargo shipments
-          </div>
-        </div>
       </section>
 
-
-
-      <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-24">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-            How it works
-          </p>
-          <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl">
-            One request. Private quotes. Clear next steps.
-          </h2>
-        </div>
-        <p className="max-w-md justify-self-start text-sm leading-6 text-slate-600 lg:justify-self-end">
-          Importers share the shipment details forwarders need. Forwarders send
-          private quotes. Both sides can continue the conversation from the quote.
-        </p>
-
-        <div className="grid gap-4 lg:col-span-2 sm:grid-cols-2 lg:grid-cols-4">
-          {workflow.map((item, index) => {
-            const Icon = item.icon;
-            const isActive = index === 2;
-
-            return (
-              <article
-                key={item.title}
-                className={
-                  isActive
-                    ? "rounded-md bg-[#202020] p-5 text-white shadow-2xl"
-                    : "rounded-md border border-[#e7e2dd] bg-white p-5"
-                }
-              >
-                <div
-                  className={
-                    isActive
-                      ? "flex size-9 items-center justify-center rounded-full bg-white text-[#202020]"
-                      : "flex size-9 items-center justify-center rounded-full bg-[#202020] text-white"
-                  }
-                >
-                  <Icon aria-hidden="true" className="size-4" />
-                </div>
-                <h3 className="mt-2 text-base font-semibold">{item.title}</h3>
-                <p className={isActive ? "mt-3 text-sm leading-6 text-white/70" : "mt-3 text-sm leading-6 text-slate-600"}>
-                  {item.description}
-                </p>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="bg-white py-16 lg:py-24">
+      <div className="relative z-10 -mt-8 pb-4">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Logistic solutions
-              </p>
-              <h2 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl">
-                Keep the quote process in one place.
-              </h2>
-              <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600">
-                Requests, quotes, messages, and updates stay connected to the
-                shipment, so both sides can follow the conversation clearly.
-              </p>
-            </div>
-            <Button asChild variant="outline" className="w-fit rounded-full border-[#202020] bg-transparent px-5">
-              <Link href="/sign-up">
-                Create free account
-                <ArrowRight aria-hidden="true" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {solutions.map((item) => (
-              <article
-                key={item.title}
-                className={`relative min-h-64 overflow-hidden rounded-md ${item.className}`}
-              >
-                <Image
-                  src={item.image}
-                  alt=""
-                  fill
-                  sizes="(min-width: 1024px) 33vw, 100vw"
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <h3 className="text-xl font-semibold">{item.title}</h3>
-                  <p className="mt-2 max-w-lg text-sm leading-6 text-white/75">
-                    {item.description}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:py-24">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Quote search
-        </p>
-        <h2 className="mt-4 text-4xl font-semibold tracking-normal sm:text-5xl">
-          Your quote search should not be scattered across chats.
-        </h2>
-        <p className="mx-auto mt-5 max-w-3xl text-sm leading-6 text-slate-600">
-          Most quote requests happen through Messenger, Viber, referrals, and
-          contact lists. Importing Philippines gives you one place to describe
-          the shipment, receive private quotes, and decide which forwarder to
-          continue with.
-        </p>
-        <div className="relative mx-auto mt-10 h-[26rem] max-w-6xl overflow-hidden rounded-md bg-white sm:h-[34rem]">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 1000 520"
-            className="absolute inset-0 h-full w-full"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <defs>
-              <pattern
-                id="coverage-dot-pattern"
-                width="12"
-                height="12"
-                patternUnits="userSpaceOnUse"
-              >
-                <circle cx="2" cy="2" r="1.7" fill="#1f2937" opacity="0.72" />
-              </pattern>
-              <clipPath id="coverage-map-shape">
-                <path d="M96 138C149 73 278 85 354 126C420 161 470 142 538 123C625 98 735 118 804 175C873 233 911 338 856 413C803 486 671 473 586 432C514 397 463 433 383 451C273 476 154 437 95 354C46 284 45 200 96 138Z" />
-                <path d="M840 82C899 66 947 90 957 142C965 183 941 220 896 229C857 238 822 215 813 176C804 136 812 91 840 82Z" />
-                <path d="M694 64C735 52 767 70 771 106C775 141 750 165 715 162C682 159 658 136 663 104C666 84 676 69 694 64Z" />
-                <path d="M457 452C481 481 474 512 438 517C405 522 377 497 382 466C386 440 432 423 457 452Z" />
-              </clipPath>
-            </defs>
-
-            <rect
-              x="0"
-              y="0"
-              width="1000"
-              height="520"
-              fill="url(#coverage-dot-pattern)"
-              clipPath="url(#coverage-map-shape)"
-            />
-
-            <g fill="none" stroke="#111827" strokeLinecap="round" strokeWidth="2.8">
-              <path d="M205 158C320 136 450 172 555 282" />
-              <path d="M300 382C384 268 497 276 555 282" />
-              <path d="M526 126C581 164 597 226 555 282" />
-              <path d="M555 282C625 191 756 164 860 202" />
-              <path d="M555 282C663 307 726 367 744 442" />
-            </g>
-
-            <g fill="#ffffff" stroke="#e83b52" strokeWidth="7">
-              <circle cx="205" cy="158" r="16" />
-              <circle cx="300" cy="382" r="16" />
-              <circle cx="526" cy="126" r="16" />
-              <circle cx="860" cy="202" r="16" />
-              <circle cx="744" cy="442" r="16" />
-            </g>
-          </svg>
-
-          <div className="absolute left-[54%] top-[54%] flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#e83b52] text-white shadow-[0_18px_35px_rgba(232,59,82,0.28)]">
-            <MapPin aria-hidden="true" className="size-9 fill-white/30" />
-          </div>
-
-          {coverageLocations.map((location) => (
-            <CoverageLocationCard key={location.label} location={location} />
-          ))}
-        </div>
-        <div className="mx-auto mt-8 grid max-w-5xl gap-3 sm:grid-cols-5">
-          {painPoints.map((point) => (
-            <div key={point} className="flex items-start gap-2 rounded-md bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 shadow-sm">
-              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
-                <X aria-hidden="true" className="size-3.5" />
-              </span>
-              <span>{point}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-white py-16 lg:py-24">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-              What we offer
-            </p>
-            <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl">
-              A quote platform, not another forwarder.
-            </h2>
-            <p className="mt-5 max-w-xl text-sm leading-6 text-slate-600">
-              Importing Philippines connects importers with cargo forwarders.
-              The platform helps organize requests, quotes, and conversations,
-              while the forwarder provides the actual shipping service.
-            </p>
-            <div className="relative mt-8 min-h-80 overflow-hidden rounded-md">
-              <Image
-                src="/assets/cargoes.jpg"
-                alt="Cargo handling equipment"
-                fill
-                sizes="(min-width: 1024px) 40vw, 100vw"
-                className="object-cover"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:pt-28">
-            {offerItems.map((item) => {
+          <div className="grid overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-2xl md:grid-cols-2 lg:grid-cols-4">
+            {trustItems.map((item) => {
               const Icon = item.icon;
-
               return (
-                <article key={item.title} className="border-t border-[#e7e2dd] pt-6">
-                  <Icon aria-hidden="true" className="size-6 text-cyan-700" />
-                  <h3 className="mt-5 text-xl font-semibold">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
+                <div key={item.text} className="flex min-h-28 items-center gap-4 border-primary-foreground/20 p-5 lg:border-r lg:last:border-r-0">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full border border-primary-foreground/30">
+                    <Icon aria-hidden="true" className="size-7" />
+                  </span>
+                  <p className="text-sm leading-5">{item.text}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+        <div className="grid gap-12 lg:grid-cols-[0.78fr_2.22fr] lg:items-center">
+          <div className="space-y-4">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">How it works</p>
+            <h2 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-4xl">
+              One request. Private quotes. Clear next steps.
+            </h2>
+            <p className="leading-7 text-muted-foreground">Importers share the shipment details forwarders need.</p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-3">
+            {processSteps.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <article key={step.title} className="relative text-center">
+                  <span className="absolute left-1/2 top-2 z-10 -translate-x-13 rounded-full bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <div className="mx-auto grid size-28 place-items-center rounded-full border border-border bg-background shadow-sm">
+                    <Icon aria-hidden="true" className="size-12 text-primary" />
+                  </div>
+                  <h3 className="mt-5 text-lg font-bold">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.body}</p>
+                  {index < processSteps.length - 1 ? (
+                    <span aria-hidden="true" className="absolute -right-6 top-12 hidden text-3xl text-primary/40 lg:block">→</span>
+                  ) : null}
                 </article>
               );
             })}
+          </div>
+        </div>
+        <p className="mt-10 text-center text-sm text-muted-foreground">
+          Both sides can continue the conversation from the quote.
+        </p>
+      </section>
 
-            <div className="sm:col-span-2">
-              <Button asChild className="rounded-full bg-[#202020] px-5 text-white hover:bg-[#343434]">
-                <Link href="/sign-up">
-                  Create free account
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-              </Button>
-            </div>
+      <section className="bg-primary/5 py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-primary">What you can do</p>
+          <div className="grid gap-5 md:grid-cols-3">
+            {capabilities.map((capability) => {
+              const Icon = capability.icon;
+              return (
+                <article key={capability.title} className="group rounded-xl border border-primary/20 bg-background p-6 shadow-sm transition-transform hover:-translate-y-1">
+                  <div className="flex items-start gap-4">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Icon aria-hidden="true" className="size-6" />
+                    </span>
+                    <div>
+                      <h3 className="text-xl font-bold">{capability.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{capability.body}</p>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="rounded-md bg-[#e83b52] px-6 py-14 text-center text-white sm:px-10 lg:py-18">
-          <h2 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-normal sm:text-6xl">
-            Ready to find shipment quotes?
-          </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-white/80">
-            Create a free account, post your shipment details, and receive
-            private quotes from forwarders.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild className="rounded-full bg-[#202020] px-5 text-white hover:bg-[#343434]">
-              <Link href="/sign-up">
-                Create free account
-                <ArrowRight aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="rounded-full border-white/70 bg-transparent px-5 text-white hover:bg-white/10">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
+      <section className="border-y border-border bg-muted/60 py-16">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_0.75fr_auto]">
+          <div className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Keep everything in one place</p>
+            <h2 className="text-4xl font-extrabold tracking-tight">Keep the quote process in one place.</h2>
+            <p className="max-w-2xl leading-7 text-muted-foreground">
+              Requests, quotes, messages, and updates stay connected to the shipment, so both sides can follow the conversation clearly.
+            </p>
           </div>
+          <div aria-hidden="true" className="relative mx-auto w-full max-w-sm">
+            <div className="rounded-xl border border-border bg-background p-5 shadow-lg">
+              {["Shipment request", "Private quote", "Conversation"].map((label) => (
+                <div key={label} className="flex items-center gap-3 border-b border-border py-3 last:border-b-0">
+                  <span className="grid size-6 place-items-center rounded-full bg-primary/10 text-primary"><Check className="size-4" /></span>
+                  <span className="text-sm font-semibold">{label}</span>
+                </div>
+              ))}
+            </div>
+            <span className="absolute -right-4 top-7 rounded-xl bg-primary p-3 text-primary-foreground shadow-lg">
+              <MessagesSquare className="size-7" />
+            </span>
+          </div>
+          <div className="space-y-2 text-center lg:text-left">
+            <Button asChild size="lg" className="font-bold"><Link href="/sign-up">Create free account <ArrowRight /></Link></Button>
+            <p className="text-xs text-muted-foreground">It&apos;s free to create an account.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+        <div className="grid overflow-hidden rounded-xl border border-border lg:grid-cols-3">
+          <article className="space-y-6 border-b border-border p-7 lg:border-b-0 lg:border-r">
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">No more scattered chats</p>
+              <h2 className="text-3xl font-extrabold leading-tight tracking-tight">Your quote search should not be scattered across chats.</h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Most quote requests happen through Messenger, Viber, referrals, and contact lists. Importing Philippines gives you one place to describe the shipment, receive private quotes, and decide which forwarder to continue with.
+              </p>
+            </div>
+            <div className="relative min-h-64 rounded-xl bg-primary/5 p-5">
+              <span className="absolute left-1/2 top-1/2 z-10 grid size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl">
+                <MessagesSquare aria-hidden="true" className="size-6" />
+              </span>
+              {["Guangzhou", "Shenzhen", "Manila", "Cebu", "Davao"].map((city, index) => (
+                <span
+                  key={city}
+                  className={`absolute z-10 rounded-full border border-border bg-background px-3 py-2 text-xs font-bold shadow-sm ${[
+                    "left-4 top-5",
+                    "bottom-5 left-8",
+                    "right-6 top-7",
+                    "bottom-8 right-5",
+                    "left-1/2 top-3 -translate-x-1/2",
+                  ][index]}`}
+                >
+                  {city}
+                </span>
+              ))}
+              <svg aria-hidden="true" className="absolute inset-0 size-full text-primary/30" viewBox="0 0 320 250">
+                <path d="M160 125 48 38M160 125 55 210M160 125 275 45M160 125 275 205M160 125 160 25" fill="none" stroke="currentColor" strokeDasharray="5 6" />
+              </svg>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {painPoints.map((label) => (
+                <p key={label} className="rounded-lg border border-border p-3 text-xs leading-5 text-muted-foreground">
+                  <span className="mr-1 font-bold text-primary">×</span> {label}
+                </p>
+              ))}
+            </div>
+            <Button asChild className="w-full font-bold"><Link href={requestHref}>Post a shipment request <ArrowRight /></Link></Button>
+          </article>
+
+          <article className="space-y-6 border-b border-border p-7 lg:border-b-0 lg:border-r">
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">A platform, not a forwarder</p>
+              <h2 className="text-3xl font-extrabold leading-tight tracking-tight">A quote platform, not another forwarder.</h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Importing Philippines connects importers with cargo forwarders. The platform organizes requests, quotes, and conversations, while the forwarder provides the actual shipping service.
+              </p>
+            </div>
+            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {capabilities.map((capability) => {
+                const Icon = capability.icon;
+                return (
+                  <div key={`platform-${capability.title}`} className="flex gap-4 p-5">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full border border-primary/25 text-primary"><Icon className="size-5" /></span>
+                    <div><h3 className="font-bold">{capability.title}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{capability.body}</p></div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="rounded-xl bg-primary p-5 text-primary-foreground">
+              <p className="font-bold">Quote-based messaging</p>
+              <p className="mt-2 text-sm leading-6 text-primary-foreground/75">Keep follow-up questions tied to the shipment.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {platformFeatures.map(([title, body]) => (
+                <div key={title} className="border-l-2 border-primary pl-4">
+                  <h3 className="text-sm font-bold">{title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{body}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="space-y-6 p-7">
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Private and direct</p>
+              <p className="text-sm font-bold text-primary">Ready to find shipment quotes?</p>
+              <h2 className="text-3xl font-extrabold leading-tight tracking-tight">Private quotes. Clear next steps.</h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Forwarders send pricing, timelines, inclusions, and notes privately. You decide who to move forward with.
+              </p>
+            </div>
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl">
+              <Image src="/assets/cargoes.jpg" alt="Stacked shipping containers" fill sizes="33vw" className="object-cover" />
+            </div>
+            <div className="space-y-3">
+              <Button asChild className="w-full font-bold"><Link href={requestHref}>Post a shipment request <ArrowRight /></Link></Button>
+              <Link className="block text-center text-sm font-semibold text-primary underline-offset-4 hover:underline" href={forwarderHref}>Join as a forwarder</Link>
+              <Link className="block text-center text-sm font-semibold text-primary underline-offset-4 hover:underline" href="/guides">Beginner Guides for Importing to the Philippines</Link>
+              <p className="text-center text-xs text-muted-foreground">It&apos;s free to post. No obligation.</p>
+            </div>
+          </article>
         </div>
       </section>
 
       <PublicSiteFooter />
     </main>
-  );
-}
-
-function CoverageLocationCard({
-  location,
-}: {
-  location: {
-    label: string;
-    detail: string;
-    image: string;
-    className: string;
-  };
-}) {
-  return (
-    <div
-      className={`absolute flex w-[10.75rem] items-center gap-2 rounded-full bg-white px-2.5 py-2 text-left shadow-[0_16px_35px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/70 sm:w-[18rem] sm:gap-3 sm:px-3 ${location.className}`}
-    >
-      <span className="relative size-8 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:size-12">
-        <Image
-          src={location.image}
-          alt=""
-          fill
-          sizes="(min-width: 640px) 48px, 32px"
-          className="object-cover"
-        />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-xs font-semibold leading-tight text-[#202020] sm:text-lg">
-          {location.label}
-        </span>
-        <span className="mt-1 flex items-center gap-1 text-[0.65rem] leading-tight text-slate-500 sm:text-sm">
-          <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
-          <span>{location.detail}</span>
-        </span>
-      </span>
-    </div>
   );
 }
