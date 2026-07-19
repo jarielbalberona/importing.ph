@@ -104,6 +104,12 @@ test("route coverage includes about page", () => {
   assert.ok(coverage.htmlRoutes.includes("/about"));
 });
 
+test("route coverage includes how-it-works page", () => {
+  const coverage = getStaticRouteCoverage();
+
+  assert.ok(coverage.htmlRoutes.includes("/how-it-works"));
+});
+
 test("about metadata is covered", () => {
   const metadata = getMetadataSnapshotForRoute("/about");
 
@@ -115,15 +121,32 @@ test("about metadata is covered", () => {
   );
 });
 
+test("how-it-works metadata is covered", () => {
+  const metadata = getMetadataSnapshotForRoute("/how-it-works");
+
+  assert.equal(metadata?.title, "Importer vs Forwarder: How importing.ph Works");
+  assert.equal(metadata?.alternates?.canonical, "/how-it-works");
+});
+
 test("sitemap includes about page", () => {
   const entries = sitemap().map((entry) => entry.url);
 
   assert.ok(entries.includes("https://importing.ph/about"));
 });
 
-test("public headers include about link", async () => {
+test("sitemap includes how-it-works page", () => {
+  const entries = sitemap().map((entry) => entry.url);
+
+  assert.ok(entries.includes("https://importing.ph/how-it-works"));
+});
+
+test("public navigation includes about and how-it-works links", async () => {
   const header = await fs.readFile(
     path.join(process.cwd(), "components/public/site-header.tsx"),
+    "utf8",
+  );
+  const footer = await fs.readFile(
+    path.join(process.cwd(), "components/public/site-footer.tsx"),
     "utf8",
   );
   const home = await fs.readFile(
@@ -132,6 +155,8 @@ test("public headers include about link", async () => {
   );
 
   assert.match(header, /href="\/about"/);
+  assert.match(header, /href="\/how-it-works"/);
+  assert.match(footer, /href: "\/how-it-works"/);
   assert.match(home, /<PublicSiteHeader \/>/);
 });
 

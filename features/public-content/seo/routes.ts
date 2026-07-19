@@ -3,7 +3,7 @@ import type { Guide, GuideRelatedLink } from "@/features/public-content/content/
 
 export const siteOrigin = "https://importing.ph";
 
-export const publicRoutePaths = ["/", "/guides", "/about", "/sign-in", "/sign-up"] as const;
+export const publicRoutePaths = ["/", "/how-it-works", "/guides", "/about", "/sign-in", "/sign-up"] as const;
 
 export function getSiteUrl(pathname = "/") {
   return new URL(pathname, siteOrigin).toString();

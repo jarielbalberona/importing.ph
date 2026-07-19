@@ -23,7 +23,7 @@ export function PublicSiteHeader() {
           />
         </Link>
 
-        <nav aria-label="Primary navigation" className="hidden items-center gap-7 text-sm font-semibold sm:flex">
+        <nav aria-label="Primary navigation" className="hidden items-center gap-7 text-sm font-semibold lg:flex">
           <PublicNavigationLinks />
           <Button asChild variant="outline" className="rounded-md px-5 font-semibold">
             <Link href="/sign-in">Sign in</Link>
@@ -33,7 +33,7 @@ export function PublicSiteHeader() {
           </Button>
         </nav>
 
-        <details className="group relative sm:hidden">
+        <details className="group relative lg:hidden">
           <summary className="flex size-10 cursor-pointer list-none items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm [&::-webkit-details-marker]:hidden">
             <Menu aria-hidden="true" className="size-5" />
             <span className="sr-only">Open menu</span>
@@ -57,11 +57,12 @@ export function PublicSiteHeader() {
 }
 
 function PublicNavigationLinks() {
-  const className = "rounded-md px-3 py-2 transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-0 sm:hover:bg-transparent";
+  const className = "rounded-md px-3 py-2 transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:p-0 lg:hover:bg-transparent";
 
   return (
     <>
       <Link href="/" className={className}>Home</Link>
+      <Link href="/how-it-works" className={className}>How it works</Link>
       <Link href="/guides" className={className}>Guides</Link>
       <Link href="/about" className={className}>About</Link>
     </>

@@ -15,6 +15,7 @@ const footerGroups = [
         href: appendAuthRedirectParams("/sign-up", { intent: POST_SHIPMENT_REQUEST_INTENT }),
         label: "Post your shipment",
       },
+      { href: "/how-it-works#importers", label: "How importing works" },
       { href: "/guides", label: "Beginner guides" },
     ],
   },
@@ -25,12 +26,14 @@ const footerGroups = [
         href: appendAuthRedirectParams("/sign-up", { intent: JOIN_AS_FORWARDER_INTENT }),
         label: "Join as a forwarder",
       },
+      { href: "/how-it-works#forwarders", label: "How quoting works" },
       { href: "/sign-in", label: "Sign in" },
     ],
   },
   {
     title: "Explore",
     links: [
+      { href: "/how-it-works", label: "How it works" },
       { href: "/guides", label: "Guides" },
       { href: "/about", label: "About" },
     ],

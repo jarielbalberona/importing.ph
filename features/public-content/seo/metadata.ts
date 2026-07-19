@@ -60,6 +60,34 @@ export function buildAboutMetadata(): Metadata {
   };
 }
 
+export function buildHowItWorksMetadata(): Metadata {
+  const title = "Importer vs Forwarder: How importing.ph Works";
+  const description =
+    "Compare importer and forwarder roles on importing.ph, including shipment requests, private quotations, visibility, messaging, and responsibilities.";
+  const canonical = "/how-it-works";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: getSiteUrl(canonical),
+      images: [getSiteUrl(defaultOgImage)],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [getSiteUrl(defaultOgImage)],
+    },
+  };
+}
+
 export function buildGuideMetadata(guide: Guide): Metadata {
   const canonical = getGuidePath(guide.slug);
 

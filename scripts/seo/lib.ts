@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { getPublishedGuideMarkdown } from "@/features/public-content/ai-readable/registry";
 import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
-import { buildAboutMetadata, buildGuideMetadata, buildGuidesIndexMetadata } from "@/features/public-content/seo/metadata";
+import { buildAboutMetadata, buildGuideMetadata, buildGuidesIndexMetadata, buildHowItWorksMetadata } from "@/features/public-content/seo/metadata";
 import {
   buildGuideArticleJsonLd,
   buildGuideBreadcrumbJsonLd,
@@ -381,6 +381,10 @@ export function getStaticRouteCoverage() {
 }
 
 export function getMetadataSnapshotForRoute(pathname: string) {
+  if (pathname === "/how-it-works") {
+    return buildHowItWorksMetadata();
+  }
+
   if (pathname === "/about") {
     return buildAboutMetadata();
   }

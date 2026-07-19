@@ -149,6 +149,13 @@ export function getAuditTargets(): AuditRouteTarget[] {
     },
     {
       kind: "html",
+      label: "how-it-works",
+      path: "/how-it-works",
+      canonicalPath: "/how-it-works",
+      expectsH1: true,
+    },
+    {
+      kind: "html",
       label: "about",
       path: "/about",
       canonicalPath: "/about",
